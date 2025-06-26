@@ -87,27 +87,49 @@
         });
 
         function toggleContentTypeFields() {
-            const type = document.getElementById('type').value;
-            const bodyField = document.getElementById('body_field');
-            const fileUploadField = document.getElementById('file_upload_field');
-            const bodyInput = document.getElementById('body');
-            const fileInput = document.getElementById('file_upload');
+        const type = document.getElementById('type').value;
+        const bodyField = document.getElementById('body_field');
+        const fileUploadField = document.getElementById('file_upload_field');
+        const bodyInput = document.getElementById('body');
+        const fileInput = document.getElementById('file_upload');
 
-            // Reset required state
-            bodyInput.removeAttribute('required');
-            fileInput.removeAttribute('required');
+        // Cegah error jika elemen tidak ditemukan
+        if (!bodyInput || !fileInput || !bodyField || !fileUploadField) return;
 
-            // Hide all initially
-            bodyField.classList.add('hidden');
-            fileUploadField.classList.add('hidden');
+        // Reset required state
+        bodyInput.removeAttribute('required');
+        fileInput.removeAttribute('required');
 
-            if (type === 'text' || type === 'video') {
-                bodyField.classList.remove('hidden');
-                bodyInput.setAttribute('required', 'required');
-            } else if (type === 'document' || type === 'image') {
-                fileUploadField.classList.remove('hidden');
-                fileInput.setAttribute('required', 'required');
-            }
+        // Hide all initially
+        bodyField.classList.add('hidden');
+        fileUploadField.classList.add('hidden');
+
+        if (type === 'text' || type === 'video') {
+            bodyField.classList.remove('hidden');
+            bodyInput.setAttribute('required', 'required');
+        } else if (type === 'document' || type === 'image') {
+            fileUploadField.classList.remove('hidden');
+            fileInput.setAttribute('required', 'required');
         }
+        // Jika bodyInput muncul dan TinyMCE belum aktif, init ulang
+        if (type === 'text' || type === 'video') {
+            setTimeout(() => {
+                if (!tinymce.get('body')) {
+                    tinymce.init({
+                        selector: '#body',
+                        menubar: 'file edit view insert format tools table help',
+                        plugins: 'link image code lists media table autosave wordcount fullscreen template',
+                        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image media table',
+                        branding: false,
+                        setup: function (editor) {
+                            editor.on('change', function () {
+                                editor.save(); // Sync ke textarea
+                            });
+                        }
+                    });
+                }
+            }, 300); // Delay untuk pastikan textarea muncul
+        }
+    }
     </script>
 </x-app-layout>

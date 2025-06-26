@@ -18,13 +18,15 @@
                 <div class="content-display mt-6">
                     @if ($content->type === 'text')
                         <div class="prose max-w-none">
-                            {!! nl2br(e($content->body)) !!} {{-- Menggunakan nl2br dan e() untuk keamanan --}}
+                            {{-- Menggunakan {!! !!} untuk merender HTML tanpa escaping --}}
+                            {!! $content->body !!}
                         </div>
                     @elseif ($content->type === 'video')
                         @php
                             $youtubeEmbed = '';
+                            $vimeoEmbed = ''; // Inisialisasi $vimeoEmbed
                             if (preg_match('/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|)([\w-]{11})/', $content->body, $matches)) {
-                                $youtubeEmbed = "https://www.youtube.com/embed/" . $matches[1];
+                                $youtubeEmbed = "https://www.youtube.com/embed/" . $matches[1]; // Perbaiki URL embed YouTube
                             } elseif (preg_match('/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(?:video\/|channels\/staffpicks\/video\/|)(\d+)/', $content->body, $matches)) {
                                 $vimeoEmbed = "https://player.vimeo.com/video/" . $matches[1];
                             }

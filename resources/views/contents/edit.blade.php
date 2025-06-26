@@ -82,9 +82,10 @@
         </div>
     </div>
 
+    <script src="{{ asset('vendor/tinymce/tinymce.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            toggleContentTypeFields();
+            toggleContentTypeFields(); // Panggil saat halaman dimuat
         });
 
         function toggleContentTypeFields() {
@@ -94,6 +95,9 @@
             const bodyInput = document.getElementById('body');
             const fileInput = document.getElementById('file_upload');
 
+            // Prevent errors if elements are not found
+            if (!bodyInput || !fileInput || !bodyField || !fileUploadField) return;
+
             // Reset required state
             bodyInput.removeAttribute('required');
             fileInput.removeAttribute('required');
@@ -102,13 +106,33 @@
             bodyField.classList.add('hidden');
             fileUploadField.classList.add('hidden');
 
+            // Destroy TinyMCE instance if it exists before potentially re-initializing or hiding
+            if (tinymce.get('body')) {
+                tinymce.get('body').destroy();
+            }
+
             if (type === 'text' || type === 'video') {
                 bodyField.classList.remove('hidden');
                 bodyInput.setAttribute('required', 'required');
+                // Re-initialize TinyMCE for the 'body' textarea
+                setTimeout(() => {
+                    tinymce.init({
+                        selector: '#body',
+                        menubar: 'file edit view insert format tools table help',
+                        plugins: 'link image code lists media table autosave wordcount fullscreen template',
+                        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image media table',
+                        branding: false,
+                        setup: function (editor) {
+                            editor.on('change', function () {
+                                editor.save(); // Sync to textarea
+                            });
+                        }
+                    });
+                }, 100); // Small delay to ensure textarea is visible
             } else if (type === 'document' || type === 'image') {
                 fileUploadField.classList.remove('hidden');
-                // Jika ada file lama, file input tidak wajib. Jika tidak ada, wajib.
-                if (!'{{ $content->file_path }}') { // Cek apakah ada file_path lama
+                // If there's no existing file, make the file input required
+                if (!'{{ $content->file_path }}') {
                     fileInput.setAttribute('required', 'required');
                 }
             }
