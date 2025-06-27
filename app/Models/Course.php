@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Quiz;
 
 class Course extends Model
 {
@@ -34,6 +35,11 @@ class Course extends Model
     public function participants()
     {
         return $this->belongsToMany(User::class, 'course_user');
+    }
+
+    public function quizzes()
+    {
+        return $this->hasMany(Quiz::class);
     }
 
     // Atribut untuk status

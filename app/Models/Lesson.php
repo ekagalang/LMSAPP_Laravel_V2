@@ -39,4 +39,9 @@ class Lesson extends Model
     {
         return $this->completers()->where('user_id', $userId)->wherePivot('completed', true)->exists();
     }
+    
+    public function quizzes()
+    {
+        return $this->hasMany(Quiz::class);
+    }
 }

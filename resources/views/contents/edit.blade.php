@@ -19,7 +19,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('lessons.contents.update', [$lesson, $content]) }}" enctype="multipart/form-data">
+                    <form id="contentForm" method="POST" action="{{ route('lessons.contents.update', [$lesson, $content]) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
 
@@ -38,7 +38,7 @@
                                 <option value="video" {{ old('type', $content->type) == 'video' ? 'selected' : '' }}>Video (URL YouTube/Vimeo)</option>
                                 <option value="document" {{ old('type', $content->type) == 'document' ? 'selected' : '' }}>Dokumen (PDF, DOCX, PPTX)</option>
                                 <option value="image" {{ old('type', $content->type) == 'image' ? 'selected' : '' }}>Gambar (JPG, PNG)</option>
-                                {{-- <option value="quiz">Kuis (Nanti)</option> --}}
+                                <option value="quiz" {{ old('type', $content->type) == 'quiz' ? 'selected' : '' }}>Kuis</option>
                             </select>
                             @error('type')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -63,6 +63,10 @@
                             <p class="text-xs text-gray-500 mt-1">File saat ini: @if($content->file_path) <a href="{{ asset('storage/' . $content->file_path) }}" target="_blank" class="text-blue-500">{{ basename($content->file_path) }}</a> @else Tidak ada file @endif</p>
                         </div>
 
+                        <div id="quiz_form_fields" class="mb-4 {{ old('type', $content->type) == 'quiz' ? '' : 'hidden' }}">
+                            {{-- Konten form kuis akan dimuat di sini --}}
+                        </div>
+
                         <div class="mb-4">
                             <label for="order" class="block text-sm font-medium text-gray-700">Urutan (Opsional)</label>
                             <input type="number" name="order" id="order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('order', $content->order) }}">
@@ -82,59 +86,321 @@
         </div>
     </div>
 
-    <script src="{{ asset('vendor/tinymce/tinymce.min.js') }}"></script>
+    <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
     <script>
+        let globalQuestionCounter = 0;
+        const quizFormFieldsContainer = document.getElementById('quiz_form_fields');
+        const typeSelect = document.getElementById('type');
+        const contentForm = document.getElementById('contentForm');
+
+        let quizFormAlpineScope = null;
+
         document.addEventListener('DOMContentLoaded', function() {
-            toggleContentTypeFields(); // Panggil saat halaman dimuat
+            toggleContentTypeFields();
+
+            contentForm.addEventListener('remove-question-from-current-tab', () => {
+                if (quizFormAlpineScope) {
+                    const currentTab = quizFormAlpineScope.currentQuestionTab;
+                    const questions = Array.from(quizFormFieldsContainer.querySelectorAll('.question-block'));
+                    if (questions[currentTab]) {
+                        const questionBlockToRemove = questions[currentTab];
+                        const questionIdToDelete = questionBlockToRemove.querySelector('input[name$="[id]"]').value;
+
+                        if (questionIdToDelete) {
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = `questions_to_delete[]`;
+                            hiddenInput.value = questionIdToDelete;
+                            contentForm.appendChild(hiddenInput);
+                        }
+                        questionBlockToRemove.remove();
+
+                        quizFormAlpineScope.removeQuestionTab(currentTab);
+                        updateQuestionIndicesAndVisibility();
+                    }
+                }
+            });
         });
 
         function toggleContentTypeFields() {
-            const type = document.getElementById('type').value;
+            const type = typeSelect.value;
             const bodyField = document.getElementById('body_field');
             const fileUploadField = document.getElementById('file_upload_field');
             const bodyInput = document.getElementById('body');
             const fileInput = document.getElementById('file_upload');
 
-            // Prevent errors if elements are not found
-            if (!bodyInput || !fileInput || !bodyField || !fileUploadField) return;
-
-            // Reset required state
-            bodyInput.removeAttribute('required');
-            fileInput.removeAttribute('required');
-
-            // Hide all initially
-            bodyField.classList.add('hidden');
-            fileUploadField.classList.add('hidden');
-
-            // Destroy TinyMCE instance if it exists before potentially re-initializing or hiding
             if (tinymce.get('body')) {
                 tinymce.get('body').destroy();
             }
 
+            bodyField.classList.add('hidden');
+            fileUploadField.classList.add('hidden');
+            quizFormFieldsContainer.classList.add('hidden');
+
+            bodyInput.removeAttribute('required');
+            fileInput.removeAttribute('required');
+
             if (type === 'text' || type === 'video') {
                 bodyField.classList.remove('hidden');
                 bodyInput.setAttribute('required', 'required');
-                // Re-initialize TinyMCE for the 'body' textarea
                 setTimeout(() => {
                     tinymce.init({
-                        selector: '#body',
-                        menubar: 'file edit view insert format tools table help',
-                        plugins: 'link image code lists media table autosave wordcount fullscreen template',
-                        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image media table',
+                        selector: 'textarea#body',
+                        plugins: 'code table lists link image media autosave wordcount fullscreen template',
+                        toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
                         branding: false,
                         setup: function (editor) {
                             editor.on('change', function () {
-                                editor.save(); // Sync to textarea
+                                editor.save();
                             });
                         }
                     });
-                }, 100); // Small delay to ensure textarea is visible
+                }, 100);
             } else if (type === 'document' || type === 'image') {
                 fileUploadField.classList.remove('hidden');
-                // If there's no existing file, make the file input required
                 if (!'{{ $content->file_path }}') {
                     fileInput.setAttribute('required', 'required');
                 }
+            } else if (type === 'quiz') {
+                quizFormFieldsContainer.classList.remove('hidden');
+                const quizData = @json($content->quiz ?? null); // Mendapatkan data kuis dari $content
+                loadQuizFormPartial(quizData); // Kirim data kuis untuk populasi form
+            }
+        }
+
+        function loadQuizFormPartial(quizData = null) {
+            quizFormFieldsContainer.innerHTML = '';
+            globalQuestionCounter = 0;
+
+            fetch('{{ route('quiz-full-form-partial') }}')
+                .then(response => response.text())
+                .then(html => {
+                    quizFormFieldsContainer.innerHTML = html;
+                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer);
+
+                    attachQuizFormListeners(quizFormFieldsContainer);
+
+                    if (quizData) {
+                        quizFormFieldsContainer.querySelector('#quiz_title').value = quizData.title || '';
+                        quizFormFieldsContainer.querySelector('#quiz_description').value = quizData.description || '';
+                        quizFormFieldsContainer.querySelector('#total_marks').value = quizData.total_marks || 0;
+                        quizFormFieldsContainer.querySelector('#pass_marks').value = quizData.pass_marks || 0;
+                        quizFormFieldsContainer.querySelector('#time_limit').value = quizData.time_limit || '';
+                        quizFormFieldsContainer.querySelector('#quiz_status').value = quizData.status || 'draft';
+                        quizFormFieldsContainer.querySelector('#show_answers_after_attempt').checked = quizData.show_answers_after_attempt || false;
+
+                        if (quizData.questions && quizData.questions.length > 0) {
+                            const questionsInnerContainer = quizFormFieldsContainer.querySelector('#questions-container-for-quiz-form');
+                            questionsInnerContainer.innerHTML = '';
+
+                            quizData.questions.forEach(q => {
+                                addQuestionToQuizForm(globalQuestionCounter++, q);
+                            });
+                            quizFormAlpineScope.questionsCount = quizData.questions.length;
+                        } else {
+                            addQuestionToQuizForm(globalQuestionCounter++);
+                            quizFormAlpineScope.questionsCount = 1;
+                        }
+                        quizFormAlpineScope.currentQuestionTab = 0;
+                    } else {
+                        addQuestionToQuizForm(globalQuestionCounter++);
+                        quizFormAlpineScope.questionsCount = 1;
+                        quizFormAlpineScope.currentQuestionTab = 0;
+                    }
+                })
+                .catch(error => console.error('Error loading quiz form partial:', error));
+        }
+
+        function attachQuizFormListeners(container) {
+            const addQuestionButton = container.querySelector('#add-question-to-quiz-form');
+            if (addQuestionButton) {
+                addQuestionButton.addEventListener('click', function() {
+                    addQuestionToQuizForm(globalQuestionCounter++);
+                    quizFormAlpineScope.addQuestionTab(globalQuestionCounter - 1);
+                });
+            }
+        }
+
+        function attachQuestionListenersToQuizForm(questionBlock) {
+            const selectElement = questionBlock.querySelector('[name$="[type]"]');
+            const addOptionButton = questionBlock.querySelector('.add-option');
+
+            if (selectElement) {
+                selectElement.addEventListener('change', function() {
+                    toggleQuestionTypeFieldsInQuizForm(this);
+                });
+                toggleQuestionTypeFieldsInQuizForm(selectElement);
+            }
+
+            if (addOptionButton) {
+                addOptionButton.addEventListener('click', function() {
+                    const currentQuestionIndex = questionBlock.dataset.questionIndex;
+                    addOptionToQuizForm(currentQuestionIndex);
+                });
+            }
+
+            questionBlock.querySelectorAll('.remove-option').forEach(button => {
+                button.addEventListener('click', function() {
+                    const optionIdToDelete = this.dataset.optionId;
+                    const currentQuestionIndex = questionBlock.dataset.questionIndex;
+                    if (optionIdToDelete) {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = `questions[${currentQuestionIndex}][options_to_delete][]`;
+                        hiddenInput.value = optionIdToDelete;
+                        contentForm.appendChild(hiddenInput);
+                    }
+                    this.closest('.option-group').remove();
+                });
+            });
+        }
+
+        function addQuestionToQuizForm(index, questionData = null) {
+            fetch('{{ route('quiz-question-partial') }}?index=' + index + '&is_new=true')
+                .then(response => response.text())
+                .then(html => {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    const newQuestionDiv = tempDiv.firstElementChild;
+                    newQuestionDiv.dataset.questionIndex = index;
+
+                    newQuestionDiv.setAttribute('x-show', `currentQuestionTab === ${index}`);
+                    newQuestionDiv.setAttribute('x-transition:enter', 'transition ease-out duration-300');
+                    newQuestionDiv.setAttribute('x-transition:enter-start', 'opacity-0 transform scale-90');
+                    newQuestionDiv.setAttribute('x-transition:enter-end', 'opacity-100 transform scale-100');
+                    newQuestionDiv.setAttribute('x-transition:leave', 'transition ease-in duration-200');
+                    newQuestionDiv.setAttribute('x-transition:leave-start', 'opacity-100 transform scale-100');
+                    newQuestionDiv.setAttribute('x-transition:leave-end', 'opacity-0 transform scale-90');
+
+                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/\[question_loop_index\]/g, `[${index}]`);
+                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/questions\[question_loop_index\]/g, `questions[${index}]`);
+                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/options\[question_loop_index\]\[option_loop_index\]/g, `questions[${index}][options][option_loop_index]`);
+
+                    if (questionData) {
+                        newQuestionDiv.querySelector('[name$="[question_text]"]').value = questionData.question_text || '';
+                        newQuestionDiv.querySelector('[name$="[type]"]').value = questionData.type || 'multiple_choice';
+                        newQuestionDiv.querySelector('[name$="[marks]"]').value = questionData.marks || 1;
+                        if (questionData.id) {
+                            newQuestionDiv.querySelector('[name$="[id]"]').value = questionData.id;
+                        }
+                        if (questionData.type === 'true_false' && questionData.options) {
+                            const correctOptionTF = questionData.options.find(opt => opt.is_correct);
+                            if (correctOptionTF) {
+                                const radio = newQuestionDiv.querySelector(`input[name="questions[${index}][correct_answer_tf]"][value="${correctOptionTF.option_text.toLowerCase()}"]`);
+                                if (radio) radio.checked = true;
+                            }
+                        }
+                    }
+
+                    const questionsInnerContainer = quizFormFieldsContainer.querySelector('#questions-container-for-quiz-form');
+                    questionsInnerContainer.appendChild(newQuestionDiv);
+                    attachQuestionListenersToQuizForm(newQuestionDiv);
+
+                    if (questionData && questionData.options && questionData.type === 'multiple_choice') {
+                        const optionsListContainer = newQuestionDiv.querySelector('.options-list');
+                        if(optionsListContainer) optionsListContainer.innerHTML = '';
+
+                        questionData.options.forEach(option => {
+                            addOptionToQuizForm(index, option);
+                        });
+                    }
+                    updateQuestionIndicesAndVisibility();
+                })
+                .catch(error => console.error('Error loading question partial:', error));
+        }
+
+        function updateQuestionIndicesAndVisibility() {
+            const questions = Array.from(quizFormFieldsContainer.querySelectorAll('.question-block'));
+            quizFormAlpineScope.questionsCount = questions.length;
+
+            questions.forEach((qBlock, newIndex) => {
+                qBlock.dataset.questionIndex = newIndex;
+                qBlock.setAttribute('x-show', `quizFormAlpineScope.currentQuestionTab === ${newIndex}`);
+
+                qBlock.querySelectorAll('[name*="questions["]').forEach(input => {
+                    const oldName = input.getAttribute('name');
+                    const newName = oldName.replace(/questions\[\d+\]/, `questions[${newIndex}]`);
+                    input.setAttribute('name', newName);
+                });
+
+                qBlock.querySelectorAll('[id*="question_text_"], [id*="question_type_"], [id*="question_marks_"], [id*="options_for_question_"], [id*="true_"], [id*="false_"]').forEach(element => {
+                    const oldId = element.id;
+                    const newId = oldId.replace(/_\d+$/, `_${newIndex}`);
+                    element.id = newId;
+                });
+                qBlock.querySelectorAll('label[for*="_"]').forEach(label => {
+                    const oldFor = label.getAttribute('for');
+                    const newFor = oldFor.replace(/_\d+$/, `_${newIndex}`);
+                    label.setAttribute('for', newFor);
+                });
+            });
+            if (quizFormAlpineScope.currentQuestionTab >= quizFormAlpineScope.questionsCount && quizFormAlpineScope.questionsCount > 0) {
+                quizFormAlpineScope.currentQuestionTab = quizFormAlpineScope.questionsCount - 1;
+            } else if (quizFormAlpineScope.questionsCount === 0) {
+                quizFormAlpineScope.currentQuestionTab = 0;
+            }
+        }
+
+        function addOptionToQuizForm(questionIndex, optionData = null) {
+            const optionsContainer = quizFormFieldsContainer.querySelector(`.question-block[data-question-index="${questionIndex}"] .options-list`);
+            if (!optionsContainer) {
+                console.error('Options list container not found for question index:', questionIndex);
+                return;
+            }
+
+            let optionLoopIndex = optionsContainer.children.length;
+
+            const newOptionDiv = document.createElement('div');
+            newOptionDiv.classList.add('option-group', 'flex', 'items-center', 'space-x-2', 'mb-2');
+            newOptionDiv.innerHTML = `
+                <input type="hidden" name="questions[${questionIndex}][options][${optionLoopIndex}][id]" value="${optionData ? optionData.id : ''}">
+                <input type="text" name="questions[${questionIndex}][options][${optionLoopIndex}][option_text]" placeholder="Teks Opsi" value="${optionData ? optionData.option_text : ''}" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
+                <input type="checkbox" name="questions[${questionIndex}][options][${optionLoopIndex}][is_correct]" value="1" class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500" ${optionData && optionData.is_correct ? 'checked' : ''}>
+                <label class="text-sm text-gray-700">Benar</label>
+                <button type="button" class="remove-option text-red-600 hover:text-red-900 text-sm" data-option-id="${optionData ? optionData.id : ''}">Hapus Opsi</button>
+            `;
+            optionsContainer.appendChild(newOptionDiv);
+
+            newOptionDiv.querySelector('.remove-option').addEventListener('click', function() {
+                const optionIdToDelete = this.dataset.optionId;
+                if (optionIdToDelete) {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = `questions[${questionIndex}][options_to_delete][]`;
+                    hiddenInput.value = optionIdToDelete;
+                    contentForm.appendChild(hiddenInput);
+                }
+                newOptionDiv.remove();
+            });
+        }
+
+        function toggleQuestionTypeFieldsInQuizForm(selectElement) {
+            const questionBlock = selectElement.closest('.question-block');
+            const type = selectElement.value;
+            const optionsContainer = questionBlock.querySelector('.options-container');
+            const addOptionButton = questionBlock.querySelector('.add-option');
+            const trueFalseOptions = questionBlock.querySelector('.true-false-options');
+            const optionTextInputs = questionBlock.querySelectorAll('.options-list input[name$="[option_text]"]');
+            const trueFalseRadios = trueFalseOptions ? trueFalseOptions.querySelectorAll('input[type="radio"]') : [];
+
+            if (type === 'multiple_choice') {
+                optionsContainer.classList.remove('hidden');
+                addOptionButton.classList.remove('hidden');
+                if (trueFalseOptions) trueFalseOptions.classList.add('hidden');
+
+                optionTextInputs.forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+                trueFalseRadios.forEach(radio => radio.removeAttribute('required'));
+            } else if (type === 'true_false') {
+                optionsContainer.classList.add('hidden');
+                addOptionButton.classList.add('hidden');
+                if (trueFalseOptions) trueFalseOptions.classList.remove('hidden');
+
+                optionTextInputs.forEach(input => {
+                    input.removeAttribute('required');
+                });
+                trueFalseRadios.forEach(radio => radio.setAttribute('required', 'required'));
             }
         }
     </script>

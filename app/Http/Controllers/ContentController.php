@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Content;
-use App\Models\Lesson; // Tambahkan ini
-use App\Models\Course; // Tambahkan ini (untuk otorisasi via Course)
+use App\Models\Lesson;
+use App\Models\Course;
+use App\Models\Quiz;       // <--- Tambahkan ini
+use App\Models\Question;  // <--- Tambahkan ini
+use App\Models\Option;    // <--- Tambahkan ini
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule; // Untuk validasi enum
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-
+use Illuminate\Support\Str; // <--- Tambahkan ini untuk Str::lower
 class ContentController extends Controller
 {
     use AuthorizesRequests;
@@ -53,13 +56,11 @@ class ContentController extends Controller
     {
         $this->authorize('update', $lesson->course);
 
-        $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image'])], // 'quiz' akan di handle terpisah
-            'body' => 'nullable|string', // Untuk teks atau URL
-            'file_upload' => 'nullable|file|max:10240', // Max 10MB
+            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz'])], // PASTIKAN 'quiz' ADA DI SINI
             'order' => 'nullable|integer',
-        ]);
+        ];
 
         $filePath = null;
         $bodyContent = $request->body;
@@ -97,13 +98,11 @@ class ContentController extends Controller
     {
         $this->authorize('update', $lesson->course);
 
-        $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image'])],
-            'body' => 'nullable|string',
-            'file_upload' => 'nullable|file|max:10240',
+            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz'])], // PASTIKAN 'quiz' ADA DI SINI
             'order' => 'nullable|integer',
-        ]);
+        ];
 
         $filePath = $content->file_path;
         $bodyContent = $request->body;

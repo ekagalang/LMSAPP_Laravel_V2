@@ -4,8 +4,10 @@ namespace App\Models;
 
 // Pastikan ini adalah satu-satunya use statement untuk trait dari framework/package
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Quiz;
 
 class User extends Authenticatable
 {
@@ -88,5 +90,15 @@ class User extends Authenticatable
     public function completedContents()
     {
         return $this->belongsToMany(Content::class, 'content_user')->withPivot('completed', 'completed_at');
+    }
+
+    public function quizzes()
+    {
+        return $this->hasMany(Quiz::class);
+    }
+
+    public function quizAttempts()
+    {
+        return $this->hasMany(QuizAttempt::class);
     }
 }

@@ -87,7 +87,7 @@ class CourseController extends Controller
         // }
 
         // Load pelajaran bersama dengan kontennya
-        $course->load('lessons.contents');
+        $course->load('lessons.contents', 'participants');
 
         return view('courses.show', compact('course'));
     }
@@ -170,20 +170,59 @@ class CourseController extends Controller
         $this->authorize('update', $course);
 
         $request->validate([
-            'user_id' => 'required|exists:users,id', // Pastikan user_id ada di tabel users
+            'user_ids' => 'required|array', // Mengubah user_id menjadi user_ids (array)
+            'user_ids.*' => 'required|exists:users,id', // Validasi setiap ID di array
         ]);
 
-        $user = User::find($request->user_id);
+        $enrolledCount = 0;
+        $alreadyEnrolledCount = 0;
 
-        // Cek apakah user sudah enroll kursus ini
-        if ($course->participants->contains($user->id)) {
-            return redirect()->back()->with('error', 'Peserta ini sudah terdaftar di kursus ini.');
+        foreach ($request->user_ids as $userId) {
+            $user = User::find($userId);
+
+            // Cek apakah user sudah enroll kursus ini
+            if ($course->participants->contains($user->id)) {
+                $alreadyEnrolledCount++;
+            } else {
+                // Tambahkan peserta ke kursus
+                $course->participants()->attach($user->id); // Menggunakan attach untuk relasi many-to-many
+                $enrolledCount++;
+            }
         }
 
-        // Tambahkan peserta ke kursus
-        $course->participants()->attach($user->id); // Menggunakan attach untuk relasi many-to-many
+        $message = '';
+        if ($enrolledCount > 0) {
+            $message .= "{$enrolledCount} peserta berhasil ditambahkan ke kursus.";
+        }
+        if ($alreadyEnrolledCount > 0) {
+            if ($message) $message .= " ";
+            $message .= "{$alreadyEnrolledCount} peserta sudah terdaftar.";
+        }
 
-        return redirect()->back()->with('success', $user->name . ' berhasil ditambahkan ke kursus.');
+        return redirect()->back()->with('success', $message ?: 'Tidak ada peserta baru yang ditambahkan.');
+    }
+
+    /**
+     * Unenroll multiple participants from the specified course.
+     */
+    public function unenrollParticipants(Request $request, Course $course)
+    {
+        // Hanya admin atau instruktur pemilik kursus yang bisa meng-unenroll
+        $this->authorize('update', $course);
+
+        $request->validate([
+            'user_ids' => 'required|array', // Menerima array ID pengguna
+            'user_ids.*' => 'required|exists:users,id', // Validasi setiap ID di array
+        ]);
+
+        $unenrolledCount = 0;
+        foreach ($request->user_ids as $userId) {
+            // Cabut akses peserta dari kursus
+            $course->participants()->detach($userId); // Menggunakan detach
+            $unenrolledCount++;
+        }
+
+        return redirect()->back()->with('success', "{$unenrolledCount} peserta berhasil dihapus dari kursus ini.");
     }
 
     public function unenrollParticipant(Course $course, User $user)

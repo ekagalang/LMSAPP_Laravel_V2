@@ -1,3 +1,5 @@
+{{-- resources/views/contents/show.blade.php --}}
+
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -18,13 +20,12 @@
                 <div class="content-display mt-6">
                     @if ($content->type === 'text')
                         <div class="prose max-w-none">
-                            {{-- Menggunakan {!! !!} untuk merender HTML tanpa escaping --}}
                             {!! $content->body !!}
                         </div>
                     @elseif ($content->type === 'video')
                         @php
                             $youtubeEmbed = '';
-                            $vimeoEmbed = ''; // Inisialisasi $vimeoEmbed
+                            $vimeoEmbed = '';
                             if (preg_match('/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|)([\w-]{11})/', $content->body, $matches)) {
                                 $youtubeEmbed = "https://www.youtube.com/embed/" . $matches[1]; // Perbaiki URL embed YouTube
                             } elseif (preg_match('/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(?:video\/|channels\/staffpicks\/video\/|)(\d+)/', $content->body, $matches)) {
@@ -47,8 +48,6 @@
                     @elseif ($content->type === 'document')
                         @if ($content->file_path)
                             <p>Unduh Dokumen: <a href="{{ asset('storage/' . $content->file_path) }}" target="_blank" class="text-indigo-600 hover:underline">{{ basename($content->file_path) }}</a></p>
-                            {{-- Anda bisa menambahkan viewer dokumen jika diperlukan, contoh Google Docs Viewer --}}
-                            {{-- <iframe src="https://docs.google.com/gview?url={{ urlencode(asset('storage/' . $content->file_path)) }}&embedded=true" style="width:100%; height:600px;" frameborder="0"></iframe> --}}
                         @else
                             <p class="text-red-500">Tidak ada file dokumen yang ditemukan.</p>
                         @endif
@@ -58,6 +57,43 @@
                         @else
                             <p class="text-red-500">Tidak ada file gambar yang ditemukan.</p>
                         @endif
+                    @elseif ($content->type === 'quiz') {{-- Bagian baru untuk menampilkan kuis --}}
+                        @if ($content->quiz)
+                            <div class="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                                <h4 class="text-xl font-bold text-blue-800 mb-2">{{ $content->quiz->title }}</h4>
+                                <p class="text-gray-700 mb-3">{{ $content->quiz->description }}</p>
+                                <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                                    <div><strong>Total Soal:</strong> {{ $content->quiz->questions->count() }}</div>
+                                    <div><strong>Total Nilai:</strong> {{ $content->quiz->total_marks }}</div>
+                                    <div><strong>Nilai Lulus:</strong> {{ $content->quiz->pass_marks }}</div>
+                                    <div><strong>Batas Waktu:</strong> {{ $content->quiz->time_limit ? $content->quiz->time_limit . ' menit' : 'Tidak ada' }}</div>
+                                </div>
+                                @auth
+                                    @if (Auth::user()->isParticipant())
+                                        @if ($content->quiz->status == 'published')
+                                            <form action="{{ route('quizzes.start_attempt', $content->quiz) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                                    {{ __('Mulai Kuis') }}
+                                                </button>
+                                            </form>
+                                        @else
+                                            <p class="text-red-500">Kuis ini belum dipublikasikan dan tidak dapat dikerjakan.</p>
+                                        @endif
+                                    @elsecan('update', $course) {{-- Instruktur/Admin bisa melihat dan mengedit dari sini --}}
+                                        <div class="flex space-x-2">
+                                            <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                                Edit Kuis (via Konten)
+                                            </a>
+                                            {{-- Tombol hapus kuis akan mengikuti hapus konten --}}
+                                        </div>
+                                    @endauth
+                                </div>
+                            @else
+                                <p class="text-red-500">Kuis tidak ditemukan untuk konten ini.</p>
+                            @endif
+                        @else
+                            <p class="text-gray-500">Konten ini belum memiliki tampilan khusus.</p>
                     @endif
                 </div>
 

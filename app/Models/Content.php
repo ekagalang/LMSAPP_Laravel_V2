@@ -16,6 +16,7 @@ class Content extends Model
         'body',
         'file_path',
         'order',
+        'quiz_id', // <--- Tambahkan ini
     ];
 
     // Relasi ke Lesson
@@ -34,5 +35,11 @@ class Content extends Model
     public function isCompletedByUser($userId)
     {
         return $this->completers()->where('user_id', $userId)->wherePivot('completed', true)->exists();
+    }
+
+    // Relasi ke Quiz (jika tipe kontennya adalah kuis)
+    public function quiz()
+    {
+        return $this->belongsTo(Quiz::class);
     }
 }
