@@ -2,141 +2,233 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Content;
+use App\Models\Content; // Diperlukan jika ada interaksi dengan model Content
 use App\Models\Lesson;
 use App\Models\Course;
-use App\Models\Quiz; // Tambahkan ini
-use App\Models\Question; // Tambahkan ini
-use App\Models\Option; // Tambahkan ini
+use App\Models\Quiz;
+use App\Models\Question;
+use App\Models\Option;
+use App\Models\QuizAttempt;
+use App\Models\QuestionAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Str; // Untuk True/False di kuis
+use Illuminate\Support\Str;
 
-class ContentController extends Controller
+class QuizController extends Controller // Pastikan nama kelas ini BENAR: QuizController
 {
     use AuthorizesRequests;
 
     public function __construct()
     {
-        // Middleware ini tetap dipertahankan
-        $this->middleware('can:manage-courses')->except(['show']);
+        // Pastikan konstruktor ini ada dan tidak dikomentari
+        $this->middleware('can:manage-courses')->except(['show', 'startAttempt', 'submitAttempt', 'showResult']);
     }
 
     /**
-     * Display the specified content (for participants).
+     * Display a listing of the resource.
+     * Biasanya untuk daftar kuis (admin/instruktur).
      */
-    public function show(Lesson $lesson, Content $content)
+    public function index()
     {
-        $course = $lesson->course;
+        $this->authorize('viewAny', Quiz::class);
 
-        // Jika tipe konten adalah kuis, muat relasi kuis dan pertanyaan/opsi
-        if ($content->type === 'quiz') {
-            $content->load('quiz.questions.options');
-            // Otorisasi tambahan untuk kuis, seperti memastikan user enroll kursus
-            if (Auth::user()->isParticipant() && !$content->lesson->course->participants->contains(Auth::id())) {
-                abort(403, 'Anda belum terdaftar di kursus ini untuk melihat kuis.');
-            }
-            // Jika kuis belum dipublikasikan, mungkin tidak bisa dilihat oleh peserta
-            if ($content->quiz && $content->quiz->status !== 'published' && !Auth::user()->isAdmin() && !Auth::user()->isInstructor()) {
-                 abort(403, 'Kuis ini belum tersedia.');
-            }
+        $user = Auth::user();
+        if ($user->isAdmin()) {
+            $quizzes = Quiz::with('instructor', 'lesson.course')->latest()->get();
+        } elseif ($user->isInstructor()) {
+            $quizzes = Quiz::where('user_id', $user->id)->with('instructor', 'lesson.course')->latest()->get();
+        } else {
+            // Partisipan tidak seharusnya ada di sini karena middleware
+            abort(403, 'Unauthorized action.');
         }
-        return view('contents.show', compact('lesson', 'content', 'course'));
+
+        return view('quizzes.index', compact('quizzes'));
     }
 
     /**
-     * Show the form for creating a new content for a specific lesson.
+     * Display the specified quiz.
+     * Menampilkan detail kuis (sebelum memulai percobaan).
      */
-    public function create(Lesson $lesson)
+    public function show(Quiz $quiz)
     {
-        $this->authorize('update', $lesson->course);
-        // Kita perlu pass data quiz yang sudah ada jika ingin user memilih quiz yang sudah dibuat
-        // Atau user akan selalu membuat quiz baru dari sini
-        // Untuk kesederhanaan, kita akan selalu membuat kuis baru jika tipe 'quiz' dipilih
-        return view('contents.create', compact('lesson'));
+        $this->authorize('view', $quiz);
+        $quiz->load('questions.options', 'lesson.course', 'instructor');
+        return view('quizzes.show', compact('quiz'));
     }
 
     /**
-     * Store a newly created content in storage.
+     * Show the form for creating a new resource.
      */
-    public function store(Request $request, Lesson $lesson)
+    public function create()
     {
-        $this->authorize('update', $lesson->course);
+        $this->authorize('create', Quiz::class);
+        // Anda mungkin perlu menyesuaikan pelajaran yang ditampilkan di sini
+        $lessons = Lesson::whereHas('course', function ($query) {
+            $query->where('user_id', Auth::id()); // Hanya pelajaran dari kursus yang dibuat instruktur ini
+        })->get();
+        return view('quizzes.create', compact('lessons'));
+    }
 
-        $rules = [
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $this->authorize('create', Quiz::class);
+
+        $validatedData = $request->validate([
+            'lesson_id' => 'required|exists:lessons,id',
             'title' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz'])], // Tambahkan 'quiz'
-            'order' => 'nullable|integer',
-        ];
+            'description' => 'nullable|string',
+            'total_marks' => 'required|integer|min:0',
+            'pass_marks' => 'required|integer|min:0|lte:total_marks',
+            'show_answers_after_attempt' => 'boolean',
+            'time_limit' => 'nullable|integer|min:1',
+            'status' => ['required', Rule::in(['draft', 'published'])],
+            'questions' => 'required|array|min:1',
+            'questions.*.question_text' => 'required|string',
+            'questions.*.type' => ['required', Rule::in(['multiple_choice', 'true_false'])],
+            'questions.*.marks' => 'required|integer|min:1',
+            'questions.*.options' => 'array',
+            'questions.*.options.*.option_text' => 'required_if:questions.*.type,multiple_choice|string',
+            'questions.*.options.*.is_correct' => 'boolean',
+            'questions.*.correct_answer_tf' => 'required_if:questions.*.type,true_false|in:true,false',
+        ]);
 
-        if ($request->type === 'text' || $request->type === 'video') {
-            $rules['body'] = 'required|string';
-        } elseif ($request->type === 'document' || $request->type === 'image') {
-            $rules['file_upload'] = 'required|file|max:10240';
-        } elseif ($request->type === 'quiz') {
-            // Validasi untuk data kuis jika tipenya 'quiz'
-            $rules['quiz_title'] = 'required|string|max:255';
-            $rules['quiz_description'] = 'nullable|string';
-            $rules['total_marks'] = 'required|integer|min:0';
-            $rules['pass_marks'] = 'required|integer|min:0|lte:total_marks';
-            $rules['show_answers_after_attempt'] = 'boolean';
-            $rules['time_limit'] = 'nullable|integer|min:1';
-            $rules['quiz_status'] = ['required', Rule::in(['draft', 'published'])];
-            $rules['questions'] = 'array'; // Array pertanyaan
-            $rules['questions.*.question_text'] = 'required|string';
-            $rules['questions.*.type'] = ['required', Rule::in(['multiple_choice', 'true_false'])];
-            $rules['questions.*.marks'] = 'required|integer|min:1';
-            $rules['questions.*.options'] = 'array'; // Array opsi untuk multiple_choice
-            $rules['questions.*.options.*.option_text'] = 'required_if:questions.*.type,multiple_choice|string';
-            $rules['questions.*.options.*.is_correct'] = 'boolean';
-            // Untuk true_false
-            $rules['questions.*.correct_answer_tf'] = 'required_if:questions.*.type,true_false|in:true,false';
-        }
+        $quiz = Quiz::create([
+            'user_id' => Auth::id(),
+            'lesson_id' => $validatedData['lesson_id'],
+            'title' => $validatedData['title'],
+            'description' => $validatedData['description'],
+            'total_marks' => $validatedData['total_marks'],
+            'pass_marks' => $validatedData['pass_marks'],
+            'show_answers_after_attempt' => $request->has('show_answers_after_attempt'),
+            'time_limit' => $validatedData['time_limit'],
+            'status' => $validatedData['status'],
+        ]);
 
-        $validatedData = $request->validate($rules);
-
-        $filePath = null;
-        $bodyContent = null;
-        $quizId = null;
-
-        if ($request->type === 'text' || $request->type === 'video') {
-            $bodyContent = $validatedData['body'];
-        } elseif ($request->type === 'document' || $request->type === 'image') {
-            if ($request->hasFile('file_upload')) {
-                $filePath = $request->file('file_upload')->store('content_files', 'public');
-            }
-        } elseif ($request->type === 'quiz') {
-            // Logika untuk membuat kuis baru
-            $quiz = Quiz::create([
-                'user_id' => Auth::id(),
-                'lesson_id' => $lesson->id, // Kuis terhubung langsung ke pelajaran yang menjadi induk konten ini
-                'title' => $validatedData['quiz_title'],
-                'description' => $validatedData['quiz_description'],
-                'total_marks' => $validatedData['total_marks'],
-                'pass_marks' => $validatedData['pass_marks'],
-                'show_answers_after_attempt' => $validatedData['show_answers_after_attempt'] ?? false,
-                'time_limit' => $validatedData['time_limit'],
-                'status' => $validatedData['quiz_status'],
+        foreach ($validatedData['questions'] as $qData) {
+            $question = $quiz->questions()->create([
+                'question_text' => $qData['question_text'],
+                'type' => $qData['type'],
+                'marks' => $qData['marks'],
             ]);
 
-            foreach ($validatedData['questions'] as $qData) {
-                $question = $quiz->questions()->create([
-                    'question_text' => $qData['question_text'],
-                    'type' => $qData['type'],
-                    'marks' => $qData['marks'],
+            if ($qData['type'] === 'multiple_choice' && isset($qData['options'])) {
+                foreach ($qData['options'] as $optionData) {
+                    $question->options()->create([
+                        'option_text' => $optionData['option_text'],
+                        'is_correct' => $optionData['is_correct'] ?? false,
+                    ]);
+                }
+            } elseif ($qData['type'] === 'true_false') {
+                $question->options()->create([
+                    'option_text' => 'True',
+                    'is_correct' => ($qData['correct_answer_tf'] === 'true'),
                 ]);
+                $question->options()->create([
+                    'option_text' => 'False',
+                    'is_correct' => ($qData['correct_answer_tf'] === 'false'),
+                ]);
+            }
+        }
+
+        return redirect()->route('quizzes.index')->with('success', 'Kuis berhasil dibuat!');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Quiz $quiz)
+    {
+        $this->authorize('update', $quiz);
+        $quiz->load('questions.options');
+        $lessons = Lesson::whereHas('course', function ($query) {
+            $query->where('user_id', Auth::id());
+        })->get();
+
+        return view('quizzes.edit', compact('quiz', 'lessons'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Quiz $quiz)
+    {
+        $this->authorize('update', $quiz);
+
+        $validatedData = $request->validate([
+            'lesson_id' => 'required|exists:lessons,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'total_marks' => 'required|integer|min:0',
+            'pass_marks' => 'required|integer|min:0|lte:total_marks',
+            'show_answers_after_attempt' => 'boolean',
+            'time_limit' => 'nullable|integer|min:1',
+            'status' => ['required', Rule::in(['draft', 'published'])],
+            'questions_to_delete' => 'array',
+            'questions_to_delete.*' => 'exists:questions,id',
+            'questions' => 'array',
+            'questions.*.id' => 'nullable|exists:questions,id',
+            'questions.*.question_text' => 'required|string',
+            'questions.*.type' => ['required', Rule::in(['multiple_choice', 'true_false'])],
+            'questions.*.marks' => 'required|integer|min:1',
+            'questions.*.options_to_delete' => 'array',
+            'questions.*.options_to_delete.*' => 'exists:options,id',
+            'questions.*.options' => 'array',
+            'questions.*.options.*.id' => 'nullable|exists:options,id',
+            'questions.*.options.*.option_text' => 'required_if:questions.*.type,multiple_choice|string',
+            'questions.*.options.*.is_correct' => 'boolean',
+            'questions.*.correct_answer_tf' => 'required_if:questions.*.type,true_false|in:true,false',
+        ]);
+
+        $quiz->update([
+            'lesson_id' => $validatedData['lesson_id'],
+            'title' => $validatedData['title'],
+            'description' => $validatedData['description'],
+            'total_marks' => $validatedData['total_marks'],
+            'pass_marks' => $validatedData['pass_marks'],
+            'show_answers_after_attempt' => $request->has('show_answers_after_attempt'),
+            'time_limit' => $validatedData['time_limit'],
+            'status' => $validatedData['status'],
+        ]);
+
+        if (isset($validatedData['questions_to_delete'])) {
+            Question::whereIn('id', $validatedData['questions_to_delete'])->delete();
+        }
+
+        if (isset($validatedData['questions'])) {
+            foreach ($validatedData['questions'] as $qData) {
+                $question = $quiz->questions()->updateOrCreate(
+                    ['id' => $qData['id'] ?? null],
+                    [
+                        'question_text' => $qData['question_text'],
+                        'type' => $qData['type'],
+                        'marks' => $qData['marks'],
+                    ]
+                );
+
+                if (isset($qData['options_to_delete'])) {
+                    Option::whereIn('id', $qData['options_to_delete'])->delete();
+                }
 
                 if ($qData['type'] === 'multiple_choice' && isset($qData['options'])) {
+                    $existingOptionIds = collect($qData['options'])->pluck('id')->filter()->all();
+                    $question->options()->whereNotIn('id', $existingOptionIds)->delete();
                     foreach ($qData['options'] as $optionData) {
-                        $question->options()->create([
-                            'option_text' => $optionData['option_text'],
-                            'is_correct' => $optionData['is_correct'] ?? false,
-                        ]);
+                        $question->options()->updateOrCreate(
+                            ['id' => $optionData['id'] ?? null],
+                            [
+                                'option_text' => $optionData['option_text'],
+                                'is_correct' => $optionData['is_correct'] ?? false,
+                            ]
+                        );
                     }
                 } elseif ($qData['type'] === 'true_false') {
+                    $question->options()->delete();
                     $question->options()->create([
                         'option_text' => 'True',
                         'is_correct' => ($qData['correct_answer_tf'] === 'true'),
@@ -147,204 +239,161 @@ class ContentController extends Controller
                     ]);
                 }
             }
-            $quizId = $quiz->id; // Ambil ID kuis yang baru dibuat
         }
 
-        $content = $lesson->contents()->create([
-            'title' => $validatedData['title'],
-            'type' => $validatedData['type'],
-            'body' => $bodyContent,
-            'file_path' => $filePath,
-            'order' => $validatedData['order'] ?? $lesson->contents()->count() + 1,
-            'quiz_id' => $quizId, // Simpan ID kuis jika ada
+        return redirect()->route('quizzes.index')->with('success', 'Kuis berhasil diperbarui!');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Quiz $quiz)
+    {
+        $this->authorize('delete', $quiz);
+        $quiz->delete();
+        return redirect()->route('quizzes.index')->with('success', 'Kuis berhasil dihapus!');
+    }
+
+    /**
+     * Start a new quiz attempt.
+     */
+    public function startAttempt(Quiz $quiz)
+    {
+        $user = Auth::user();
+
+        // Pastikan user adalah peserta
+        if (!$user->isParticipant()) {
+            abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
+        }
+
+        // Pastikan kuis sudah dipublikasikan
+        if ($quiz->status !== 'published') {
+            return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
+        }
+
+        // Pastikan user terdaftar di kursus induk kuis
+        // Asumsi Quiz memiliki relasi lesson, dan lesson memiliki relasi course
+        if (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course)) {
+            return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
+        }
+
+        // Buat percobaan kuis baru
+        $attempt = QuizAttempt::create([
+            'quiz_id' => $quiz->id,
+            'user_id' => $user->id,
+            'started_at' => now(),
         ]);
 
-        return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil ditambahkan!');
+        return view('quizzes.attempt', compact('quiz', 'attempt'));
     }
 
     /**
-     * Show the form for editing the specified content.
+     * Submit a quiz attempt.
      */
-    public function edit(Lesson $lesson, Content $content)
+    public function submitAttempt(Request $request, Quiz $quiz, QuizAttempt $attempt)
     {
-        $this->authorize('update', $lesson->course);
-        // Jika tipe konten adalah kuis, muat juga data kuisnya
-        if ($content->type === 'quiz' && $content->quiz) {
-            $content->load('quiz.questions.options');
+        $user = Auth::user();
+
+        // Pastikan user adalah pemilik attempt
+        if ($attempt->user_id !== $user->id || $attempt->quiz_id !== $quiz->id) {
+            abort(403, 'Akses ditolak.');
         }
-        return view('contents.edit', compact('lesson', 'content'));
-    }
 
-    /**
-     * Update the specified content in storage.
-     */
-    public function update(Request $request, Lesson $lesson, Content $content)
-    {
-        $this->authorize('update', $lesson->course);
+        // Pastikan attempt belum selesai
+        if ($attempt->completed_at) {
+            return redirect()->route('quizzes.result', [$quiz, $attempt])->with('info', 'Anda sudah menyelesaikan percobaan ini.');
+        }
 
         $rules = [
-            'title' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz'])], // Tambahkan 'quiz'
-            'order' => 'nullable|integer',
+            'answers' => 'array|required',
+            'answers.*.question_id' => 'required|exists:questions,id',
+            'answers.*.option_id' => 'nullable|exists:options,id', // Untuk multiple_choice
+            'answers.*.answer_text' => 'nullable|string|in:True,False', // Untuk true_false
         ];
-
-        if ($request->type === 'text' || $request->type === 'video') {
-            $rules['body'] = 'required|string';
-        } elseif ($request->type === 'document' || $request->type === 'image') {
-            $rules['file_upload'] = 'nullable|file|max:10240'; // Nullable karena mungkin tidak upload baru
-        } elseif ($request->type === 'quiz') {
-            // Validasi untuk data kuis jika tipenya 'quiz'
-            $rules['quiz_title'] = 'required|string|max:255';
-            $rules['quiz_description'] = 'nullable|string';
-            $rules['total_marks'] = 'required|integer|min:0';
-            $rules['pass_marks'] = 'required|integer|min:0|lte:total_marks';
-            $rules['show_answers_after_attempt'] = 'boolean';
-            $rules['time_limit'] = 'nullable|integer|min:1';
-            $rules['quiz_status'] = ['required', Rule::in(['draft', 'published'])];
-            $rules['questions'] = 'array';
-            $rules['questions.*.id'] = 'nullable|exists:questions,id'; // Untuk pertanyaan yang sudah ada
-            $rules['questions.*.question_text'] = 'required|string';
-            $rules['questions.*.type'] = ['required', Rule::in(['multiple_choice', 'true_false'])];
-            $rules['questions.*.marks'] = 'required|integer|min:1';
-            $rules['questions.*.options_to_delete'] = 'array';
-            $rules['questions.*.options_to_delete.*'] = 'exists:options,id';
-            $rules['questions.*.options'] = 'array';
-            $rules['questions.*.options.*.id'] = 'nullable|exists:options,id';
-            $rules['questions.*.options.*.option_text'] = 'required_if:questions.*.type,multiple_choice|string';
-            $rules['questions.*.options.*.is_correct'] = 'boolean';
-            $rules['questions.*.correct_answer_tf'] = 'required_if:questions.*.type,true_false|in:true,false';
-            $rules['questions_to_delete'] = 'array';
-            $rules['questions_to_delete.*'] = 'exists:questions,id';
-        }
 
         $validatedData = $request->validate($rules);
 
-        $filePath = $content->file_path; // Pertahankan file lama by default
-        $bodyContent = null;
-        $quizId = $content->quiz_id;
+        $score = 0;
+        foreach ($validatedData['answers'] as $answerData) {
+            $question = Question::find($answerData['question_id']);
+            if (!$question) continue;
 
-        // Jika tipe berubah atau file baru diupload
-        if ($request->type === 'document' || $request->type === 'image') {
-            if ($request->hasFile('file_upload')) {
-                if ($content->file_path) {
-                    Storage::disk('public')->delete($content->file_path);
-                }
-                $filePath = $request->file('file_upload')->store('content_files', 'public');
-            }
-            $bodyContent = null; // Pastikan body kosong jika ada file
-        } elseif ($request->type === 'text' || $request->type === 'video') {
-            $bodyContent = $validatedData['body'];
-            $filePath = null; // Pastikan file_path kosong jika tipe teks/video
-        } else { // Tipe 'quiz'
-            $filePath = null;
-            $bodyContent = null;
-        }
-
-        // Logika Update/Create Kuis jika tipe kontennya adalah 'quiz'
-        if ($request->type === 'quiz') {
-            // Jika kuis belum ada, buat baru
-            $quiz = $content->quiz ?? new Quiz();
-
-            $quiz->fill([
-                'user_id' => Auth::id(),
-                'lesson_id' => $lesson->id, // Kuis selalu terhubung ke lesson induk konten
-                'title' => $validatedData['quiz_title'],
-                'description' => $validatedData['quiz_description'],
-                'total_marks' => $validatedData['total_marks'],
-                'pass_marks' => $validatedData['pass_marks'],
-                'show_answers_after_attempt' => $validatedData['show_answers_after_attempt'] ?? false,
-                'time_limit' => $validatedData['time_limit'],
-                'status' => $validatedData['quiz_status'],
-            ])->save(); // Save quiz untuk mendapatkan ID jika baru dibuat
-
-            // Hapus pertanyaan yang ditandai untuk dihapus
-            if (isset($validatedData['questions_to_delete'])) {
-                Question::whereIn('id', $validatedData['questions_to_delete'])->delete();
-            }
-
-            if (isset($validatedData['questions'])) {
-                foreach ($validatedData['questions'] as $qData) {
-                    $question = $quiz->questions()->updateOrCreate(
-                        ['id' => $qData['id'] ?? null],
-                        [
-                            'question_text' => $qData['question_text'],
-                            'type' => $qData['type'],
-                            'marks' => $qData['marks'],
-                        ]
-                    );
-
-                    if (isset($qData['options_to_delete'])) {
-                        Option::whereIn('id', $qData['options_to_delete'])->delete();
+            $isCorrect = false;
+            if ($question->type === 'multiple_choice') {
+                if (isset($answerData['option_id'])) {
+                    $selectedOption = Option::find($answerData['option_id']);
+                    if ($selectedOption && $selectedOption->question_id === $question->id && $selectedOption->is_correct) {
+                        $isCorrect = true;
+                        $score += $question->marks;
                     }
-
-                    if ($qData['type'] === 'multiple_choice' && isset($qData['options'])) {
-                        // Hapus opsi lama jika tidak ada di request dan tipenya multiple_choice (untuk memastikan tidak ada opsi sisa dari True/False sebelumnya)
-                        $existingOptionIds = collect($qData['options'])->pluck('id')->filter()->all();
-                        $question->options()->whereNotIn('id', $existingOptionIds)->delete();
-
-                        foreach ($qData['options'] as $optionData) {
-                            $question->options()->updateOrCreate(
-                                ['id' => $optionData['id'] ?? null],
-                                [
-                                    'option_text' => $optionData['option_text'],
-                                    'is_correct' => $optionData['is_correct'] ?? false,
-                                ]
-                            );
-                        }
-                    } elseif ($qData['type'] === 'true_false') {
-                        // Hapus semua opsi lama sebelum membuat ulang True/False
-                        $question->options()->delete();
-                        $question->options()->create([
-                            'option_text' => 'True',
-                            'is_correct' => ($qData['correct_answer_tf'] === 'true'),
-                        ]);
-                        $question->options()->create([
-                            'option_text' => 'False',
-                            'is_correct' => ($qData['correct_answer_tf'] === 'false'),
-                        ]);
+                }
+            } elseif ($question->type === 'true_false') {
+                if (isset($answerData['answer_text'])) {
+                    $correctOption = $question->options->where('is_correct', true)->first();
+                    if ($correctOption && Str::lower($correctOption->option_text) === Str::lower($answerData['answer_text'])) {
+                        $isCorrect = true;
+                        $score += $question->marks;
                     }
                 }
             }
-            $quizId = $quiz->id; // Dapatkan ID kuis yang diupdate/dibuat
-        } else {
-            // Jika tipe konten BUKAN kuis, dan sebelumnya ada kuis terkait, hapus kuis tersebut
-            if ($content->quiz) {
-                $content->quiz->delete(); // Ini akan menghapus kuis beserta pertanyaan/opsi
-            }
-            $quizId = null;
+
+            // Simpan jawaban user
+            QuestionAnswer::create([
+                'quiz_attempt_id' => $attempt->id,
+                'question_id' => $question->id,
+                'option_id' => $answerData['option_id'] ?? null,
+                'answer_text' => $answerData['answer_text'] ?? null,
+                'is_correct' => $isCorrect,
+            ]);
         }
 
-        $content->update([
-            'title' => $validatedData['title'],
-            'type' => $validatedData['type'],
-            'body' => $bodyContent,
-            'file_path' => $filePath,
-            'order' => $validatedData['order'] ?? $content->order,
-            'quiz_id' => $quizId, // Update ID kuis
-        ]);
+        // Update attempt dengan skor dan status lulus
+        $attempt->score = $score;
+        $attempt->passed = ($score >= $quiz->pass_marks);
+        $attempt->completed_at = now();
+        $attempt->save();
 
-        return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil diperbarui!');
+        return redirect()->route('quizzes.result', [$quiz, $attempt])->with('success', 'Kuis berhasil diselesaikan!');
     }
 
+    /**
+     * Show the quiz result.
+     */
+    public function showResult(Quiz $quiz, QuizAttempt $attempt)
+    {
+        // Pastikan user adalah pemilik attempt
+        if ($attempt->user_id !== Auth::id() || $attempt->quiz_id !== $quiz->id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // Pastikan attempt sudah selesai
+        if (!$attempt->completed_at) {
+            return redirect()->route('quizzes.start_attempt', $quiz)->with('error', 'Percobaan kuis belum selesai.');
+        }
+
+        $attempt->load('answers.question.options'); // Muat relasi untuk menampilkan detail jawaban
+
+        return view('quizzes.result', compact('quiz', 'attempt'));
+    }
 
     /**
-     * Remove the specified content from storage.
+     * Get quiz question form partial for AJAX.
+     * Metode ini digunakan oleh JavaScript untuk memuat form pertanyaan kuis secara dinamis.
+     * Ini bukan bagian dari resource controller standar.
      */
-    public function destroy(Lesson $lesson, Content $content)
+    public function getQuestionFormPartial(Request $request)
     {
-        $this->authorize('update', $lesson->course);
+        $question_loop_index = $request->query('index');
+        // $is_new = $request->query('is_new'); // Jika diperlukan untuk membedakan new/edit
+        return view('quizzes.partials.question-form-fields', compact('question_loop_index'));
+    }
 
-        // Hapus file terkait jika ada
-        if ($content->file_path) {
-            Storage::disk('public')->delete($content->file_path);
-        }
-
-        // Jika konten adalah kuis, hapus juga kuis terkait
-        if ($content->type === 'quiz' && $content->quiz) {
-            $content->quiz->delete();
-        }
-
-        $content->delete();
-        return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil dihapus!');
+    /**
+     * Get full quiz form partial for AJAX.
+     * Metode ini digunakan oleh JavaScript untuk memuat seluruh form kuis secara dinamis (detail dan pertanyaan).
+     */
+    public function getFullQuizFormPartial()
+    {
+        return view('quizzes.partials.full-quiz-form');
     }
 }

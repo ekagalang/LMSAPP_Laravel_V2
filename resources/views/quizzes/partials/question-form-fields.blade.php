@@ -1,5 +1,3 @@
-{{-- resources/views/quizzes/partials/question-form-fields.blade.php --}}
-
 @php
     $q_index = $question_loop_index ?? 'new_' . uniqid();
     $question_text = $question->question_text ?? '';

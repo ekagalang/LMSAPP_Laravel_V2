@@ -110,13 +110,15 @@
                             const hiddenInput = document.createElement('input');
                             hiddenInput.type = 'hidden';
                             hiddenInput.name = `questions_to_delete[]`;
-                            hiddenInput.value = questionIdToDelete;
                             contentForm.appendChild(hiddenInput);
+                            hiddenInput.value = questionIdToDelete; // Set value after appending
                         }
                         questionBlockToRemove.remove();
 
-                        quizFormAlpineScope.removeQuestionTab(currentTab);
-                        updateQuestionIndicesAndVisibility();
+                        Alpine.nextTick(() => {
+                            quizFormAlpineScope.removeQuestionTab(currentTab);
+                            updateQuestionIndicesAndVisibility();
+                        });
                     }
                 }
             });
@@ -158,13 +160,15 @@
                 }, 100);
             } else if (type === 'document' || type === 'image') {
                 fileUploadField.classList.remove('hidden');
+                // Untuk edit, hanya wajib jika tidak ada file yang sudah ada
                 if (!'{{ $content->file_path }}') {
                     fileInput.setAttribute('required', 'required');
                 }
             } else if (type === 'quiz') {
                 quizFormFieldsContainer.classList.remove('hidden');
-                const quizData = @json($content->quiz ?? null); // Mendapatkan data kuis dari $content
-                loadQuizFormPartial(quizData); // Kirim data kuis untuk populasi form
+                // Mengirim data kuis dari $content untuk populasi form
+                const quizData = @json($content->quiz ?? null);
+                loadQuizFormPartial(quizData);
             }
         }
 
@@ -176,36 +180,50 @@
                 .then(response => response.text())
                 .then(html => {
                     quizFormFieldsContainer.innerHTML = html;
-                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer);
+                    // Dapatkan referensi ke elemen root x-data yang baru dimasukkan
+                    const newQuizFormRoot = quizFormFieldsContainer.firstElementChild;
 
-                    attachQuizFormListeners(quizFormFieldsContainer);
+                    // PENTING: Inisialisasi ulang Alpine pada elemen root yang baru
+                    Alpine.initTree(newQuizFormRoot);
+
+                    // Dapatkan scope Alpine dari elemen root yang baru diinisialisasi
+                    quizFormAlpineScope = Alpine.$data(newQuizFormRoot); // Re-assign scope
+
+                    attachQuizFormListeners(newQuizFormRoot); // Gunakan newQuizFormRoot
 
                     if (quizData) {
-                        quizFormFieldsContainer.querySelector('#quiz_title').value = quizData.title || '';
-                        quizFormFieldsContainer.querySelector('#quiz_description').value = quizData.description || '';
-                        quizFormFieldsContainer.querySelector('#total_marks').value = quizData.total_marks || 0;
-                        quizFormFieldsContainer.querySelector('#pass_marks').value = quizData.pass_marks || 0;
-                        quizFormFieldsContainer.querySelector('#time_limit').value = quizData.time_limit || '';
-                        quizFormFieldsContainer.querySelector('#quiz_status').value = quizData.status || 'draft';
-                        quizFormFieldsContainer.querySelector('#show_answers_after_attempt').checked = quizData.show_answers_after_attempt || false;
+                        newQuizFormRoot.querySelector('#quiz_title').value = quizData.title || '';
+                        newQuizFormRoot.querySelector('#quiz_description').value = quizData.description || '';
+                        newQuizFormRoot.querySelector('#total_marks').value = quizData.total_marks || 0;
+                        newQuizFormRoot.querySelector('#pass_marks').value = quizData.pass_marks || 0;
+                        newQuizFormRoot.querySelector('#time_limit').value = quizData.time_limit || '';
+                        newQuizFormRoot.querySelector('#quiz_status').value = quizData.status || 'draft';
+                        newQuizFormRoot.querySelector('#show_answers_after_attempt').checked = quizData.show_answers_after_attempt || false;
 
                         if (quizData.questions && quizData.questions.length > 0) {
-                            const questionsInnerContainer = quizFormFieldsContainer.querySelector('#questions-container-for-quiz-form');
-                            questionsInnerContainer.innerHTML = '';
+                            const questionsInnerContainer = newQuizFormRoot.querySelector('#questions-container-for-quiz-form');
+                            if(questionsInnerContainer) questionsInnerContainer.innerHTML = '';
 
                             quizData.questions.forEach(q => {
                                 addQuestionToQuizForm(globalQuestionCounter++, q);
                             });
-                            quizFormAlpineScope.questionsCount = quizData.questions.length;
+                            Alpine.nextTick(() => {
+                                quizFormAlpineScope.questionsCount = quizData.questions.length;
+                                quizFormAlpineScope.currentQuestionTab = 0;
+                            });
                         } else {
                             addQuestionToQuizForm(globalQuestionCounter++);
-                            quizFormAlpineScope.questionsCount = 1;
+                            Alpine.nextTick(() => {
+                                quizFormAlpineScope.questionsCount = 1;
+                                quizFormAlpineScope.currentQuestionTab = 0;
+                            });
                         }
-                        quizFormAlpineScope.currentQuestionTab = 0;
                     } else {
                         addQuestionToQuizForm(globalQuestionCounter++);
-                        quizFormAlpineScope.questionsCount = 1;
-                        quizFormAlpineScope.currentQuestionTab = 0;
+                        Alpine.nextTick(() => {
+                            quizFormAlpineScope.questionsCount = 1;
+                            quizFormAlpineScope.currentQuestionTab = 0;
+                        });
                     }
                 })
                 .catch(error => console.error('Error loading quiz form partial:', error));
@@ -215,8 +233,8 @@
             const addQuestionButton = container.querySelector('#add-question-to-quiz-form');
             if (addQuestionButton) {
                 addQuestionButton.addEventListener('click', function() {
+                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer.firstElementChild); // Pastikan ini menunjuk ke root Alpine component
                     addQuestionToQuizForm(globalQuestionCounter++);
-                    quizFormAlpineScope.addQuestionTab(globalQuestionCounter - 1);
                 });
             }
         }
@@ -239,24 +257,25 @@
                 });
             }
 
-            questionBlock.querySelectorAll('.remove-option').forEach(button => {
-                button.addEventListener('click', function() {
-                    const optionIdToDelete = this.dataset.optionId;
+            questionBlock.addEventListener('click', function(event) {
+                if (event.target.classList.contains('remove-option')) {
+                    const button = event.target;
+                    const optionIdToDelete = button.dataset.optionId;
                     const currentQuestionIndex = questionBlock.dataset.questionIndex;
                     if (optionIdToDelete) {
                         const hiddenInput = document.createElement('input');
                         hiddenInput.type = 'hidden';
                         hiddenInput.name = `questions[${currentQuestionIndex}][options_to_delete][]`;
-                        hiddenInput.value = optionIdToDelete;
                         contentForm.appendChild(hiddenInput);
+                        hiddenInput.value = optionIdToDelete; // Set value after appending
                     }
-                    this.closest('.option-group').remove();
-                });
+                    button.closest('.option-group').remove();
+                }
             });
         }
 
         function addQuestionToQuizForm(index, questionData = null) {
-            fetch('{{ route('quiz-question-partial') }}?index=' + index + '&is_new=true')
+            fetch('{{ route('quiz-question-partial') }}?index=' + index)
                 .then(response => response.text())
                 .then(html => {
                     const tempDiv = document.createElement('div');
@@ -272,9 +291,13 @@
                     newQuestionDiv.setAttribute('x-transition:leave-start', 'opacity-100 transform scale-100');
                     newQuestionDiv.setAttribute('x-transition:leave-end', 'opacity-0 transform scale-90');
 
-                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/\[question_loop_index\]/g, `[${index}]`);
-                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/questions\[question_loop_index\]/g, `questions[${index}]`);
-                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/options\[question_loop_index\]\[option_loop_index\]/g, `questions[${index}][options][option_loop_index]`);
+                    const replacePlaceholders = (htmlString) => {
+                        let replacedHtml = htmlString.replace(/\[question_loop_index\]/g, `[${index}]`);
+                        replacedHtml = replacedHtml.replace(/questions\[question_loop_index\]/g, `questions[${index}]`);
+                        replacedHtml = replacedHtml.replace(/options\[question_loop_index\]\[option_loop_index\]/g, `questions[${index}][options][option_loop_index]`);
+                        return replacedHtml;
+                    };
+                    newQuestionDiv.innerHTML = replacePlaceholders(newQuestionDiv.innerHTML);
 
                     if (questionData) {
                         newQuestionDiv.querySelector('[name$="[question_text]"]').value = questionData.question_text || '';
@@ -294,6 +317,9 @@
 
                     const questionsInnerContainer = quizFormFieldsContainer.querySelector('#questions-container-for-quiz-form');
                     questionsInnerContainer.appendChild(newQuestionDiv);
+
+                    Alpine.initTree(newQuestionDiv); // Inisialisasi Alpine pada blok pertanyaan yang baru ditambahkan
+
                     attachQuestionListenersToQuizForm(newQuestionDiv);
 
                     if (questionData && questionData.options && questionData.type === 'multiple_choice') {
@@ -304,7 +330,11 @@
                             addOptionToQuizForm(index, option);
                         });
                     }
-                    updateQuestionIndicesAndVisibility();
+                    Alpine.nextTick(() => {
+                        quizFormAlpineScope.questionsCount = quizFormFieldsContainer.querySelectorAll('.question-block').length;
+                        quizFormAlpineScope.currentQuestionTab = index;
+                        updateQuestionIndicesAndVisibility();
+                    });
                 })
                 .catch(error => console.error('Error loading question partial:', error));
         }
@@ -315,7 +345,7 @@
 
             questions.forEach((qBlock, newIndex) => {
                 qBlock.dataset.questionIndex = newIndex;
-                qBlock.setAttribute('x-show', `quizFormAlpineScope.currentQuestionTab === ${newIndex}`);
+                qBlock.setAttribute('x-show', `currentQuestionTab === ${newIndex}`);
 
                 qBlock.querySelectorAll('[name*="questions["]').forEach(input => {
                     const oldName = input.getAttribute('name');
@@ -367,8 +397,8 @@
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';
                     hiddenInput.name = `questions[${questionIndex}][options_to_delete][]`;
-                    hiddenInput.value = optionIdToDelete;
                     contentForm.appendChild(hiddenInput);
+                    hiddenInput.value = optionIdToDelete; // Set value after appending
                 }
                 newOptionDiv.remove();
             });

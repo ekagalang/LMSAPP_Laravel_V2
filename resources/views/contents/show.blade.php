@@ -68,7 +68,7 @@
                                     <div><strong>Nilai Lulus:</strong> {{ $content->quiz->pass_marks }}</div>
                                     <div><strong>Batas Waktu:</strong> {{ $content->quiz->time_limit ? $content->quiz->time_limit . ' menit' : 'Tidak ada' }}</div>
                                 </div>
-                                @auth
+                                 @auth
                                     @if (Auth::user()->isParticipant())
                                         @if ($content->quiz->status == 'published')
                                             <form action="{{ route('quizzes.start_attempt', $content->quiz) }}" method="POST">
@@ -80,14 +80,20 @@
                                         @else
                                             <p class="text-red-500">Kuis ini belum dipublikasikan dan tidak dapat dikerjakan.</p>
                                         @endif
-                                    @elsecan('update', $course) {{-- Instruktur/Admin bisa melihat dan mengedit dari sini --}}
-                                        <div class="flex space-x-2">
-                                            <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                                Edit Kuis (via Konten)
-                                            </a>
-                                            {{-- Tombol hapus kuis akan mengikuti hapus konten --}}
-                                        </div>
-                                    @endauth
+                                    {{-- PERBAIKAN: Ganti @elsecan dengan @else untuk menutup if (isParticipant) --}}
+                                    @else
+                                        {{-- Bagian ini hanya akan terlihat oleh non-partisipan (misal: admin, instruktur) --}}
+                                        {{-- Kemudian gunakan @can untuk memeriksa izin update kursus --}}
+                                        @can('update', $course)
+                                            <div class="flex space-x-2">
+                                                <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                                    Edit Kuis (via Konten)
+                                                </a>
+                                                {{-- Tombol hapus kuis akan mengikuti hapus konten --}}
+                                            </div>
+                                        @endcan
+                                    @endif {{-- Menutup @if (Auth::user()->isParticipant()) --}}
+                                @endauth
                                 </div>
                             @else
                                 <p class="text-red-500">Kuis tidak ditemukan untuk konten ini.</p>

@@ -1,6 +1,3 @@
-{{-- resources/views/quizzes/partials/full-quiz-form.blade.php --}}
-
-{{-- Ini adalah form utama detail kuis yang akan di-load via AJAX --}}
 <div x-data="{
     currentQuestionTab: 0,
     questionsCount: 0, // Akan diupdate oleh JS utama
@@ -13,12 +10,22 @@
                 this.currentQuestionTab = 0; // Reset ke 0 jika tidak ada pertanyaan
             }
         });
+
+        // Inisialisasi awal jumlah pertanyaan jika ada yang sudah dimuat (misal pada edit)
+        // Ini mungkin perlu disinkronkan dengan globalQuestionCounter dari JS utama
+        const initialQuestions = document.querySelectorAll('#questions-container-for-quiz-form .question-block');
+        this.questionsCount = initialQuestions.length;
+        if (this.questionsCount > 0) {
+            this.currentQuestionTab = 0;
+        } else {
+            this.currentQuestionTab = 0; // Default to 0 if no questions initially
+        }
     },
     showQuestion(index) {
         this.currentQuestionTab = index;
     },
     addQuestionTab(newIndex) {
-        this.questionsCount = newIndex + 1;
+        this.questionsCount++; // Cukup increment di sini, karena addQuestionToQuizForm akan memberikan indeks baru
         this.currentQuestionTab = newIndex; // Pindah ke tab pertanyaan baru
     },
     removeQuestionTab(removedIndex) {

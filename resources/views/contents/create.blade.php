@@ -84,7 +84,6 @@
         </div>
     </div>
 
-    {{-- TINYMCE SCRIPT (LOAD DARI CDN UNTUK KEPASTIAN) --}}
     <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
     <script>
         let globalQuestionCounter = 0; // Mengganti questionIndex menjadi global counter untuk ID unik
@@ -118,14 +117,16 @@
                             const hiddenInput = document.createElement('input');
                             hiddenInput.type = 'hidden';
                             hiddenInput.name = `questions_to_delete[]`;
-                            hiddenInput.value = questionIdToDelete;
                             contentForm.appendChild(hiddenInput);
+                            hiddenInput.value = questionIdToDelete; // Set value after appending
                         }
                         questionBlockToRemove.remove();
 
-                        // Sesuaikan indeks dan jumlah pertanyaan di Alpine Scope
-                        quizFormAlpineScope.removeQuestionTab(currentTab);
-                        updateQuestionIndicesAndVisibility(); // Panggil lagi untuk update indeks visual
+                        // Panggil Alpine.nextTick untuk memastikan DOM updates diproses
+                        Alpine.nextTick(() => {
+                            // Sesuaikan indeks dan update data Alpine
+                            updateQuestionIndicesAndVisibility();
+                        });
                     }
                 }
             });
@@ -156,6 +157,7 @@
                 bodyField.classList.remove('hidden');
                 bodyInput.setAttribute('required', 'required');
                 if (type === 'text') { // Hanya inisialisasi TinyMCE untuk 'text' type
+                    // Tambahkan penundaan untuk memastikan elemen visible sebelum inisialisasi TinyMCE
                     setTimeout(() => {
                         tinymce.init({
                             selector: 'textarea#body', // Targetkan #body
@@ -172,10 +174,13 @@
                 }
             } else if (type === 'document' || type === 'image') {
                 fileUploadField.classList.remove('hidden');
-                fileInput.setAttribute('required', 'required'); // Untuk mode create, file selalu required
+                // Untuk formulir create, file selalu wajib. Untuk edit, hanya jika tidak ada file yang sudah ada.
+                // Logika ini disesuaikan untuk file create.blade.php
+                fileInput.setAttribute('required', 'required');
             } else if (type === 'quiz') {
                 quizFormFieldsContainer.classList.remove('hidden');
-                loadQuizFormPartial(null); // Selalu muat form kosong untuk create
+                // Untuk create, selalu muat form kosong.
+                loadQuizFormPartial(null);
             }
         }
 
@@ -189,39 +194,53 @@
                 .then(html => {
                     quizFormFieldsContainer.innerHTML = html;
 
-                    // Dapatkan scope Alpine setelah HTML dimuat
-                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer);
+                    // Dapatkan referensi ke elemen root x-data yang baru dimasukkan
+                    const newQuizFormRoot = quizFormFieldsContainer.firstElementChild;
 
-                    attachQuizFormListeners(quizFormFieldsContainer);
+                    // PENTING: Inisialisasi ulang Alpine pada elemen root yang baru
+                    Alpine.initTree(newQuizFormRoot);
+
+                    // Dapatkan scope Alpine dari elemen root yang baru diinisialisasi
+                    quizFormAlpineScope = Alpine.$data(newQuizFormRoot); // Re-assign scope
+
+                    attachQuizFormListeners(newQuizFormRoot); // Gunakan newQuizFormRoot
 
                     if (quizData) {
                         // Populasikan data kuis utama
-                        quizFormFieldsContainer.querySelector('#quiz_title').value = quizData.title || '';
-                        quizFormFieldsContainer.querySelector('#quiz_description').value = quizData.description || '';
-                        quizFormFieldsContainer.querySelector('#total_marks').value = quizData.total_marks || 0;
-                        quizFormFieldsContainer.querySelector('#pass_marks').value = quizData.pass_marks || 0;
-                        quizFormFieldsContainer.querySelector('#time_limit').value = quizData.time_limit || '';
-                        quizFormFieldsContainer.querySelector('#quiz_status').value = quizData.status || 'draft';
-                        quizFormFieldsContainer.querySelector('#show_answers_after_attempt').checked = quizData.show_answers_after_attempt || false;
+                        newQuizFormRoot.querySelector('#quiz_title').value = quizData.title || '';
+                        newQuizFormRoot.querySelector('#quiz_description').value = quizData.description || '';
+                        newQuizFormRoot.querySelector('#total_marks').value = quizData.total_marks || 0;
+                        newQuizFormRoot.querySelector('#pass_marks').value = quizData.pass_marks || 0;
+                        newQuizFormRoot.querySelector('#time_limit').value = quizData.time_limit || '';
+                        newQuizFormRoot.querySelector('#quiz_status').value = quizData.status || 'draft';
+                        newQuizFormRoot.querySelector('#show_answers_after_attempt').checked = quizData.show_answers_after_attempt || false;
 
                         // Populasikan pertanyaan dan opsi
                         if (quizData.questions && quizData.questions.length > 0) {
-                            const questionsInnerContainer = quizFormFieldsContainer.querySelector('#questions-container-for-quiz-form');
-                            questionsInnerContainer.innerHTML = ''; // Clear default question if any
+                            const questionsInnerContainer = newQuizFormRoot.querySelector('#questions-container-for-quiz-form');
+                            questionsInnerContainer.innerHTML = ''; // Hapus pertanyaan default jika ada
                             quizData.questions.forEach(q => {
                                 addQuestionToQuizForm(globalQuestionCounter++, q);
                             });
                             // Setelah semua pertanyaan ditambahkan, update questionsCount di Alpine Scope
-                            quizFormAlpineScope.questionsCount = quizData.questions.length;
+                            // Pastikan Alpine memproses sebelum mengupdate hitungan
+                            Alpine.nextTick(() => {
+                                quizFormAlpineScope.questionsCount = newQuizFormRoot.querySelectorAll('.question-block').length;
+                                quizFormAlpineScope.currentQuestionTab = 0; // Selalu mulai dari tab pertama
+                            });
                         } else {
-                            addQuestionToQuizForm(globalQuestionCounter++); // Add one empty question if no questions
-                            quizFormAlpineScope.questionsCount = 1;
+                            addQuestionToQuizForm(globalQuestionCounter++); // Tambah satu pertanyaan kosong jika tidak ada pertanyaan
+                            Alpine.nextTick(() => { // Pastikan Alpine memproses sebelum mengupdate hitungan
+                                quizFormAlpineScope.questionsCount = 1;
+                                quizFormAlpineScope.currentQuestionTab = 0;
+                            });
                         }
-                        quizFormAlpineScope.currentQuestionTab = 0; // Selalu mulai dari tab pertama
                     } else {
-                        addQuestionToQuizForm(globalQuestionCounter++); // Add one empty question for new quiz
-                        quizFormAlpineScope.questionsCount = 1;
-                        quizFormAlpineScope.currentQuestionTab = 0;
+                        addQuestionToQuizForm(globalQuestionCounter++); // Tambah satu pertanyaan kosong untuk kuis baru
+                        Alpine.nextTick(() => { // Pastikan Alpine memproses sebelum mengupdate hitungan
+                            quizFormAlpineScope.questionsCount = 1;
+                            quizFormAlpineScope.currentQuestionTab = 0;
+                        });
                     }
                 })
                 .catch(error => console.error('Error loading quiz form partial:', error));
@@ -232,8 +251,10 @@
             const addQuestionButton = container.querySelector('#add-question-to-quiz-form');
             if (addQuestionButton) {
                 addQuestionButton.addEventListener('click', function() {
+                    // Dapatkan kembali quizFormAlpineScope di sini untuk memastikan ia yang terbaru
+                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer.firstElementChild); // Pastikan ini menunjuk ke root Alpine component
                     addQuestionToQuizForm(globalQuestionCounter++);
-                    quizFormAlpineScope.addQuestionTab(globalQuestionCounter - 1); // Beri tahu Alpine untuk menambah tab
+                    // Biarkan addQuestionToQuizForm menangani pembaruan scope Alpine (questionsCount, currentQuestionTab) melalui nextTick
                 });
             }
         }
@@ -257,25 +278,28 @@
                 });
             }
 
-            questionBlock.querySelectorAll('.remove-option').forEach(button => {
-                button.addEventListener('click', function() {
-                    const optionIdToDelete = this.dataset.optionId;
+            // Gunakan event delegation untuk tombol hapus opsi agar lebih kuat
+            questionBlock.addEventListener('click', function(event) {
+                if (event.target.classList.contains('remove-option')) {
+                    const button = event.target;
+                    const optionIdToDelete = button.dataset.optionId;
                     const currentQuestionIndex = questionBlock.dataset.questionIndex;
+
                     if (optionIdToDelete) {
                         const hiddenInput = document.createElement('input');
                         hiddenInput.type = 'hidden';
                         hiddenInput.name = `questions[${currentQuestionIndex}][options_to_delete][]`;
-                        hiddenInput.value = optionIdToDelete;
-                        contentForm.appendChild(hiddenInput); // Pastikan ini menempel ke form utama
+                        contentForm.appendChild(hiddenInput); // Tambahkan ke form utama
+                        hiddenInput.value = optionIdToDelete; // Set nilai setelah ditambahkan
                     }
-                    this.closest('.option-group').remove();
-                });
+                    button.closest('.option-group').remove();
+                }
             });
         }
 
         // Fungsi untuk menambahkan pertanyaan ke form kuis
         function addQuestionToQuizForm(index, questionData = null) {
-            fetch('{{ route('quiz-question-partial') }}?index=' + index + '&is_new=true')
+            fetch('{{ route('quiz-question-partial') }}?index=' + index)
                 .then(response => response.text())
                 .then(html => {
                     const tempDiv = document.createElement('div');
@@ -283,7 +307,7 @@
                     const newQuestionDiv = tempDiv.firstElementChild;
                     newQuestionDiv.dataset.questionIndex = index; // Set data-question-index
 
-                    // Tambahkan x-show untuk mengontrol visibilitas tab
+                    // Pertahankan atribut x-show pada blok pertanyaan, Alpine akan mengelolanya
                     newQuestionDiv.setAttribute('x-show', `currentQuestionTab === ${index}`);
                     newQuestionDiv.setAttribute('x-transition:enter', 'transition ease-out duration-300');
                     newQuestionDiv.setAttribute('x-transition:enter-start', 'opacity-0 transform scale-90');
@@ -292,11 +316,16 @@
                     newQuestionDiv.setAttribute('x-transition:leave-start', 'opacity-100 transform scale-100');
                     newQuestionDiv.setAttribute('x-transition:leave-end', 'opacity-0 transform scale-90');
 
+                    // Ganti placeholder menggunakan fungsi untuk kekokohan
+                    const replacePlaceholders = (htmlString) => {
+                        let replacedHtml = htmlString.replace(/\[question_loop_index\]/g, `[${index}]`);
+                        replacedHtml = replacedHtml.replace(/questions\[question_loop_index\]/g, `questions[${index}]`);
+                        // Untuk opsi, pastikan question_loop_index diganti terlebih dahulu sebelum option_loop_index
+                        replacedHtml = replacedHtml.replace(/options\[question_loop_index\]\[option_loop_index\]/g, `questions[${index}][options][option_loop_index]`);
+                        return replacedHtml;
+                    };
+                    newQuestionDiv.innerHTML = replacePlaceholders(newQuestionDiv.innerHTML);
 
-                    // Mengganti placeholder di HTML partial
-                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/\[question_loop_index\]/g, `[${index}]`);
-                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/questions\[question_loop_index\]/g, `questions[${index}]`);
-                    newQuestionDiv.innerHTML = newQuestionDiv.innerHTML.replace(/options\[question_loop_index\]\[option_loop_index\]/g, `questions[${index}][options][option_loop_index]`);
 
                     // Mengisi nilai jika ada questionData
                     if (questionData) {
@@ -317,6 +346,10 @@
 
                     const questionsInnerContainer = quizFormFieldsContainer.querySelector('#questions-container-for-quiz-form');
                     questionsInnerContainer.appendChild(newQuestionDiv);
+
+                    // Inisialisasi Alpine pada blok pertanyaan yang baru ditambahkan
+                    Alpine.initTree(newQuestionDiv);
+
                     attachQuestionListenersToQuizForm(newQuestionDiv); // Lampirkan listener ke blok pertanyaan baru
 
                     // Menambahkan opsi jika tipe multiple_choice dan ada data opsi
@@ -328,10 +361,16 @@
                             addOptionToQuizForm(index, option);
                         });
                     }
-                    updateQuestionIndicesAndVisibility(); // Panggil ini setelah menambah/menghapus
+
+                    Alpine.nextTick(() => { // Pastikan Alpine memproses setelah perubahan DOM
+                        quizFormAlpineScope.questionsCount = quizFormFieldsContainer.querySelectorAll('.question-block').length;
+                        quizFormAlpineScope.currentQuestionTab = index; // Pindah ke tab pertanyaan yang baru ditambahkan
+                        updateQuestionIndicesAndVisibility(); // Update indeks dan status x-show
+                    });
                 })
                 .catch(error => console.error('Error loading question partial:', error));
         }
+
 
         // Fungsi untuk mengupdate indeks pada elemen pertanyaan yang tersisa setelah penghapusan
         function updateQuestionIndicesAndVisibility() {
@@ -339,14 +378,14 @@
             quizFormAlpineScope.questionsCount = questions.length; // Update total count di Alpine
 
             questions.forEach((qBlock, newIndex) => {
-                // Update data-question-index dan x-show
+                // Update data-question-index
                 qBlock.dataset.questionIndex = newIndex;
-                qBlock.setAttribute('x-show', `currentQuestionTab === ${newIndex}`); // Kontrol visibilitas per tab
 
                 // Update name attributes untuk semua input di dalam blok ini
                 qBlock.querySelectorAll('[name*="questions["]').forEach(input => {
                     const oldName = input.getAttribute('name');
                     // Regex untuk mengganti angka di tengah "questions[<old_index>]"
+                    // Juga menangani opsi seperti questions[<idx>][options][<opt_idx>]
                     const newName = oldName.replace(/questions\[\d+\]/, `questions[${newIndex}]`);
                     input.setAttribute('name', newName);
                 });
@@ -354,21 +393,22 @@
                 // Update id attributes (jika ada yang bergantung pada indeks)
                 qBlock.querySelectorAll('[id*="question_text_"], [id*="question_type_"], [id*="question_marks_"], [id*="options_for_question_"], [id*="true_"], [id*="false_"]').forEach(element => {
                     const oldId = element.id;
-                    const newId = oldId.replace(/_\d+$/, `_${newIndex}`); // Mengganti angka terakhir
+                    const newId = oldId.replace(/_\d+$/, `_${newIndex}`); // Mengganti urutan angka terakhir
                     element.id = newId;
                 });
-                // Update for attribute on labels
+                // Update for attribute pada label
                 qBlock.querySelectorAll('label[for*="_"]').forEach(label => {
                     const oldFor = label.getAttribute('for');
                     const newFor = oldFor.replace(/_\d+$/, `_${newIndex}`);
                     label.setAttribute('for', newFor);
                 });
             });
-            // Atur kembali tab aktif jika tab saat ini melebihi jumlah pertanyaan
+
+            // Pastikan tab saat ini valid setelah re-indeks
             if (quizFormAlpineScope.currentQuestionTab >= quizFormAlpineScope.questionsCount && quizFormAlpineScope.questionsCount > 0) {
                 quizFormAlpineScope.currentQuestionTab = quizFormAlpineScope.questionsCount - 1;
             } else if (quizFormAlpineScope.questionsCount === 0) {
-                quizFormAlpineScope.currentQuestionTab = 0; // Jika tidak ada pertanyaan, kembali ke tab 0
+                quizFormAlpineScope.currentQuestionTab = 0; // Jika tidak ada pertanyaan, reset ke tab 0
             }
         }
 
@@ -399,10 +439,10 @@
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';
                     hiddenInput.name = `questions[${questionIndex}][options_to_delete][]`;
-                    hiddenInput.value = optionIdToDelete;
                     contentForm.appendChild(hiddenInput);
+                    hiddenInput.value = optionIdToDelete; // Set value after appending
                 }
-                this.closest('.option-group').remove();
+                newOptionDiv.remove();
             });
         }
 

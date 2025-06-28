@@ -32,7 +32,7 @@ return new class extends Migration
             $table->dropColumn('lesson_id');
 
             // Re-add course_id (if you intend to rollback fully)
-            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $$table->foreignId('lesson_id')->constrained()->onDelete('cascade');
         });
     }
 };
