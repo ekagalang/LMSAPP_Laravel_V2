@@ -3,7 +3,14 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             Mengerjakan Kuis: {{ $quiz->title }}
         </h2>
-        <p class="text-sm text-gray-600">Kursus: {{ $quiz->course->title }}</p>
+        <p class="text-sm text-gray-600">
+            Kursus: 
+            @if ($quiz->lesson && $quiz->lesson->course)
+                {{ $quiz->lesson->course->title }}
+            @else
+                Kursus Tidak Ditemukan
+            @endif
+        </p>
         @if ($quiz->time_limit)
             <p class="text-sm text-red-600 mt-1">Sisa Waktu: <span id="time-left"></span></p>
         @endif

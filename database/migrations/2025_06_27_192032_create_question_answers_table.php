@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Perbaiki nama tabel dari 'Youtubes' menjadi 'Youtubes'
         Schema::create('Youtubes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('quiz_attempt_id')->constrained('quiz_attempts')->onDelete('cascade');
@@ -27,6 +28,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Perbaiki nama tabel dari 'Youtubes' menjadi 'Youtubes'
         Schema::dropIfExists('Youtubes');
     }
 };

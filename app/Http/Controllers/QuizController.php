@@ -54,8 +54,9 @@ class QuizController extends Controller // Pastikan nama kelas ini BENAR: QuizCo
      */
     public function show(Quiz $quiz)
     {
-        $this->authorize('view', $quiz);
+        // Pastikan relasi lesson dan course dimuat
         $quiz->load('questions.options', 'lesson.course', 'instructor');
+        $this->authorize('view', $quiz);
         return view('quizzes.show', compact('quiz'));
     }
 
@@ -259,6 +260,13 @@ class QuizController extends Controller // Pastikan nama kelas ini BENAR: QuizCo
      */
     public function startAttempt(Quiz $quiz)
     {
+        // Add this line to eagerly load the lesson and course relationships
+        $quiz->load('lesson.course'); //
+
+        // --- Tambahkan baris ini untuk debugging ---
+        // ($quiz);
+        // ------------------------------------------
+
         $user = Auth::user();
 
         // Pastikan user adalah peserta

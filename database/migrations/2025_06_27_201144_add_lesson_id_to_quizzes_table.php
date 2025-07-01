@@ -28,11 +28,12 @@ return new class extends Migration
     {
         Schema::table('quizzes', function (Blueprint $table) {
             // Drop lesson_id
-            $table->dropForeign(['lesson_id']);
+            // Tambahkan pengecekan ifExists untuk mencegah error jika foreign key tidak ada
+            $table->dropForeign(['quizzes_lesson_id_foreign']);
             $table->dropColumn('lesson_id');
 
-            // Re-add course_id (if you intend to rollback fully)
-            $$table->foreignId('lesson_id')->constrained()->onDelete('cascade');
+            // Re-add course_id
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
         });
     }
 };
