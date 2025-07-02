@@ -261,10 +261,10 @@ class QuizController extends Controller
     public function startAttempt(Quiz $quiz)
     {
         $quiz->load('lesson.course');
-
         $user = Auth::user();
 
-        if (!$user->isParticipant()) {
+        // PERBAIKAN: Ganti isParticipant() dengan hasRole('participant')
+        if (!$user->hasRole('participant')) {
             abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
         }
 
@@ -292,12 +292,10 @@ class QuizController extends Controller
     {
         $user = Auth::user();
 
-        // Pastikan user adalah pemilik attempt
         if ($attempt->user_id !== $user->id || $attempt->quiz_id !== $quiz->id) {
             abort(403, 'Akses ditolak.');
         }
 
-        // Pastikan attempt belum selesai
         if ($attempt->completed_at) {
             return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $attempt])->with('info', 'Anda sudah menyelesaikan percobaan ini.');
         }
@@ -305,8 +303,8 @@ class QuizController extends Controller
         $validatedData = $request->validate([
             'answers' => 'present|array',
             'answers.*.question_id' => 'required|exists:questions,id',
-            'answers.*.option_id' => 'nullable|exists:options,id', // Untuk multiple_choice
-            'answers.*.answer_text' => 'nullable|string|in:True,False', // Untuk true_false
+            'answers.*.option_id' => 'nullable|exists:options,id',
+            'answers.*.answer_text' => 'nullable|string|in:True,False',
         ]);
 
         $score = 0;
@@ -366,38 +364,22 @@ class QuizController extends Controller
         ])->with('success', 'Kuis berhasil diselesaikan!');
     }
 
-
     /**
      * Show the quiz result.
      */
     public function showResult(Quiz $quiz, QuizAttempt $attempt)
     {
-        // Pastikan user adalah pemilik attempt dan attempt ini benar-benar untuk quiz yang dimaksud.
         if ($attempt->user_id !== Auth::id() || $attempt->quiz_id !== $quiz->id) {
             abort(403, 'Akses ditolak.');
         }
 
-        // Pastikan percobaan kuis sudah selesai.
         if (!$attempt->completed_at) {
             return redirect()->route('quizzes.start_attempt', $quiz)->with('error', 'Percobaan kuis belum selesai.');
         }
 
-        // --- PERBAIKAN UTAMA ---
-        // Daripada hanya mengandalkan ->load(), kita akan secara eksplisit
-        // mengatur relasi 'quiz' pada objek $attempt.
-        // Ini memastikan bahwa $attempt->quiz tidak akan pernah null.
-        $attempt->setRelation('quiz', $quiz);
-
-        // Sekarang, muat relasi lainnya yang dibutuhkan oleh view.
-        $attempt->load([
-            'answers.question.options',
-            'user'
-        ]);
-        
-        // Ganti nama variabel `$attempt` menjadi `$quizAttempt` agar sesuai dengan yang digunakan di view.
+        $attempt->load('answers.question.options', 'user');
         $quizAttempt = $attempt;
-
-        // Kirimkan kedua variabel ke view untuk memastikan semua data tersedia.
+        
         return view('quizzes.result', compact('quiz', 'quizAttempt'));
     }
 

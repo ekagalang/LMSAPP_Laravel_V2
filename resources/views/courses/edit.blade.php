@@ -46,17 +46,6 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="status" class="block text-sm font-medium text-gray-700">Status Kursus</label>
-                            <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                <option value="draft" {{ old('status', $course->status) == 'draft' ? 'selected' : '' }}>Draft</option>
-                                <option value="published" {{ old('status', $course->status) == 'published' ? 'selected' : '' }}>Published</option>
-                            </select>
-                            @error('status')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-4">
                             <label for="thumbnail" class="block text-sm font-medium text-gray-700">Gambar Sampul (Thumbnail)</label>
                             @if ($course->thumbnail)
                                 <div class="mt-2 mb-2">
@@ -69,6 +58,17 @@
                             @endif
                             <input type="file" name="thumbnail" id="thumbnail" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
                             @error('thumbnail')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="status" class="block text-sm font-medium text-gray-700">Status Kursus</label>
+                            <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                <option value="draft" {{ old('status', $course->status) == 'draft' ? 'selected' : '' }}>Draft</option>
+                                <option value="published" {{ old('status', $course->status) == 'published' ? 'selected' : '' }}>Published</option>
+                            </select>
+                            @error('status')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>

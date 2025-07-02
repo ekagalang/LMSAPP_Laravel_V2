@@ -8,12 +8,12 @@ use App\Http\Controllers\ContentController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\GradebookController; // Import GradebookController
+use App\Http\Controllers\GradebookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('welcome');
 
 Route::get('/dashboard', \App\Http\Controllers\DashboardController::class)
     ->middleware(['auth', 'verified'])
@@ -44,8 +44,11 @@ Route::middleware('auth')->group(function () {
 
     // Grup route untuk Manajemen Kursus
     Route::middleware(['can:manage own courses'])->group(function () {
-        // PERUBAHAN: Tambahkan route untuk gradebook
         Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
+        Route::get('/quiz-attempts/{attempt}/review', [GradebookController::class, 'review'])->name('gradebook.review');
+        // PERUBAHAN: Tambahkan route untuk halaman feedback per peserta
+        Route::get('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'feedback'])->name('gradebook.feedback');
+        Route::post('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'storeFeedback'])->name('gradebook.storeFeedback');
     });
 
     Route::resource('courses', CourseController::class);

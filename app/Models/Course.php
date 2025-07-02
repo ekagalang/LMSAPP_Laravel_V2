@@ -44,7 +44,7 @@ class Course extends Model
 
     public function enrolledUsers()
     {
-        return $this->belongsToMany(User::class, 'course_user');
+        return $this->belongsToMany(User::class, 'course_user')->withPivot('feedback')->withTimestamps();
     }
 
     // Atribut untuk status

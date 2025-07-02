@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Course;
+use App\Policies\CoursePolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -13,8 +15,10 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // Daftarkan policy Anda di sini
-        // Contoh: 'App\Models\Course' => 'App\Policies\CoursePolicy',
+        // PERBAIKAN: Hapus tanda komentar untuk mendaftarkan CoursePolicy.
+        // Ini akan memberitahu Laravel untuk menggunakan aturan di CoursePolicy
+        // setiap kali ada pengecekan hak akses terkait model Course.
+        Course::class => CoursePolicy::class,
     ];
 
     /**

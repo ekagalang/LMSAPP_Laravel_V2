@@ -4,7 +4,8 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Manajemen Kursus') }}
             </h2>
-            @can('manage-courses') {{-- Hanya admin/instruktur yang bisa melihat tombol ini --}}
+            {{-- PERBAIKAN: Gunakan Policy untuk mengecek hak akses membuat kursus --}}
+            @can('create', App\Models\Course::class)
                 <a href="{{ route('courses.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
                     {{ __('Tambah Kursus Baru') }}
                 </a>
@@ -25,7 +26,8 @@
                 <div class="p-6 text-gray-900">
                     @if ($courses->isEmpty())
                         <p class="text-center text-gray-500">Belum ada kursus yang dibuat.</p>
-                        @can('manage-courses')
+                        {{-- PERBAIKAN: Gunakan Policy untuk mengecek hak akses membuat kursus --}}
+                        @can('create', App\Models\Course::class)
                             <p class="text-center mt-4">
                                 <a href="{{ route('courses.create') }}" class="text-indigo-600 hover:text-indigo-900 font-semibold">Mulai buat kursus pertama Anda!</a>
                             </p>
@@ -54,7 +56,6 @@
                                             <a href="{{ route('courses.show', $course) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                                 Lihat
                                             </a>
-                                            {{-- Hanya instruktur pembuat kursus atau admin yang bisa edit/hapus --}}
                                             @can('update', $course)
                                                 <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                                     Edit

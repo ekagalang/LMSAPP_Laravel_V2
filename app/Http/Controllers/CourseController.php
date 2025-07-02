@@ -21,7 +21,6 @@ class CourseController extends Controller
 
         $user = Auth::user();
         
-        // PERBAIKAN: Gunakan hasRole() dari Spatie, bukan isAdmin()
         if ($user->hasRole('super-admin')) {
             $courses = Course::with('instructor')->latest()->get();
         } else {
@@ -56,7 +55,8 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
-        $course->load('lessons.contents', 'instructor');
+        // Ganti 'participants' menjadi 'enrolledUsers' agar sesuai dengan nama relasi di model Course
+        $course->load('lessons.contents', 'instructor', 'enrolledUsers');
         return view('courses.show', compact('course'));
     }
 
@@ -86,5 +86,41 @@ class CourseController extends Controller
         $this->authorize('delete', $course);
         $course->delete();
         return redirect()->route('courses.index')->with('success', 'Kursus berhasil dihapus.');
+    }
+
+    /**
+     * PERUBAHAN: Menambahkan metode untuk mendaftarkan peserta.
+     */
+    public function enrollParticipant(Request $request, Course $course)
+    {
+        $this->authorize('update', $course);
+
+        $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+        ]);
+
+        // Gunakan syncWithoutDetaching untuk menambahkan user tanpa menghapus yang sudah ada
+        $course->enrolledUsers()->syncWithoutDetaching($request->user_ids);
+
+        return redirect()->back()->with('success', 'Peserta berhasil didaftarkan.');
+    }
+
+    /**
+     * PERUBAHAN: Menambahkan metode untuk mencabut akses peserta.
+     */
+    public function unenrollParticipants(Request $request, Course $course)
+    {
+        $this->authorize('update', $course);
+
+        $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+        ]);
+
+        // Gunakan detach untuk menghapus hubungan antara kursus dan user
+        $course->enrolledUsers()->detach($request->user_ids);
+
+        return redirect()->back()->with('success', 'Akses peserta berhasil dicabut.');
     }
 }
