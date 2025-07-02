@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 
 class DashboardController extends Controller
 {
@@ -15,11 +14,17 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isAdmin()) {
+        // Menggunakan sistem peran dari Spatie
+        if ($user->hasRole('super-admin')) {
             return view('dashboard.admin');
-        } elseif ($user->isInstructor()) {
+        } elseif ($user->hasRole('instructor')) {
             return view('dashboard.instructor');
-        } else { // Default ke participant
+        } elseif ($user->hasRole('event-organizer')) {
+            // Untuk sementara, EO melihat dasbor yang sama dengan instruktur.
+            // Nanti bisa kita buatkan dasbor khusus.
+            return view('dashboard.instructor'); 
+        } else {
+            // Semua peran lain (defaultnya Participant) akan melihat dasbor ini.
             return view('dashboard.participant');
         }
     }

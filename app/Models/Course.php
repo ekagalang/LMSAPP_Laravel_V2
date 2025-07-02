@@ -42,6 +42,11 @@ class Course extends Model
         return $this->hasMany(Quiz::class);
     }
 
+    public function enrolledUsers()
+    {
+        return $this->belongsToMany(User::class, 'course_user');
+    }
+
     // Atribut untuk status
     // public function getStatusColorAttribute()
     // {

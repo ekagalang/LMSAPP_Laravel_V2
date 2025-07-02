@@ -15,7 +15,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased bg-gray-100">
-    <div class="min-h-screen">
+    <div x-data="{ open: false }" class="min-h-screen">
+        {{-- PERBAIKAN UTAMA: Navigasi diperbarui dengan hak akses yang benar --}}
         <nav class="bg-white border-b border-gray-200">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
@@ -28,11 +29,23 @@
                             <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                                 {{ __('Dashboard') }}
                             </x-nav-link>
-                            @can('manage-courses')
-                                <x-nav-link :href="route('courses.index')" :active="request()->routeIs('courses.index')">
-                                    {{ __('Manajemen Kursus') }}
+                            
+                            {{-- Tampilkan untuk Instructor & Super Admin --}}
+                            @can('manage own courses')
+                                <x-nav-link :href="route('courses.index')" :active="request()->routeIs('courses.*')">
+                                    {{ __('Kelola Kursus') }}
                                 </x-nav-link>
                             @endcan
+                            
+                            {{-- Tampilkan HANYA untuk Super Admin --}}
+                            @role('super-admin')
+                                <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                                    {{ __('Manajemen Pengguna') }}
+                                </x-nav-link>
+                                <x-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                                    {{ __('Manajemen Peran') }}
+                                </x-nav-link>
+                            @endrole
                         </div>
                     </div>
 
@@ -53,12 +66,9 @@
                                 <x-dropdown-link :href="route('profile.edit')">
                                     {{ __('Profile') }}
                                 </x-dropdown-link>
-
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
-                                    <x-dropdown-link :href="route('logout')"
-                                            onclick="event.preventDefault();
-                                                        this.closest('form').submit();">
+                                    <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
                                         {{ __('Log Out') }}
                                     </x-dropdown-link>
                                 </form>
@@ -82,11 +92,19 @@
                     <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-responsive-nav-link>
-                    @can('manage-courses')
-                        <x-responsive-nav-link :href="route('courses.index')" :active="request()->routeIs('courses.index')">
-                            {{ __('Manajemen Kursus') }}
+                    @can('manage own courses')
+                        <x-responsive-nav-link :href="route('courses.index')" :active="request()->routeIs('courses.*')">
+                            {{ __('Kelola Kursus') }}
                         </x-responsive-nav-link>
                     @endcan
+                    @role('super-admin')
+                        <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                            {{ __('Manajemen Pengguna') }}
+                        </x-responsive-nav-link>
+                        <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                            {{ __('Manajemen Peran') }}
+                        </x-responsive-nav-link>
+                    @endrole
                 </div>
 
                 <div class="pt-4 pb-1 border-t border-gray-200">
@@ -94,17 +112,13 @@
                         <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                         <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
                     </div>
-
                     <div class="mt-3 space-y-1">
                         <x-responsive-nav-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-responsive-nav-link>
-
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <x-responsive-nav-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
+                            <x-responsive-nav-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
                                 {{ __('Log Out') }}
                             </x-responsive-nav-link>
                         </form>

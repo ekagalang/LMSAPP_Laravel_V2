@@ -13,7 +13,9 @@ class CoursePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
+        // Siapa saja yang bisa melihat daftar kursus?
+        // User yang punya salah satu dari permission ini.
+        return $user->hasPermissionTo('manage all courses') || $user->hasPermissionTo('manage own courses');
     }
 
     /**
@@ -21,10 +23,8 @@ class CoursePolicy
      */
     public function view(User $user, Course $course): bool
     {
-        // Semua user yang bisa melihat daftar kursus (index) juga bisa melihat detailnya.
-        // Namun, di tahap lanjut, peserta mungkin hanya bisa melihat kursus yang di-enroll.
-        // Untuk saat ini, kita biarkan semua bisa melihat detailnya.
-        return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
+        // Semua pengguna yang terdaftar bisa melihat detail kursus.
+        return true;
     }
 
     /**
@@ -32,8 +32,9 @@ class CoursePolicy
      */
     public function create(User $user): bool
     {
-        // Hanya admin atau instruktur yang bisa membuat kursus
-        return $user->isAdmin() || $user->isInstructor();
+        // Hanya user dengan permission 'manage all courses' (seperti admin) 
+        // atau 'manage own courses' (seperti instruktur) yang bisa membuat kursus.
+        return $user->hasPermissionTo('manage all courses') || $user->hasPermissionTo('manage own courses');
     }
 
     /**
@@ -41,9 +42,15 @@ class CoursePolicy
      */
     public function update(User $user, Course $course): bool
     {
-        // Admin bisa update semua kursus
-        // Instruktur hanya bisa update kursus yang dia buat
-        return $user->isAdmin() || ($user->isInstructor() && $user->id === $course->user_id);
+        // Admin bisa mengedit semua kursus.
+        if ($user->hasPermissionTo('manage all courses')) {
+            return true;
+        }
+        // Instruktur hanya bisa mengedit kursusnya sendiri.
+        if ($user->hasPermissionTo('manage own courses')) {
+            return $user->id === $course->user_id;
+        }
+        return false;
     }
 
     /**
@@ -51,9 +58,14 @@ class CoursePolicy
      */
     public function delete(User $user, Course $course): bool
     {
-        // Admin bisa delete semua kursus
-        // Instruktur hanya bisa delete kursus yang dia buat
-        return $user->isAdmin() || ($user->isInstructor() && $user->id === $course->user_id);
+        // Sama seperti update, hanya admin atau pemilik kursus yang bisa menghapus.
+        if ($user->hasPermissionTo('manage all courses')) {
+            return true;
+        }
+        if ($user->hasPermissionTo('manage own courses')) {
+            return $user->id === $course->user_id;
+        }
+        return false;
     }
 
     /**
@@ -61,7 +73,7 @@ class CoursePolicy
      */
     public function restore(User $user, Course $course): bool
     {
-        return false;
+        return $user->hasPermissionTo('manage all courses');
     }
 
     /**
@@ -69,6 +81,6 @@ class CoursePolicy
      */
     public function forceDelete(User $user, Course $course): bool
     {
-        return false;
+        return $user->hasPermissionTo('manage all courses');
     }
 }

@@ -4,38 +4,53 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class QuestionAnswer extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
-        'quiz_attempt_id',
+        'user_id',
         'question_id',
         'option_id',
-        'answer_text',
-        'is_correct',
+        'quiz_attempt_id', // Tambahkan ini
     ];
 
-    protected $casts = [
-        'is_correct' => 'boolean',
-    ];
-
-    // Relasi ke QuizAttempt
-    public function attempt()
+    /**
+     * Get the user that owns the answer.
+     */
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(QuizAttempt::class, 'quiz_attempt_id');
+        return $this->belongsTo(User::class);
     }
 
-    // Relasi ke Question
-    public function question()
+    /**
+     * Get the question that this answer is for.
+     */
+    public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class);
     }
 
-    // Relasi ke Option (jika ini adalah jawaban pilihan ganda)
-    public function option()
+    /**
+     * Get the option that was selected.
+     */
+    public function option(): BelongsTo
     {
         return $this->belongsTo(Option::class);
+    }
+
+    /**
+     * Get the quiz attempt that this answer belongs to.
+     */
+    public function quizAttempt(): BelongsTo
+    {
+        return $this->belongsTo(QuizAttempt::class);
     }
 }

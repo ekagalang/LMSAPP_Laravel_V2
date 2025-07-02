@@ -6,6 +6,9 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\GradebookController; // Import GradebookController
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -33,35 +36,32 @@ Route::middleware('auth')->group(function () {
         ])->render();
     })->name('quiz-question-partial');
 
-
-    // ROUTE UNTUK MANAJEMEN KURSUS, PELAJARAN, KONTEN, dan KUIS
-    Route::middleware(['can:manage-courses'])->group(function () { // Ini adalah grup middleware yang sudah ada
-        Route::resource('courses', CourseController::class);
-
-        // Nested resources untuk pelajaran di bawah kursus
-        Route::resource('courses.lessons', LessonController::class)->except(['index', 'show']);
-        // Nested resources untuk konten di bawah pelajaran
-        Route::resource('lessons.contents', ContentController::class)->except(['index', 'show']);
-
-        // Mengubah route enroll untuk menerima banyak user_ids
-        Route::post('courses/{course}/enroll', [CourseController::class, 'enrollParticipant'])->name('courses.enroll');
-        // Menambahkan route untuk unenroll massal
-        Route::delete('courses/{course}/unenroll-mass', [CourseController::class, 'unenrollParticipants'])->name('courses.unenroll_mass');
-
-        // Route unenroll per user (lama) bisa dihapus jika tidak diperlukan lagi
-        // Route::delete('courses/{course}/unenroll/{user}', [CourseController::class, 'unenrollParticipant'])->name('courses.unenroll');
+    // Grup route untuk Super Admin
+    Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
+        Route::resource('roles', RoleController::class)->except(['show']);
     });
 
-    // Rute untuk peserta melihat kursus, pelajaran, konten (sekarang juga kuis untuk peserta)
+    // Grup route untuk Manajemen Kursus
+    Route::middleware(['can:manage own courses'])->group(function () {
+        // PERUBAHAN: Tambahkan route untuk gradebook
+        Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
+    });
+
+    Route::resource('courses', CourseController::class);
+    Route::resource('courses.lessons', LessonController::class)->except(['index', 'show']);
+    Route::resource('lessons.contents', ContentController::class)->except(['index', 'show']);
+    Route::post('courses/{course}/enroll', [CourseController::class, 'enrollParticipant'])->name('courses.enroll');
+    Route::delete('courses/{course}/unenroll-mass', [CourseController::class, 'unenrollParticipants'])->name('courses.unenroll_mass');
+
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     Route::get('/lessons/{lesson}/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
 
-    // Rute terkait kuis untuk peserta (ini tidak perlu middleware 'can:manage-courses')
     Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])->name('quizzes.show');
     Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])->name('quizzes.start_attempt');
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
-
+    
     Route::post('contents/{content}/complete', [App\Http\Controllers\ProgressController::class, 'markContentAsCompleted'])->name('contents.complete');
     Route::post('lessons/{lesson}/complete', [App\Http\Controllers\ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');
 });

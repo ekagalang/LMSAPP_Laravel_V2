@@ -2,16 +2,14 @@
 
 namespace App\Models;
 
-// Pastikan ini adalah satu-satunya use statement untuk trait dari framework/package
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Quiz;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable; // HANYA TRAIT INI SAJA UNTUK BREEZE BLADE
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -22,7 +20,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role', // Pastikan 'role' ada di sini
+        // 'role', // Dihapus karena sudah digantikan oleh sistem Spatie
     ];
 
     /**
@@ -35,58 +33,40 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-    ];
-
-    // --- Metode Helper untuk Peran ---
-
-    public function isAdmin()
+    protected function casts(): array
     {
-        return $this->role === 'admin';
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
     }
 
-    public function isInstructor()
-    {
-        return $this->role === 'instructor';
-    }
+    // --- Metode Helper lama ini sudah tidak diperlukan lagi ---
+    // public function isAdmin() { ... }
+    // public function isInstructor() { ... }
+    // public function isParticipant() { ... }
 
-    public function isParticipant()
-    {
-        return $this->role === 'participant';
-    }
-
-    // --- Relasi (akan digunakan di tahap selanjutnya) ---
+    // --- Relasi ---
     public function courses()
     {
         return $this->hasMany(Course::class);
     }
 
-    // Relasi untuk kursus yang diikuti (sebagai peserta)
     public function enrolledCourses()
     {
         return $this->belongsToMany(Course::class, 'course_user');
     }
 
-    // Helper untuk mengecek apakah user sudah enroll kursus tertentu
     public function isEnrolled(Course $course)
     {
         return $this->enrolledCourses->contains($course);
     }
 
-    // Relasi ke pelajaran yang diselesaikan
     public function completedLessons()
     {
         return $this->belongsToMany(Lesson::class, 'lesson_user')->withPivot('completed', 'completed_at');
     }
 
-    // Relasi ke konten yang diselesaikan
     public function completedContents()
     {
         return $this->belongsToMany(Content::class, 'content_user')->withPivot('completed', 'completed_at');

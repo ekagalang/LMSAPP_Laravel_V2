@@ -17,7 +17,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Str;
 
-class QuizController extends Controller // Pastikan nama kelas ini BENAR: QuizController
+class QuizController extends Controller
 {
     use AuthorizesRequests;
 
@@ -260,32 +260,22 @@ class QuizController extends Controller // Pastikan nama kelas ini BENAR: QuizCo
      */
     public function startAttempt(Quiz $quiz)
     {
-        // Add this line to eagerly load the lesson and course relationships
-        $quiz->load('lesson.course'); //
-
-        // --- Tambahkan baris ini untuk debugging ---
-        // ($quiz);
-        // ------------------------------------------
+        $quiz->load('lesson.course');
 
         $user = Auth::user();
 
-        // Pastikan user adalah peserta
         if (!$user->isParticipant()) {
             abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
         }
 
-        // Pastikan kuis sudah dipublikasikan
         if ($quiz->status !== 'published') {
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
         }
 
-        // Pastikan user terdaftar di kursus induk kuis
-        // Asumsi Quiz memiliki relasi lesson, dan lesson memiliki relasi course
         if (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course)) {
             return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
         }
 
-        // Buat percobaan kuis baru
         $attempt = QuizAttempt::create([
             'quiz_id' => $quiz->id,
             'user_id' => $user->id,
@@ -309,96 +299,120 @@ class QuizController extends Controller // Pastikan nama kelas ini BENAR: QuizCo
 
         // Pastikan attempt belum selesai
         if ($attempt->completed_at) {
-            return redirect()->route('quizzes.result', [$quiz, $attempt])->with('info', 'Anda sudah menyelesaikan percobaan ini.');
+            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $attempt])->with('info', 'Anda sudah menyelesaikan percobaan ini.');
         }
 
-        $rules = [
-            'answers' => 'array|required',
+        $validatedData = $request->validate([
+            'answers' => 'present|array',
             'answers.*.question_id' => 'required|exists:questions,id',
             'answers.*.option_id' => 'nullable|exists:options,id', // Untuk multiple_choice
             'answers.*.answer_text' => 'nullable|string|in:True,False', // Untuk true_false
-        ];
-
-        $validatedData = $request->validate($rules);
+        ]);
 
         $score = 0;
         foreach ($validatedData['answers'] as $answerData) {
-            $question = Question::find($answerData['question_id']);
+            if (empty($answerData['option_id']) && empty($answerData['answer_text'])) {
+                continue;
+            }
+
+            $question = Question::with('options')->find($answerData['question_id']);
             if (!$question) continue;
 
             $isCorrect = false;
+            $optionToSaveId = null;
+
             if ($question->type === 'multiple_choice') {
-                if (isset($answerData['option_id'])) {
-                    $selectedOption = Option::find($answerData['option_id']);
-                    if ($selectedOption && $selectedOption->question_id === $question->id && $selectedOption->is_correct) {
-                        $isCorrect = true;
-                        $score += $question->marks;
+                if (!empty($answerData['option_id'])) {
+                    $selectedOption = $question->options->find($answerData['option_id']);
+                    if ($selectedOption) {
+                        $optionToSaveId = $selectedOption->id;
+                        if ($selectedOption->is_correct) {
+                            $isCorrect = true;
+                            $score += $question->marks;
+                        }
                     }
                 }
             } elseif ($question->type === 'true_false') {
-                if (isset($answerData['answer_text'])) {
-                    $correctOption = $question->options->where('is_correct', true)->first();
-                    if ($correctOption && Str::lower($correctOption->option_text) === Str::lower($answerData['answer_text'])) {
-                        $isCorrect = true;
-                        $score += $question->marks;
+                if (!empty($answerData['answer_text'])) {
+                    $selectedOption = $question->options->firstWhere('option_text', $answerData['answer_text']);
+                    if ($selectedOption) {
+                        $optionToSaveId = $selectedOption->id;
+                        if ($selectedOption->is_correct) {
+                            $isCorrect = true;
+                            $score += $question->marks;
+                        }
                     }
                 }
             }
 
-            // Simpan jawaban user
-            QuestionAnswer::create([
-                'quiz_attempt_id' => $attempt->id,
-                'question_id' => $question->id,
-                'option_id' => $answerData['option_id'] ?? null,
-                'answer_text' => $answerData['answer_text'] ?? null,
-                'is_correct' => $isCorrect,
-            ]);
+            if ($optionToSaveId !== null) {
+                QuestionAnswer::create([
+                    'user_id' => $user->id,
+                    'quiz_attempt_id' => $attempt->id,
+                    'question_id' => $question->id,
+                    'option_id' => $optionToSaveId,
+                ]);
+            }
         }
 
-        // Update attempt dengan skor dan status lulus
         $attempt->score = $score;
         $attempt->passed = ($score >= $quiz->pass_marks);
         $attempt->completed_at = now();
         $attempt->save();
 
-        return redirect()->route('quizzes.result', [$quiz, $attempt])->with('success', 'Kuis berhasil diselesaikan!');
+        return redirect()->route('quizzes.result', [
+            'quiz' => $quiz,
+            'attempt' => $attempt
+        ])->with('success', 'Kuis berhasil diselesaikan!');
     }
+
 
     /**
      * Show the quiz result.
      */
     public function showResult(Quiz $quiz, QuizAttempt $attempt)
     {
-        // Pastikan user adalah pemilik attempt
+        // Pastikan user adalah pemilik attempt dan attempt ini benar-benar untuk quiz yang dimaksud.
         if ($attempt->user_id !== Auth::id() || $attempt->quiz_id !== $quiz->id) {
             abort(403, 'Akses ditolak.');
         }
 
-        // Pastikan attempt sudah selesai
+        // Pastikan percobaan kuis sudah selesai.
         if (!$attempt->completed_at) {
             return redirect()->route('quizzes.start_attempt', $quiz)->with('error', 'Percobaan kuis belum selesai.');
         }
 
-        $attempt->load('answers.question.options'); // Muat relasi untuk menampilkan detail jawaban
+        // --- PERBAIKAN UTAMA ---
+        // Daripada hanya mengandalkan ->load(), kita akan secara eksplisit
+        // mengatur relasi 'quiz' pada objek $attempt.
+        // Ini memastikan bahwa $attempt->quiz tidak akan pernah null.
+        $attempt->setRelation('quiz', $quiz);
 
-        return view('quizzes.result', compact('quiz', 'attempt'));
+        // Sekarang, muat relasi lainnya yang dibutuhkan oleh view.
+        $attempt->load([
+            'answers.question.options',
+            'user'
+        ]);
+        
+        // Ganti nama variabel `$attempt` menjadi `$quizAttempt` agar sesuai dengan yang digunakan di view.
+        $quizAttempt = $attempt;
+
+        // Kirimkan kedua variabel ke view untuk memastikan semua data tersedia.
+        return view('quizzes.result', compact('quiz', 'quizAttempt'));
     }
+
 
     /**
      * Get quiz question form partial for AJAX.
-     * Metode ini digunakan oleh JavaScript untuk memuat form pertanyaan kuis secara dinamis.
-     * Ini bukan bagian dari resource controller standar.
      */
     public function getQuestionFormPartial(Request $request)
     {
         $question_loop_index = $request->query('index');
-        // $is_new = $request->query('is_new'); // Jika diperlukan untuk membedakan new/edit
         return view('quizzes.partials.question-form-fields', compact('question_loop_index'));
     }
 
     /**
      * Get full quiz form partial for AJAX.
-     * Metode ini digunakan oleh JavaScript untuk memuat seluruh form kuis secara dinamis (detail dan pertanyaan).
      */
     public function getFullQuizFormPartial()
     {

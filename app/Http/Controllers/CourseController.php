@@ -2,237 +2,89 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course; // Pastikan ini ada
+use App\Models\Course;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; // Pastikan ini ada
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class CourseController extends Controller
 {
-    use AuthorizesRequests;
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        $this->middleware('auth')->except('show');
+    }
+
     public function index()
     {
-        $user = Auth::user();
-        $courses = collect(); // Inisialisasi koleksi kosong
+        $this->authorize('viewAny', Course::class);
 
-        if ($user->isAdmin()) {
-            // Admin bisa melihat semua kursus
-            $courses = Course::latest()->get();
-        } elseif ($user->isInstructor()) {
-            // Instruktur hanya bisa melihat kursus yang dia buat
-            $courses = $user->courses()->latest()->get();
+        $user = Auth::user();
+        
+        // PERBAIKAN: Gunakan hasRole() dari Spatie, bukan isAdmin()
+        if ($user->hasRole('super-admin')) {
+            $courses = Course::with('instructor')->latest()->get();
         } else {
-            // Peserta tidak boleh mengakses halaman ini, harusnya dialihkan oleh middleware 'can'
-            // Namun, sebagai fallback, jika role tidak cocok, kembalikan kosong.
-            abort(403, 'Unauthorized action.'); // Atau redirect ke dashboard
+            $courses = Course::where('user_id', $user->id)->with('instructor')->latest()->get();
         }
 
         return view('courses.index', compact('courses'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
+        $this->authorize('create', Course::class);
         return view('courses.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        // Validasi input
-        $request->validate([
+        $this->authorize('create', Course::class);
+
+        $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'objectives' => 'nullable|string',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Untuk upload gambar
+            'description' => 'required|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        // Tangani upload gambar thumbnail
-        $thumbnailPath = null;
-        if ($request->hasFile('thumbnail')) {
-            $thumbnailPath = $request->file('thumbnail')->store('thumbnails', 'public');
-        }
+        $course = new Course($validatedData);
+        $course->user_id = Auth::id();
+        $course->save();
 
-        // Buat kursus baru
-        Course::create([
-            'user_id' => Auth::id(), // ID instruktur yang login
-            'title' => $request->title,
-            'description' => $request->description,
-            'objectives' => $request->objectives,
-            'thumbnail' => $thumbnailPath,
-            'status' => 'draft', // Default ke draft
-        ]);
-
-        return redirect()->route('courses.index')->with('success', 'Kursus berhasil ditambahkan!');
+        return redirect()->route('courses.index')->with('success', 'Kursus berhasil dibuat.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Course $course)
     {
-        // Otorisasi: Semua user bisa melihat detail kursus (akan diperketat nanti untuk enrollment)
-        // if (Auth::user()->isParticipant() && !$course->isEnrolled(Auth::id())) {
-        //     abort(403, 'Anda belum terdaftar di kursus ini.');
-        // }
-
-        // Load pelajaran bersama dengan kontennya
-        $course->load('lessons.contents', 'participants');
-
+        $course->load('lessons.contents', 'instructor');
         return view('courses.show', compact('course'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Course $course)
     {
-        // Menggunakan Policy untuk otorisasi. Hanya admin atau pemilik kursus yang bisa edit.
         $this->authorize('update', $course);
-
         return view('courses.edit', compact('course'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Course $course)
     {
-        // Menggunakan Policy untuk otorisasi. Hanya admin atau pemilik kursus yang bisa update.
         $this->authorize('update', $course);
 
-        $request->validate([
+        $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'objectives' => 'nullable|string',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Opsional, jika upload baru
-            'status' => ['required', Rule::in(['draft', 'published'])], // Validasi untuk status
+            'description' => 'required|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        $data = $request->except(['_token', '_method', 'thumbnail']); // Ambil semua kecuali token, method, dan thumbnail
+        $course->update($validatedData);
 
-        // Tangani upload gambar thumbnail baru
-        if ($request->hasFile('thumbnail')) {
-            // Hapus thumbnail lama jika ada
-            if ($course->thumbnail) {
-                Storage::disk('public')->delete($course->thumbnail);
-            }
-            $data['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
-        } elseif ($request->input('clear_thumbnail')) {
-            // Logika untuk menghapus thumbnail jika ada checkbox "Hapus Gambar"
-            if ($course->thumbnail) {
-                Storage::disk('public')->delete($course->thumbnail);
-                $data['thumbnail'] = null;
-            }
-        } else {
-             // Jika tidak ada upload baru dan tidak ada perintah hapus, pertahankan yang lama
-            $data['thumbnail'] = $course->thumbnail;
-        }
-
-
-        $course->update($data);
-
-        return redirect()->route('courses.index')->with('success', 'Kursus berhasil diperbarui!');
+        return redirect()->route('courses.index')->with('success', 'Kursus berhasil diperbarui.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Course $course)
     {
-        // Menggunakan Policy untuk otorisasi. Hanya admin atau pemilik kursus yang bisa hapus.
         $this->authorize('delete', $course);
-
-        // Hapus thumbnail terkait jika ada
-        if ($course->thumbnail) {
-            Storage::disk('public')->delete($course->thumbnail);
-        }
-
-        // Hapus kursus (ini juga akan menghapus pelajaran dan konten terkait karena onDelete('cascade'))
         $course->delete();
-
-        return redirect()->route('courses.index')->with('success', 'Kursus berhasil dihapus!');
-    }
-
-    public function enrollParticipant(Request $request, Course $course)
-    {
-        // Hanya admin atau instruktur pemilik kursus yang bisa meng-enroll
-        $this->authorize('update', $course);
-
-        $request->validate([
-            'user_ids' => 'required|array', // Mengubah user_id menjadi user_ids (array)
-            'user_ids.*' => 'required|exists:users,id', // Validasi setiap ID di array
-        ]);
-
-        $enrolledCount = 0;
-        $alreadyEnrolledCount = 0;
-
-        foreach ($request->user_ids as $userId) {
-            $user = User::find($userId);
-
-            // Cek apakah user sudah enroll kursus ini
-            if ($course->participants->contains($user->id)) {
-                $alreadyEnrolledCount++;
-            } else {
-                // Tambahkan peserta ke kursus
-                $course->participants()->attach($user->id); // Menggunakan attach untuk relasi many-to-many
-                $enrolledCount++;
-            }
-        }
-
-        $message = '';
-        if ($enrolledCount > 0) {
-            $message .= "{$enrolledCount} peserta berhasil ditambahkan ke kursus.";
-        }
-        if ($alreadyEnrolledCount > 0) {
-            if ($message) $message .= " ";
-            $message .= "{$alreadyEnrolledCount} peserta sudah terdaftar.";
-        }
-
-        return redirect()->back()->with('success', $message ?: 'Tidak ada peserta baru yang ditambahkan.');
-    }
-
-    /**
-     * Unenroll multiple participants from the specified course.
-     */
-    public function unenrollParticipants(Request $request, Course $course)
-    {
-        // Hanya admin atau instruktur pemilik kursus yang bisa meng-unenroll
-        $this->authorize('update', $course);
-
-        $request->validate([
-            'user_ids' => 'required|array', // Menerima array ID pengguna
-            'user_ids.*' => 'required|exists:users,id', // Validasi setiap ID di array
-        ]);
-
-        $unenrolledCount = 0;
-        foreach ($request->user_ids as $userId) {
-            // Cabut akses peserta dari kursus
-            $course->participants()->detach($userId); // Menggunakan detach
-            $unenrolledCount++;
-        }
-
-        return redirect()->back()->with('success', "{$unenrolledCount} peserta berhasil dihapus dari kursus ini.");
-    }
-
-    public function unenrollParticipant(Course $course, User $user)
-    {
-        // Hanya admin atau instruktur pemilik kursus yang bisa meng-unenroll
-        $this->authorize('update', $course);
-
-        // Cabut akses peserta dari kursus
-        $course->participants()->detach($user->id); // Menggunakan detach
-
-        return redirect()->back()->with('success', $user->name . ' berhasil dihapus dari kursus ini.');
+        return redirect()->route('courses.index')->with('success', 'Kursus berhasil dihapus.');
     }
 }

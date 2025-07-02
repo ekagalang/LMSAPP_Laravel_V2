@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User; // Pastikan ini ada
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash; // Pastikan ini ada
+use App\Models\User;
 
 class UserSeeder extends Seeder
 {
@@ -14,40 +13,38 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Hapus user yang ada agar tidak duplikat jika seeder dijalankan berulang
-        // User::truncate(); // Ini akan menghapus semua user, hati-hati di lingkungan produksi
+        // Default password untuk semua user seeder
+        $defaultPassword = 'password';
 
-        // Admin User
-        User::firstOrCreate(
-            ['email' => 'admin@lms.com'], // Kriteria untuk mencari atau membuat
-            [
-                'name' => 'Super Admin',
-                'password' => Hash::make('password'), // Password: password
-                'role' => 'admin',
-            ]
-        );
+        // Buat Super Admin
+        $admin = User::factory()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@lms.com',
+            'password' => $defaultPassword, // Menetapkan password secara eksplisit
+        ]);
+        $admin->assignRole('super-admin'); // Berikan peran super-admin
 
-        // Instructor User
-        User::firstOrCreate(
-            ['email' => 'instructor@lms.com'],
-            [
-                'name' => 'Instructor One',
-                'password' => Hash::make('password'), // Password: password
-                'role' => 'instructor',
-            ]
-        );
+        // Buat Instructor
+        $instructor = User::factory()->create([
+            'name' => 'Instructor User',
+            'email' => 'instructor@lms.com',
+            'password' => $defaultPassword, // Menetapkan password secara eksplisit
+        ]);
+        $instructor->assignRole('instructor'); // Berikan peran instructor
 
-        // Participant User
-        User::firstOrCreate(
-            ['email' => 'participant@lms.com'],
-            [
-                'name' => 'Student Learner',
-                'password' => Hash::make('password'), // Password: password
-                'role' => 'participant',
-            ]
-        );
+        // Buat Participant
+        $participant = User::factory()->create([
+            'name' => 'Participant User',
+            'email' => 'participant@lms.com',
+            'password' => $defaultPassword, // Menetapkan password secara eksplisit
+        ]);
+        $participant->assignRole('participant'); // Berikan peran participant
 
-        // Contoh 10 peserta acak
-        User::factory(10)->create();
+        // Buat Event Organizer
+        $eventorganizer = User::factory()->create([
+            'name' => 'Event Organizer',
+            'email' => 'eo@lms.com',
+            'password' => $defaultPassword,
+        ]);
     }
 }

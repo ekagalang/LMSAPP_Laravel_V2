@@ -11,14 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Perbaiki nama tabel dari 'Youtubes' menjadi 'Youtubes'
-        Schema::create('Youtubes', function (Blueprint $table) {
+        Schema::create('question_answers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('quiz_attempt_id')->constrained('quiz_attempts')->onDelete('cascade');
-            $table->foreignId('question_id')->constrained('questions')->onDelete('cascade');
-            $table->foreignId('option_id')->nullable()->constrained('options')->onDelete('cascade'); // Untuk pilihan ganda
-            $table->text('answer_text')->nullable(); // Untuk jawaban tipe teks (jika ada, untuk saat ini hanya MCQ/TrueFalse)
-            $table->boolean('is_correct')->nullable(); // Apakah jawaban user benar untuk pertanyaan ini
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('quiz_attempt_id')->constrained()->onDelete('cascade');
+            $table->foreignId('question_id')->constrained()->onDelete('cascade');
+            $table->foreignId('option_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -28,7 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Perbaiki nama tabel dari 'Youtubes' menjadi 'Youtubes'
-        Schema::dropIfExists('Youtubes');
+        Schema::dropIfExists('question_answers');
     }
 };
