@@ -35,41 +35,37 @@
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                            <thead>
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Nama Peserta
                                     </th>
-                                    @foreach ($quizzes as $quiz)
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            {{ $quiz->title }}
-                                        </th>
-                                    @endforeach
+                                    <th scope="col" class="relative px-6 py-3">
+                                        <span class="sr-only">Aksi</span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @forelse ($participants as $participant)
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            <a href="{{ route('gradebook.feedback', ['course' => $course, 'user' => $participant]) }}" class="text-indigo-600 hover:text-indigo-900 hover:underline">
-                                                {{ $participant->name }}
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="ml-4">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $participant->name }}
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">
+                                                        {{ $participant->email }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <a href="{{ route('gradebook.feedback', ['course' => $course, 'user' => $participant]) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                Lihat Feedback
                                             </a>
                                         </td>
-                                        @foreach ($quizzes as $quiz)
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                @php
-                                                    $attempt = $participant->quizAttempts->where('quiz_id', $quiz->id)->last();
-                                                @endphp
-                                                
-                                                @if ($attempt)
-                                                    <a href="{{ route('gradebook.review', $attempt) }}" class="text-blue-600 hover:text-blue-900 hover:underline">
-                                                        {{ number_format($attempt->score, 2) }}
-                                                    </a>
-                                                @else
-                                                    -
-                                                @endif
-                                            </td>
-                                        @endforeach
                                     </tr>
                                 @empty
                                     <tr>

@@ -69,7 +69,7 @@
                                     <div><strong>Batas Waktu:</strong> {{ $content->quiz->time_limit ? $content->quiz->time_limit . ' menit' : 'Tidak ada' }}</div>
                                 </div>
                                  @auth
-                                    @if (Auth::user()->isParticipant())
+                                    @if (Auth::user()->hasRole('participant'))
                                         @if ($content->quiz->status == 'published')
                                             <form action="{{ route('quizzes.start_attempt', $content->quiz) }}" method="POST">
                                                 @csrf
@@ -80,19 +80,15 @@
                                         @else
                                             <p class="text-red-500">Kuis ini belum dipublikasikan dan tidak dapat dikerjakan.</p>
                                         @endif
-                                    {{-- PERBAIKAN: Ganti @elsecan dengan @else untuk menutup if (isParticipant) --}}
                                     @else
-                                        {{-- Bagian ini hanya akan terlihat oleh non-partisipan (misal: admin, instruktur) --}}
-                                        {{-- Kemudian gunakan @can untuk memeriksa izin update kursus --}}
                                         @can('update', $course)
                                             <div class="flex space-x-2">
                                                 <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                                     Edit Kuis (via Konten)
                                                 </a>
-                                                {{-- Tombol hapus kuis akan mengikuti hapus konten --}}
                                             </div>
                                         @endcan
-                                    @endif {{-- Menutup @if (Auth::user()->isParticipant()) --}}
+                                    @endif
                                 @endauth
                                 </div>
                             @else
@@ -100,6 +96,58 @@
                             @endif
                         @else
                             <p class="text-gray-500">Konten ini belum memiliki tampilan khusus.</p>
+                    @elseif ($content->type === 'essay')
+                        <div class="mt-6 prose max-w-none">
+                            <h2 class="text-2xl font-bold">{{ $content->title }}</h2>
+                            {!! $content->description !!}
+                        </div>
+
+                        @auth
+                            {{-- Hanya tampilkan form jika user adalah peserta kursus --}}
+                            @if (Auth::user()->hasRole('participant') && $lesson->course->participants->contains(Auth::id()))
+                                
+                                @php
+                                    // Cek apakah peserta sudah pernah mengirimkan jawaban
+                                    $submission = Auth::user()->essaySubmissions()->where('content_id', $content->id)->first();
+                                @endphp
+
+                                @if ($submission)
+                                    {{-- Jika sudah ada jawaban, tampilkan jawaban tersebut --}}
+                                    <div class="mt-8 p-6 bg-gray-100 rounded-lg">
+                                        <h3 class="text-lg font-semibold text-gray-800">Jawaban Anda:</h3>
+                                        <div class="mt-2 prose max-w-none text-gray-700">
+                                            {!! nl2br(e($submission->answer)) !!}
+                                        </div>
+                                        @if($submission->score)
+                                            <p class="mt-4 text-indigo-600 font-semibold">Skor: {{ $submission->score }}</p>
+                                        @endif
+                                        @if($submission->feedback)
+                                            <div class="mt-4 p-4 bg-indigo-50 border-l-4 border-indigo-400">
+                                                <h4 class="font-bold">Feedback dari Instruktur:</h4>
+                                                <p class="text-gray-700">{!! nl2br(e($submission->feedback)) !!}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    {{-- Jika belum ada jawaban, tampilkan form --}}
+                                    <div class="mt-8">
+                                        <form action="{{ route('essays.store', $content->id) }}" method="POST">
+                                            @csrf
+                                            <div>
+                                                <label for="answer" class="block text-sm font-medium text-gray-700">Tulis Jawaban Anda</label>
+                                                <div class="mt-1">
+                                                    <textarea rows="10" name="answer" id="answer" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" required>{{ old('answer') }}</textarea>
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <x-primary-button>Kirim Jawaban</x-primary-button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                @endif
+
+                            @endif
+                        @endauth
                     @endif
                 </div>
 
@@ -126,4 +174,21 @@
             </div>
         </div>
     </div>
+    @stack('scripts')
 </x-app-layout>
+
+@push('scripts')
+<script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    // Inisialisasi TinyMCE hanya jika ada textarea #answer
+    if (document.getElementById('answer')) {
+        tinymce.init({
+            selector: 'textarea#answer',
+            plugins: 'lists link autolink wordcount',
+            toolbar: 'undo redo | blocks | bold italic | bullist numlist',
+            branding: false,
+            menubar: false,
+        });
+    }
+</script>
+@endpush

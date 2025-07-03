@@ -37,6 +37,7 @@
                                 <option value="document" {{ old('type') == 'document' ? 'selected' : '' }}>Dokumen (PDF, DOCX, PPTX)</option>
                                 <option value="image" {{ old('type') == 'image' ? 'selected' : '' }}>Gambar (JPG, PNG)</option>
                                 <option value="quiz" {{ old('type') == 'quiz' ? 'selected' : '' }}>Kuis</option>
+                                <option value="essay" {{ old('type') == 'essay' ? 'selected' : '' }}>Esai</option>
                             </select>
                             @error('type')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -153,7 +154,7 @@
             bodyInput.removeAttribute('required');
             fileInput.removeAttribute('required');
 
-            if (type === 'text' || type === 'video') {
+            if (type === 'text' || type === 'video' || type === 'essay') {
                 bodyField.classList.remove('hidden');
                 bodyInput.setAttribute('required', 'required');
                 if (type === 'text') { // Hanya inisialisasi TinyMCE untuk 'text' type

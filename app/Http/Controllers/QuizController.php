@@ -33,15 +33,17 @@ class QuizController extends Controller
      */
     public function index()
     {
-        $this->authorize('viewAny', Quiz::class);
-
         $user = Auth::user();
-        if ($user->isAdmin()) {
+
+        if (!$user->can('view any quiz')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($user->hasRole('admin')) {
             $quizzes = Quiz::with('instructor', 'lesson.course')->latest()->get();
-        } elseif ($user->isInstructor()) {
+        } elseif ($user->hasRole('instructor')) {
             $quizzes = Quiz::where('user_id', $user->id)->with('instructor', 'lesson.course')->latest()->get();
         } else {
-            // Partisipan tidak seharusnya ada di sini karena middleware
             abort(403, 'Unauthorized action.');
         }
 

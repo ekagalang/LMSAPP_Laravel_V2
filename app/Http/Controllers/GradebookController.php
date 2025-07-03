@@ -48,14 +48,17 @@ class GradebookController extends Controller
 
         // Ambil semua kuis dalam kursus ini
         $quizzes = $course->lessons()->with('quizzes')->get()->pluck('quizzes')->flatten();
-        
+
         // Ambil semua percobaan kuis oleh user ini untuk kuis-kuis tersebut
         $attempts = $user->quizAttempts()
             ->whereIn('quiz_id', $quizzes->pluck('id'))
             ->with('quiz')
             ->get();
 
-        return view('gradebook.feedback', compact('course', 'user', 'quizzes', 'attempts'));
+        // **TAMBAHKAN INI:** Ambil feedback yang sudah ada dari pivot table
+        $existingFeedback = $course->enrolledUsers()->where('user_id', $user->id)->first()->pivot->feedback ?? null;
+
+        return view('gradebook.feedback', compact('course', 'user', 'quizzes', 'attempts', 'existingFeedback'));
     }
     
     public function storeFeedback(Request $request, Course $course, User $user)

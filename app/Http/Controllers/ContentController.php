@@ -25,10 +25,10 @@ class ContentController extends Controller
 
         if ($content->type === 'quiz') {
             $content->load('quiz.questions.options');
-            if (Auth::user()->isParticipant() && !$content->lesson->course->participants->contains(Auth::id())) {
+            if (Auth::user()->hasRole('participant') && !$content->lesson->course->participants->contains(Auth::id())) {
                 abort(403, 'Anda belum terdaftar di kursus ini untuk melihat kuis.');
             }
-            if ($content->quiz && $content->quiz->status !== 'published' && !Auth::user()->isAdmin() && !Auth::user()->isInstructor()) {
+            if ($content->quiz && $content->quiz->status !== 'published' && !Auth::user()->hasRole('super-admin') && !Auth::user()->hasRole('instructor')) {
                 abort(403, 'Kuis ini belum tersedia.');
             }
         }

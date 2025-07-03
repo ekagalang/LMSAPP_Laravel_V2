@@ -14,7 +14,7 @@
                 <div class="p-6 text-gray-900">
                     <div class="flex justify-between items-center mb-6 pb-4 border-b">
                         <div>
-                            <h3 class="text-2xl font-bold">Skor Akhir: {{ number_format($attempt->score, 2) }}</h3>
+                            <h3 class="text-2xl font-bold">Skor Akhir: {{ number_format($attempt->score) }}</h3>
                         </div>
                         <a href="{{ route('courses.gradebook', $attempt->quiz->lesson->course) }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Kembali ke Gradebook</a>
                     </div>

@@ -9,6 +9,7 @@ use App\Http\Controllers\QuizController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\GradebookController;
+use App\Http\Controllers\EssaySubmissionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -35,6 +36,8 @@ Route::middleware('auth')->group(function () {
             'question' => null
         ])->render();
     })->name('quiz-question-partial');
+
+    Route::post('essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
 
     // Grup route untuk Super Admin
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
