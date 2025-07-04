@@ -14,6 +14,10 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                 'bass-red': '#DA1E1E',
+                 'bass-gold': '#FFD600',
+            },
         },
     },
 
