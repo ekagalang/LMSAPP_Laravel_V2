@@ -402,4 +402,14 @@ class QuizController extends Controller
     {
         return view('quizzes.partials.full-quiz-form');
     }
+
+    public function startQuiz(Quiz $quiz)
+    {
+        // Pastikan hanya peserta yang terdaftar di kursus yang bisa memulai
+        if (!Auth::user()->hasRole('participant') || !$quiz->lesson->course->participants->contains(Auth::id())) {
+            abort(403, 'Anda tidak diizinkan untuk memulai kuis ini.');
+        }
+
+        return view('quizzes.start', compact('quiz'));
+    }
 }

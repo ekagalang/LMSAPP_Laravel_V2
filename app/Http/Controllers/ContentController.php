@@ -47,7 +47,7 @@ class ContentController extends Controller
 
         $rules = [
             'title' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz'])],
+            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay'])],
             'order' => 'nullable|integer',
         ];
 
@@ -153,7 +153,7 @@ class ContentController extends Controller
 
         $rules = [
             'title' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz'])],
+            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay'])],
             'order' => 'nullable|integer',
         ];
 

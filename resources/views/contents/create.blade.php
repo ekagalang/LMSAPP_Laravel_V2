@@ -172,6 +172,21 @@
                             }
                         });
                     }, 100); // Penundaan kecil untuk memastikan elemen terlihat
+                } else if (type === 'essay') { // Hanya inisialisasi TinyMCE untuk 'text' type
+                    // Tambahkan penundaan untuk memastikan elemen visible sebelum inisialisasi TinyMCE
+                    setTimeout(() => {
+                        tinymce.init({
+                            selector: 'textarea#body', // Targetkan #body
+                            plugins: 'code table lists link image media autosave wordcount fullscreen template',
+                            toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
+                            branding: false,
+                            setup: function (editor) {
+                                editor.on('change', function () {
+                                    editor.save(); // Pastikan konten disinkronkan ke textarea
+                                });
+                            }
+                        });
+                    }, 100); // Penundaan kecil untuk memastikan elemen terlihat
                 }
             } else if (type === 'document' || type === 'image') {
                 fileUploadField.classList.remove('hidden');

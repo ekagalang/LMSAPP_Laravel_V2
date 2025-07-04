@@ -18,105 +18,76 @@
                 <div class="text-sm text-gray-600 mb-4">Tipe: <span class="capitalize font-medium">{{ $content->type }}</span></div>
 
                 <div class="content-display mt-6">
-                    @if ($content->type === 'text')
-                        <div class="prose max-w-none">
-                            {!! $content->body !!}
+                    {{-- ======================================================================= --}}
+                    {{-- KONTEN VIDEO --}}
+                    {{-- ======================================================================= --}}
+                    @if ($content->type === 'video')
+                        <div class="aspect-w-16 aspect-h-9">
+                            <iframe src="{{ $content->video_url }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                         </div>
-                    @elseif ($content->type === 'video')
-                        @php
-                            $youtubeEmbed = '';
-                            $vimeoEmbed = '';
-                            if (preg_match('/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|)([\w-]{11})/', $content->body, $matches)) {
-                                $youtubeEmbed = "https://www.youtube.com/embed/" . $matches[1]; // Perbaiki URL embed YouTube
-                            } elseif (preg_match('/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(?:video\/|channels\/staffpicks\/video\/|)(\d+)/', $content->body, $matches)) {
-                                $vimeoEmbed = "https://player.vimeo.com/video/" . $matches[1];
-                            }
-                        @endphp
-
-                        @if (!empty($youtubeEmbed))
-                            <div class="aspect-w-16 aspect-h-9">
-                                <iframe class="w-full h-96 rounded-lg shadow-lg" src="{{ $youtubeEmbed }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                            </div>
-                        @elseif (!empty($vimeoEmbed))
-                            <div class="aspect-w-16 aspect-h-9">
-                                <iframe class="w-full h-96 rounded-lg shadow-lg" src="{{ $vimeoEmbed }}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
-                            </div>
-                        @else
-                            <p class="text-red-500">URL Video tidak valid atau tidak didukung.</p>
-                            <p class="text-gray-600">URL: {{ $content->body }}</p>
-                        @endif
-                    @elseif ($content->type === 'document')
-                        @if ($content->file_path)
-                            <p>Unduh Dokumen: <a href="{{ asset('storage/' . $content->file_path) }}" target="_blank" class="text-indigo-600 hover:underline">{{ basename($content->file_path) }}</a></p>
-                        @else
-                            <p class="text-red-500">Tidak ada file dokumen yang ditemukan.</p>
-                        @endif
-                    @elseif ($content->type === 'image')
-                        @if ($content->file_path)
-                            <img src="{{ asset('storage/' . $content->file_path) }}" alt="{{ $content->title }}" class="max-w-full h-auto rounded-lg shadow-lg">
-                        @else
-                            <p class="text-red-500">Tidak ada file gambar yang ditemukan.</p>
-                        @endif
-                    @elseif ($content->type === 'quiz') {{-- Bagian baru untuk menampilkan kuis --}}
-                        @if ($content->quiz)
-                            <div class="border border-gray-200 rounded-lg p-4 bg-blue-50">
-                                <h4 class="text-xl font-bold text-blue-800 mb-2">{{ $content->quiz->title }}</h4>
-                                <p class="text-gray-700 mb-3">{{ $content->quiz->description }}</p>
-                                <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
-                                    <div><strong>Total Soal:</strong> {{ $content->quiz->questions->count() }}</div>
-                                    <div><strong>Total Nilai:</strong> {{ $content->quiz->total_marks }}</div>
-                                    <div><strong>Nilai Lulus:</strong> {{ $content->quiz->pass_marks }}</div>
-                                    <div><strong>Batas Waktu:</strong> {{ $content->quiz->time_limit ? $content->quiz->time_limit . ' menit' : 'Tidak ada' }}</div>
-                                </div>
-                                 @auth
-                                    @if (Auth::user()->hasRole('participant'))
-                                        @if ($content->quiz->status == 'published')
-                                            <form action="{{ route('quizzes.start_attempt', $content->quiz) }}" method="POST">
-                                                @csrf
-                                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                                    {{ __('Mulai Kuis') }}
-                                                </button>
-                                            </form>
-                                        @else
-                                            <p class="text-red-500">Kuis ini belum dipublikasikan dan tidak dapat dikerjakan.</p>
-                                        @endif
-                                    @else
-                                        @can('update', $course)
-                                            <div class="flex space-x-2">
-                                                <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                                    Edit Kuis (via Konten)
-                                                </a>
-                                            </div>
-                                        @endcan
-                                    @endif
-                                @endauth
-                                </div>
-                            @else
-                                <p class="text-red-500">Kuis tidak ditemukan untuk konten ini.</p>
-                            @endif
-                        @else
-                            <p class="text-gray-500">Konten ini belum memiliki tampilan khusus.</p>
-                    @elseif ($content->type === 'essay')
-                        <div class="mt-6 prose max-w-none">
-                            <h2 class="text-2xl font-bold">{{ $content->title }}</h2>
+                        <div class="mt-4 prose max-w-none">
                             {!! $content->description !!}
                         </div>
 
+                    {{-- ======================================================================= --}}
+                    {{-- KONTEN TEKS --}}
+                    {{-- ======================================================================= --}}
+                    @elseif ($content->type === 'text')
+                        <div class="prose max-w-none">
+                            {!! $content->description !!}
+                        </div>
+
+                    {{-- ======================================================================= --}}
+                    {{-- KONTEN KUIS --}}
+                    {{-- ======================================================================= --}}
+                    @elseif ($content->type === 'quiz')
+                        <div class="prose max-w-none">
+                            <h2 class="text-2xl font-bold">{{ $content->quiz->title }}</h2>
+                            {!! $content->quiz->description !!}
+                        </div>
                         @auth
-                            {{-- Hanya tampilkan form jika user adalah peserta kursus --}}
-                            @if (Auth::user()->hasRole('participant') && $lesson->course->participants->contains(Auth::id()))
-                                
+                            @if (Auth::user()->hasRole('participant'))
                                 @php
-                                    // Cek apakah peserta sudah pernah mengirimkan jawaban
+                                    $attempt = Auth::user()->quizAttempts()->where('quiz_id', $content->quiz_id)->latest()->first();
+                                @endphp
+                                <div class="mt-6">
+                                    @if ($attempt && !$attempt->is_completed)
+                                        <a href="{{ route('quizzes.attempt', $content->quiz) }}" class="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600">Lanjutkan Kuis</a>
+                                    @elseif ($attempt && $attempt->is_completed)
+                                        <div class="p-4 bg-green-100 border-l-4 border-green-500 text-green-700">
+                                            Anda telah menyelesaikan kuis ini dengan skor: <strong>{{ $attempt->score }}</strong>.
+                                        </div>
+                                    @else
+                                        <a href="{{ route('quizzes.start', $content->quiz) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">Mulai Kuis</a>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="mt-4 p-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700">
+                                    <p>Ini adalah pratinjau kuis untuk instruktur. Peserta akan melihat tombol untuk memulai kuis.</p>
+                                </div>
+                            @endif
+                        @endauth
+
+                    {{-- ======================================================================= --}}
+                    {{-- KONTEN ESAI (YANG BARU) --}}
+                    {{-- ======================================================================= --}}
+                    @elseif ($content->type === 'essay')
+                        <div class="mt-6 prose max-w-none">
+                            <h2 class="text-2xl font-bold">{{ $content->title }}</h2>
+                            {!! $content->body !!} {{-- Menggunakan 'body' untuk instruksi esai --}}
+                        </div>
+
+                        @auth
+                            @if (Auth::user()->hasRole('participant') && $lesson->course->participants->contains(Auth::id()))
+                                @php
                                     $submission = Auth::user()->essaySubmissions()->where('content_id', $content->id)->first();
                                 @endphp
 
                                 @if ($submission)
-                                    {{-- Jika sudah ada jawaban, tampilkan jawaban tersebut --}}
                                     <div class="mt-8 p-6 bg-gray-100 rounded-lg">
                                         <h3 class="text-lg font-semibold text-gray-800">Jawaban Anda:</h3>
                                         <div class="mt-2 prose max-w-none text-gray-700">
-                                            {!! nl2br(e($submission->answer)) !!}
+                                            {!! $submission->answer !!}
                                         </div>
                                         @if($submission->score)
                                             <p class="mt-4 text-indigo-600 font-semibold">Skor: {{ $submission->score }}</p>
@@ -129,7 +100,6 @@
                                         @endif
                                     </div>
                                 @else
-                                    {{-- Jika belum ada jawaban, tampilkan form --}}
                                     <div class="mt-8">
                                         <form action="{{ route('essays.store', $content->id) }}" method="POST">
                                             @csrf
@@ -145,9 +115,9 @@
                                         </form>
                                     </div>
                                 @endif
-
                             @endif
                         @endauth
+
                     @endif
                 </div>
 
@@ -188,6 +158,12 @@
             toolbar: 'undo redo | blocks | bold italic | bullist numlist',
             branding: false,
             menubar: false,
+
+            setup: function (editor) {
+                editor.on('change', function () {
+                    editor.save(); // Perintah ini menyalin isi editor ke textarea asli
+                });
+            }
         });
     }
 </script>

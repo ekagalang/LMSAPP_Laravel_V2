@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -80,5 +81,10 @@ class User extends Authenticatable
     public function quizAttempts()
     {
         return $this->hasMany(QuizAttempt::class);
+    }
+    
+    public function essaySubmissions(): HasMany
+    {
+        return $this->hasMany(EssaySubmission::class);
     }
 }
