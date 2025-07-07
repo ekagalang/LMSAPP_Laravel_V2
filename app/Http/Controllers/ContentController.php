@@ -19,20 +19,34 @@ class ContentController extends Controller
 {
     use AuthorizesRequests;
 
-    public function show(Lesson $lesson, Content $content)
+    public function show(Content $content)
     {
-        $course = $lesson->course;
+        $course = $content->lesson->course;
+        // Eager load relasi untuk efisiensi query
+        $course->load(['lessons' => function ($query) {
+            $query->orderBy('id'); // Pastikan urutan lesson benar
+        }, 'lessons.contents' => function ($query) {
+            $query->orderBy('id'); // Pastikan urutan content benar
+        }]);
 
-        if ($content->type === 'quiz') {
-            $content->load('quiz.questions.options');
-            if (Auth::user()->hasRole('participant') && !$content->lesson->course->participants->contains(Auth::id())) {
-                abort(403, 'Anda belum terdaftar di kursus ini untuk melihat kuis.');
-            }
-            if ($content->quiz && $content->quiz->status !== 'published' && !Auth::user()->hasRole('super-admin') && !Auth::user()->hasRole('instructor')) {
-                abort(403, 'Kuis ini belum tersedia.');
-            }
-        }
-        return view('contents.show', compact('lesson', 'content', 'course'));
+        // Buat daftar datar (flat list) dari semua konten untuk navigasi
+        $allContents = $course->lessons->flatMap(function ($lesson) {
+            return $lesson->contents;
+        })->values();
+
+        // Cari index dari konten yang sedang dibuka
+        $currentIndex = $allContents->search(function ($item) use ($content) {
+            return $item->id === $content->id;
+        });
+
+        // Tentukan konten sebelum dan sesudahnya
+        $previousContent = $currentIndex > 0 ? $allContents[$currentIndex - 1] : null;
+        $nextContent = $currentIndex !== false && $currentIndex < $allContents->count() - 1 ? $allContents[$currentIndex + 1] : null;
+
+        // Tandai konten ini telah selesai oleh user
+        Auth::user()->contents()->syncWithoutDetaching($content->id);
+
+        return view('contents.show', compact('content', 'course', 'previousContent', 'nextContent'));
     }
 
     public function create(Lesson $lesson)

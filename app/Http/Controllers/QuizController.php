@@ -39,7 +39,7 @@ class QuizController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('super-admin')) {
             $quizzes = Quiz::with('instructor', 'lesson.course')->latest()->get();
         } elseif ($user->hasRole('instructor')) {
             $quizzes = Quiz::where('user_id', $user->id)->with('instructor', 'lesson.course')->latest()->get();

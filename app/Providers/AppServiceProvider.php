@@ -37,12 +37,14 @@ class AppServiceProvider extends ServiceProvider
     {
         // Gate untuk mengelola kursus
         Gate::define('manage-courses', function (User $user) {
-            return $user->isAdmin() || $user->isInstructor();
+            // return $user->isAdmin() || $user->isInstructor();
+            return $user->hasRole(['super-admin', 'instructor']);
         });
 
         // Gate untuk user admin
         Gate::define('admin-only', function (User $user) {
-            return $user->isAdmin();
+            // return $user->isAdmin();
+            return $user->hasRole('superadmin');
         });
     }
 }

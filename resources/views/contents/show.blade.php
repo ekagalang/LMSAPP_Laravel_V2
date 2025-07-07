@@ -71,56 +71,52 @@
                     {{-- ======================================================================= --}}
                     {{-- KONTEN ESAI (YANG BARU) --}}
                     {{-- ======================================================================= --}}
-                    @elseif ($content->type === 'essay')
-                        <div class="mt-6 prose max-w-none">
-                            <h2 class="text-2xl font-bold">{{ $content->title }}</h2>
-                            {!! $content->body !!} {{-- Menggunakan 'body' untuk instruksi esai --}}
-                        </div>
+                    @elseif ($content->type == 'essay')
+                        @php
+                            // Cek apakah participant sudah pernah submit
+                            $submission = $content->essaySubmissions()->where('user_id', Auth::id())->first();
+                        @endphp
 
-                        @auth
-                            @if (Auth::user()->hasRole('participant') && $lesson->course->participants->contains(Auth::id()))
-                                @php
-                                    $submission = Auth::user()->essaySubmissions()->where('content_id', $content->id)->first();
-                                @endphp
+                        {{-- Jika sudah submit, tampilkan hasil submitnya --}}
+                        @if ($submission)
+                            <div class="p-4 my-4 text-sm text-green-800 rounded-lg bg-green-50" role="alert">
+                                <span class="font-medium">Anda sudah mengirimkan esai ini.</span>
+                            </div>
+                            <div class="p-6 bg-white border rounded-lg mt-4">
+                                <h3 class="text-xl font-semibold mb-2">Jawaban Anda:</h3>
+                                <div class="prose max-w-none">{!! $submission->content !!}</div>
 
-                                @if ($submission)
-                                    <div class="mt-8 p-6 bg-gray-100 rounded-lg">
-                                        <h3 class="text-lg font-semibold text-gray-800">Jawaban Anda:</h3>
-                                        <div class="mt-2 prose max-w-none text-gray-700">
-                                            {!! $submission->answer !!}
-                                        </div>
-                                        @if($submission->score)
-                                            <p class="mt-4 text-indigo-600 font-semibold">Skor: {{ $submission->score }}</p>
-                                        @endif
-                                        @if($submission->feedback)
-                                            <div class="mt-4 p-4 bg-indigo-50 border-l-4 border-indigo-400">
-                                                <h4 class="font-bold">Feedback dari Instruktur:</h4>
-                                                <p class="text-gray-700">{!! nl2br(e($submission->feedback)) !!}</p>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @else
-                                    <div class="mt-8">
-                                        <form action="{{ route('essays.store', $content->id) }}" method="POST">
-                                            @csrf
-                                            <div>
-                                                <label for="answer" class="block text-sm font-medium text-gray-700">Tulis Jawaban Anda</label>
-                                                <div class="mt-1">
-                                                    <textarea rows="10" name="answer" id="answer" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" required>{{ old('answer') }}</textarea>
-                                                </div>
-                                            </div>
-                                            <div class="mt-4">
-                                                <x-primary-button>Kirim Jawaban</x-primary-button>
-                                            </div>
-                                        </form>
+                                @if($submission->grade)
+                                    <div class="mt-4 pt-4 border-t">
+                                        <strong class="text-lg">Nilai:</strong> 
+                                        <span class="text-xl font-bold text-blue-600">{{ $submission->grade }}</span>
                                     </div>
                                 @endif
-                            @endif
-                        @endauth
+                                @if($submission->feedback)
+                                    <div class="mt-4">
+                                        <strong class="text-lg">Feedback:</strong>
+                                        <div class="mt-1 prose max-w-none">{!! $submission->feedback !!}</div>
+                                    </div>
+                                @endif
+                            </div>
+                        {{-- Jika belum submit dan merupakan participant, tampilkan editor --}}
+                        @elseif(Auth::user()->hasRole('participant'))
+                            <form action="{{ route('essay.submit', $content->id) }}" method="POST" class="mt-6">
+                                @csrf
+                                <h3 class="text-xl font-semibold mb-2">Tulis Jawaban Anda:</h3>
 
+                                {{-- Gunakan komponen tinymce-editor dengan nama yang benar --}}
+                                <x-forms.tinymce-editor name="essay_content" />
+
+                                <div class="mt-4">
+                                    <x-primary-button>
+                                        {{ __('Kirim Jawaban') }}
+                                    </x-primary-button>
+                                </div>
+                            </form>
+                        @endif
                     @endif
                 </div>
-
                 <div class="mt-8 flex justify-between items-center">
                     <a href="{{ route('courses.show', $course) }}" class="inline-flex items-center px-4 py-2 bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-gray-800 uppercase tracking-widest hover:bg-gray-300 focus:bg-gray-300 active:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition ease-in-out duration-150">
                         ← Kembali ke Kursus
@@ -148,6 +144,7 @@
 </x-app-layout>
 
 @push('scripts')
+<x-head.tinymce-config/>
 <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
     // Inisialisasi TinyMCE hanya jika ada textarea #answer

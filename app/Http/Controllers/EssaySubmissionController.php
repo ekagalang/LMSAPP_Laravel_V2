@@ -30,32 +30,34 @@ class EssaySubmissionController extends Controller
      */
     public function store(Request $request, Content $content)
     {
-        // Pastikan kontennya adalah tipe esai
+        // Pastikan konten adalah esai
         if ($content->type !== 'essay') {
-            abort(404);
+            return back()->with('error', 'Invalid content type.');
         }
 
-        // Validasi input
+        // Validasi request, ubah 'answer' menjadi 'essay_content'
         $request->validate([
-            'answer' => 'required|string|min:20',
+            'essay_content' => 'required|string',
         ]);
-        
+
         // Cek apakah user sudah pernah submit
         $existingSubmission = EssaySubmission::where('user_id', Auth::id())
-                                              ->where('content_id', $content->id)
-                                              ->exists();
+            ->where('content_id', $content->id)
+            ->exists();
+
         if ($existingSubmission) {
-            return back()->with('error', 'Anda sudah pernah mengirimkan jawaban untuk tugas ini.');
+            return back()->with('error', 'You have already submitted your essay.');
         }
 
-        // Simpan jawaban
+        // Simpan submission
         EssaySubmission::create([
             'user_id' => Auth::id(),
             'content_id' => $content->id,
-            'answer' => $request->input('answer'),
+            // Gunakan input 'essay_content'
+            'content' => $request->input('essay_content'),
         ]);
 
-        return back()->with('success', 'Jawaban Anda berhasil dikirim!');
+        return redirect()->route('contents.show', $content)->with('success', 'Essay submitted successfully!');
     }
 
     /**

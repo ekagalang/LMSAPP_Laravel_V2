@@ -14,7 +14,8 @@ class QuizPolicy
     public function viewAny(User $user): bool
     {
         // Semua user bisa melihat daftar kuis (terutama untuk admin/instruktur di manajemen kuis)
-        return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
+        // return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
+        return $user->hasRole(['super-admin', 'instructor', 'participant']);
     }
 
     /**
@@ -23,7 +24,8 @@ class QuizPolicy
     public function view(User $user, Quiz $quiz): bool
     {
         // Semua user yang sudah login bisa melihat detail kuis (akan ada otorisasi lebih lanjut di controller untuk memulai/mengerjakan kuis)
-        return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
+        // return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
+        return $user->hasRole(['super-admin', 'instructor', 'participant']);
     }
 
     /**
@@ -32,7 +34,8 @@ class QuizPolicy
     public function create(User $user): bool
     {
         // Hanya admin atau instruktur yang bisa membuat kuis
-        return $user->isAdmin() || $user->isInstructor();
+        // return $user->isAdmin() || $user->isInstructor();
+        return $user->hasRole(['super-admin', 'instructor']);
     }
 
     /**
@@ -42,7 +45,8 @@ class QuizPolicy
     {
         // Admin bisa update semua kuis
         // Instruktur hanya bisa update kuis yang dia buat
-        return $user->isAdmin() || ($user->isInstructor() && $user->id === $quiz->user_id);
+        // return $user->isAdmin() || ($user->isInstructor() && $user->id === $quiz->user_id);
+        return $user->hasRole('super-admin') || ($user->hasRole('instructor') && $user->id === $quiz->user_id);
     }
 
     /**
@@ -52,7 +56,9 @@ class QuizPolicy
     {
         // Admin bisa delete semua kuis
         // Instruktur hanya bisa delete kuis yang dia buat
-        return $user->isAdmin() || ($user->isInstructor() && $user->id === $quiz->user_id);
+        // return $user->isAdmin() || ($user->isInstructor() && $user->id === $quiz->user_id);
+        return $user->hasRole('super-admin') || ($user->hasRole('instructor') && $user->id === $quiz->user_id);
+
     }
 
     /**
@@ -60,7 +66,8 @@ class QuizPolicy
      */
     public function restore(User $user, Quiz $quiz): bool
     {
-        return $user->isAdmin(); // Hanya admin yang bisa restore (jika menggunakan soft deletes)
+        // return $user->isAdmin(); // Hanya admin yang bisa restore (jika menggunakan soft deletes)
+        return $user->hasRole('super-admin');
     }
 
     /**
@@ -68,6 +75,7 @@ class QuizPolicy
      */
     public function forceDelete(User $user, Quiz $quiz): bool
     {
-        return $user->isAdmin(); // Hanya admin yang bisa force delete
+        // return $user->isAdmin(); // Hanya admin yang bisa force delete
+        return $user->hasRole('super-admin');
     }
 }
