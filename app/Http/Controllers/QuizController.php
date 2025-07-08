@@ -23,8 +23,16 @@ class QuizController extends Controller
 
     public function __construct()
     {
-        // Pastikan konstruktor ini ada dan tidak dikomentari
-        $this->middleware('can:manage-courses')->except(['show', 'startAttempt', 'submitAttempt', 'showResult']);
+        // PERBAIKAN: Tambahkan 'start' ke dalam array 'except'
+        // Ini akan mengizinkan request untuk masuk ke method start(),
+        // di mana otorisasi yang lebih spesifik akan ditangani oleh Policy.
+        $this->middleware('can:manage-courses')->except([
+            'show',
+            'start', // Tambahkan ini
+            'startAttempt',
+            'submitAttempt',
+            'showResult'
+        ]);
     }
 
     /**
@@ -403,13 +411,13 @@ class QuizController extends Controller
         return view('quizzes.partials.full-quiz-form');
     }
 
-    public function startQuiz(Quiz $quiz)
+    public function start(Quiz $quiz)
     {
-        // Pastikan hanya peserta yang terdaftar di kursus yang bisa memulai
-        if (!Auth::user()->hasRole('participant') || !$quiz->lesson->course->participants->contains(Auth::id())) {
-            abort(403, 'Anda tidak diizinkan untuk memulai kuis ini.');
-        }
+        // Baris ini akan memanggil method start() di QuizPolicy
+        // untuk memeriksa apakah pengguna berhak memulai kuis ini.
+        $this->authorize('start', $quiz);
 
+        // Jika otorisasi berhasil, tampilkan halaman konfirmasi untuk memulai kuis.
         return view('quizzes.start', compact('quiz'));
     }
 }

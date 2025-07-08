@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Course;
+use App\Models\Quiz;
 use App\Policies\CoursePolicy;
+use App\Policies\QuizPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -19,6 +21,7 @@ class AuthServiceProvider extends ServiceProvider
         // Ini akan memberitahu Laravel untuk menggunakan aturan di CoursePolicy
         // setiap kali ada pengecekan hak akses terkait model Course.
         Course::class => CoursePolicy::class,
+        Quiz::class => QuizPolicy::class,
     ];
 
     /**

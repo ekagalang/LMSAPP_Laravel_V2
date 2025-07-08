@@ -21,30 +21,37 @@ class ContentController extends Controller
 
     public function show(Content $content)
     {
-        $course = $content->lesson->course;
-        // Eager load relasi untuk efisiensi query
-        $course->load(['lessons' => function ($query) {
-            $query->orderBy('id'); // Pastikan urutan lesson benar
-        }, 'lessons.contents' => function ($query) {
-            $query->orderBy('id'); // Pastikan urutan content benar
-        }]);
+        if (!$content->lesson || !$content->lesson->course) {
+            abort(404, 'Content cannot be found within a valid course.');
+        }
 
-        // Buat daftar datar (flat list) dari semua konten untuk navigasi
-        $allContents = $course->lessons->flatMap(function ($lesson) {
-            return $lesson->contents;
-        })->values();
+        $user = Auth::user();
+        $lesson = $content->lesson;
+        $course = $lesson->course;
 
-        // Cari index dari konten yang sedang dibuka
-        $currentIndex = $allContents->search(function ($item) use ($content) {
-            return $item->id === $content->id;
-        });
+        // Tandai konten ini selesai
+        $user->contents()->syncWithoutDetaching($content->id);
 
-        // Tentukan konten sebelum dan sesudahnya
+        // Cek apakah seluruh lesson sudah selesai
+        $contentIdsInLesson = $lesson->contents->pluck('id');
+
+        // PERBAIKAN: Tentukan nama tabel 'contents.id' untuk menghindari ambiguitas
+        $completedContentIds = $user->contents()
+                                    ->whereIn('content_id', $contentIdsInLesson)
+                                    ->pluck('contents.id');
+
+        if ($contentIdsInLesson->diff($completedContentIds)->isEmpty()) {
+            // Jika tidak ada perbedaan (semua konten selesai), tandai lesson selesai
+            $user->lessons()->syncWithoutDetaching($lesson->id);
+        }
+
+        $course->load(['lessons' => fn($q) => $q->orderBy('id'), 'lessons.contents' => fn($q) => $q->orderBy('id')]);
+
+        $allContents = $course->lessons->flatMap(fn($l) => $l->contents)->values();
+        $currentIndex = $allContents->search(fn($item) => $item->id === $content->id);
+
         $previousContent = $currentIndex > 0 ? $allContents[$currentIndex - 1] : null;
         $nextContent = $currentIndex !== false && $currentIndex < $allContents->count() - 1 ? $allContents[$currentIndex + 1] : null;
-
-        // Tandai konten ini telah selesai oleh user
-        Auth::user()->contents()->syncWithoutDetaching($content->id);
 
         return view('contents.show', compact('content', 'course', 'previousContent', 'nextContent'));
     }

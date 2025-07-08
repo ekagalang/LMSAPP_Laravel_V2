@@ -55,6 +55,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::resource('courses', CourseController::class);
+    Route::resource('lessons', LessonController::class);
     Route::resource('courses.lessons', LessonController::class)->except(['index', 'show']);
     Route::resource('lessons.contents', ContentController::class)->except(['index', 'show']);
     Route::post('courses/{course}/enroll', [CourseController::class, 'enrollParticipant'])->name('courses.enroll');
@@ -70,7 +71,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     
-    Route::post('contents/{content}/complete', [App\Http\Controllers\ProgressController::class, 'markContentAsCompleted'])->name('contents.complete');
+    Route::get('/contents/{content}', [\App\Http\Controllers\ContentController::class, 'show'])->name('contents.show');
+    Route::resource('contents', \App\Http\Controllers\ContentController::class)->except(['show']);
     Route::post('lessons/{lesson}/complete', [App\Http\Controllers\ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');
 });
 

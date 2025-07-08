@@ -42,15 +42,10 @@ class User extends Authenticatable
         ];
     }
 
-    // --- Metode Helper lama ini sudah tidak diperlukan lagi ---
-    // public function isAdmin() { ... }
-    // public function isInstructor() { ... }
-    // public function isParticipant() { ... }
 
-    // --- Relasi ---
     public function courses()
     {
-        return $this->hasMany(Course::class);
+        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
     }
 
     public function enrolledCourses()
@@ -86,5 +81,15 @@ class User extends Authenticatable
     public function essaySubmissions(): HasMany
     {
         return $this->hasMany(EssaySubmission::class);
+    }
+
+    public function contents()
+    {
+        return $this->belongsToMany(Content::class, 'content_user')->withTimestamps();
+    }
+
+    public function lessons()
+    {
+        return $this->belongsToMany(Lesson::class, 'lesson_user')->withTimestamps();
     }
 }

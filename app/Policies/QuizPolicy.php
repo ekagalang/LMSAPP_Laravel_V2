@@ -9,13 +9,49 @@ use Illuminate\Auth\Access\Response;
 class QuizPolicy
 {
     /**
+     * Perform pre-authorization checks.
+     *
+     * @param  \App\Models\User  $user
+     * @return bool|null
+     */
+    public function before(User $user, string $ability): bool|null
+    {
+        if ($user->hasRole(['super-admin', 'admin'])) {
+            return true;
+        }
+        return null;
+    }
+
+    /**
+     * Determine whether the user can start the quiz.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\Quiz  $quiz
+     * @return bool
+     */
+    public function start(User $user, Quiz $quiz): bool
+    {
+        // Izinkan instruktur untuk memulai kuisnya sendiri
+        if ($user->hasRole('instructor')) {
+            return $quiz->user_id === $user->id;
+        }
+
+        // Pastikan kuis terhubung ke kursus
+        if (!$quiz->lesson || !$quiz->lesson->course) {
+            return false;
+        }
+
+        // Izinkan peserta jika terdaftar di kursus
+        $course = $quiz->lesson->course;
+        return $user->courses()->where('course_id', $course->id)->exists();
+    }
+
+    /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        // Semua user bisa melihat daftar kuis (terutama untuk admin/instruktur di manajemen kuis)
-        // return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
-        return $user->hasRole(['super-admin', 'instructor', 'participant']);
+        return $user->hasRole(['instructor']);
     }
 
     /**
@@ -23,9 +59,17 @@ class QuizPolicy
      */
     public function view(User $user, Quiz $quiz): bool
     {
-        // Semua user yang sudah login bisa melihat detail kuis (akan ada otorisasi lebih lanjut di controller untuk memulai/mengerjakan kuis)
-        // return $user->isAdmin() || $user->isInstructor() || $user->isParticipant();
-        return $user->hasRole(['super-admin', 'instructor', 'participant']);
+        // Jika pengguna adalah instruktur, dia hanya bisa melihat kuisnya sendiri.
+        if ($user->hasRole('instructor')) {
+            return $quiz->user_id === $user->id;
+        }
+
+        // Peserta bisa melihat kuis jika terdaftar di kursus.
+        if($user->hasRole('participant')){
+            return $this->start($user, $quiz);
+        }
+
+        return false;
     }
 
     /**
@@ -33,9 +77,7 @@ class QuizPolicy
      */
     public function create(User $user): bool
     {
-        // Hanya admin atau instruktur yang bisa membuat kuis
-        // return $user->isAdmin() || $user->isInstructor();
-        return $user->hasRole(['super-admin', 'instructor']);
+        return $user->hasRole(['instructor']);
     }
 
     /**
@@ -43,10 +85,7 @@ class QuizPolicy
      */
     public function update(User $user, Quiz $quiz): bool
     {
-        // Admin bisa update semua kuis
-        // Instruktur hanya bisa update kuis yang dia buat
-        // return $user->isAdmin() || ($user->isInstructor() && $user->id === $quiz->user_id);
-        return $user->hasRole('super-admin') || ($user->hasRole('instructor') && $user->id === $quiz->user_id);
+        return $user->hasRole('instructor') && $quiz->user_id === $user->id;
     }
 
     /**
@@ -54,28 +93,6 @@ class QuizPolicy
      */
     public function delete(User $user, Quiz $quiz): bool
     {
-        // Admin bisa delete semua kuis
-        // Instruktur hanya bisa delete kuis yang dia buat
-        // return $user->isAdmin() || ($user->isInstructor() && $user->id === $quiz->user_id);
-        return $user->hasRole('super-admin') || ($user->hasRole('instructor') && $user->id === $quiz->user_id);
-
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, Quiz $quiz): bool
-    {
-        // return $user->isAdmin(); // Hanya admin yang bisa restore (jika menggunakan soft deletes)
-        return $user->hasRole('super-admin');
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, Quiz $quiz): bool
-    {
-        // return $user->isAdmin(); // Hanya admin yang bisa force delete
-        return $user->hasRole('super-admin');
+        return $user->hasRole('instructor') && $quiz->user_id === $user->id;
     }
 }
