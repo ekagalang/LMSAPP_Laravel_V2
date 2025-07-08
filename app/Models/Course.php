@@ -47,6 +47,11 @@ class Course extends Model
         return $this->belongsToMany(User::class, 'course_user')->withPivot('feedback')->withTimestamps();
     }
 
+    public function feedback()
+    {
+        return $this->hasMany(Feedback::class);
+    }
+
     // Atribut untuk status
     // public function getStatusColorAttribute()
     // {

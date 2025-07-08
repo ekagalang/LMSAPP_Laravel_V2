@@ -4,77 +4,114 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\User;
-use App\Models\QuizAttempt;
+use App\Models\EssaySubmission;
+use App\Models\Feedback;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth; // Pastikan ini ditambahkan
+use Illuminate\Support\Facades\DB;
 
 class GradebookController extends Controller
 {
+    /**
+     * Menampilkan halaman Gradebook terpusat dengan filter dan tabs.
+     */
     public function index(Request $request, Course $course)
     {
         $this->authorize('update', $course);
+        $user = Auth::user();
 
-        $quizzes = $course->lessons()->with('quizzes')->get()->pluck('quizzes')->flatten();
-        $participantsQuery = $course->enrolledUsers();
-
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $participantsQuery->where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('email', 'like', '%' . $search . '%');
-            });
+        // ✅ LOGIKA BARU: Ambil daftar kursus untuk filter dropdown
+        $allCoursesForFilter = collect();
+        if ($user->hasRole('super-admin')) {
+            $allCoursesForFilter = Course::orderBy('title')->get();
+        } elseif ($user->hasRole('instructor')) {
+            $allCoursesForFilter = Course::where('user_id', $user->id)->orderBy('title')->get();
         }
 
-        $participants = $participantsQuery->with(['quizAttempts' => function ($query) use ($quizzes) {
-            $query->whereIn('quiz_id', $quizzes->pluck('id'));
-        }])->get();
+        // --- Data untuk Tab Feedback Umum ---
+        $participantsQuery = $course->enrolledUsers();
 
-        return view('gradebook.index', compact('course', 'participants', 'quizzes'));
-    }
+        // Terapkan filter pencarian jika ada
+        if ($request->has('search') && $request->search != '') {
+            $searchTerm = $request->search;
+            $participantsQuery->where(function ($query) use ($searchTerm) {
+                $query->where('name', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('email', 'like', '%' . $searchTerm . '%');
+            });
+        }
+        $participants = $participantsQuery->with(['feedback' => fn($q) => $q->where('course_id', $course->id)])->get();
 
-    public function review(QuizAttempt $attempt)
-    {
-        $attempt->load('user', 'quiz.questions.options', 'answers');
-        $this->authorize('update', $attempt->quiz->lesson->course);
-        return view('gradebook.review', compact('attempt'));
+        // --- Data untuk Tab Penilaian Esai ---
+        $essayContentIds = $course->lessons()->with('contents')
+            ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
+
+        $participantsWithEssaysQuery = $course->enrolledUsers()
+            ->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
+
+        if ($request->has('search') && $request->search != '') {
+            $participantsWithEssaysQuery->where(function ($query) use ($searchTerm) {
+                $query->where('name', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('email', 'like', '%' . $searchTerm . '%');
+            });
+        }
+        $participantsWithEssays = $participantsWithEssaysQuery->get();
+
+        return view('gradebook.index', compact('course', 'participants', 'participantsWithEssays', 'allCoursesForFilter'));
     }
 
     /**
-     * PERUBAHAN: Menampilkan halaman feedback terpusat untuk satu peserta.
+     * Menampilkan semua jawaban esai dari satu peserta.
      */
-    public function feedback(Course $course, User $user)
+    public function showUserEssays(Course $course, User $user)
     {
         $this->authorize('update', $course);
 
-        // Ambil semua kuis dalam kursus ini
-        $quizzes = $course->lessons()->with('quizzes')->get()->pluck('quizzes')->flatten();
+        $essayContentIds = $course->lessons()->with('contents')
+            ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
 
-        // Ambil semua percobaan kuis oleh user ini untuk kuis-kuis tersebut
-        $attempts = $user->quizAttempts()
-            ->whereIn('quiz_id', $quizzes->pluck('id'))
-            ->with('quiz')
+        $submissions = EssaySubmission::with('content')
+            ->where('user_id', $user->id)
+            ->whereIn('content_id', $essayContentIds)
+            ->orderBy('created_at', 'desc')
             ->get();
-
-        // **TAMBAHKAN INI:** Ambil feedback yang sudah ada dari pivot table
-        $existingFeedback = $course->enrolledUsers()->where('user_id', $user->id)->first()->pivot->feedback ?? null;
-
-        return view('gradebook.feedback', compact('course', 'user', 'quizzes', 'attempts', 'existingFeedback'));
+            
+        return view('gradebook.user_essays', compact('course', 'user', 'submissions'));
     }
-    
+
+    /**
+     * Menyimpan nilai dan feedback untuk sebuah jawaban esai.
+     */
+    public function storeEssayGrade(Request $request, EssaySubmission $submission)
+    {
+        $this->authorize('update', $submission->content->lesson->course);
+
+        $validated = $request->validate([
+            'score' => 'required|integer|min:0|max:100',
+            'feedback' => 'nullable|string',
+        ]);
+
+        $submission->update($validated + ['graded_at' => now()]);
+
+        return redirect()->route('gradebook.user_essays', [
+            'course' => $submission->content->lesson->course->id,
+            'user' => $submission->user_id
+        ])->with('success', 'Nilai untuk ' . $submission->user->name . ' berhasil disimpan.');
+    }
+
+    /**
+     * Menyimpan feedback umum untuk seorang peserta.
+     */
     public function storeFeedback(Request $request, Course $course, User $user)
     {
         $this->authorize('update', $course);
 
-        $request->validate([
-            'feedback' => 'nullable|string',
-        ]);
+        $request->validate(['feedback' => 'required|string']);
 
-        // Simpan feedback ke pivot table course_user
-        DB::table('course_user')
-            ->where('course_id', $course->id)
-            ->where('user_id', $user->id)
-            ->update(['feedback' => $request->input('feedback')]);
+        Feedback::updateOrCreate(
+            ['course_id' => $course->id, 'user_id' => $user->id],
+            ['feedback' => $request->feedback, 'instructor_id' => auth()->id()]
+        );
 
-        return redirect()->back()->with('success', 'Feedback berhasil disimpan.');
+        return redirect()->back()->with('success', 'Feedback untuk ' . $user->name . ' berhasil disimpan.');
     }
 }

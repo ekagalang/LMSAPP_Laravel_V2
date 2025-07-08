@@ -38,6 +38,8 @@ Route::middleware('auth')->group(function () {
     })->name('quiz-question-partial');
 
     Route::post('essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
+    Route::get('/courses/{course}/progress', [App\Http\Controllers\CourseController::class, 'showProgress'])->name('courses.progress');
+    Route::get('/courses/{course}/participant/{user}/progress', [App\Http\Controllers\CourseController::class, 'showParticipantProgress'])->name('courses.participant.progress');
 
     // Grup route untuk Super Admin
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -49,9 +51,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['can:manage own courses'])->group(function () {
         Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
         Route::get('/quiz-attempts/{attempt}/review', [GradebookController::class, 'review'])->name('gradebook.review');
-        // PERUBAHAN: Tambahkan route untuk halaman feedback per peserta
         Route::get('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'feedback'])->name('gradebook.feedback');
         Route::post('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'storeFeedback'])->name('gradebook.storeFeedback');
+        Route::post('/essay-submissions/{submission}/grade', [App\Http\Controllers\GradebookController::class, 'storeEssayGrade'])->name('gradebook.storeEssayGrade');
+        Route::get('/courses/{course}/gradebook/essays/user/{user}', [App\Http\Controllers\GradebookController::class, 'showUserEssays'])->name('gradebook.user_essays');
     });
 
     Route::resource('courses', CourseController::class);
