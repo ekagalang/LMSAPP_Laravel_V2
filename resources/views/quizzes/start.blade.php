@@ -1,4 +1,4 @@
-<x-app-layout>
+{{ __('Mulai Kerjakan Sekarang') }}<x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Mulai Kuis: ') }} {{ $quiz->title }}
@@ -22,7 +22,8 @@
                     </ul>
 
                     <div class="mt-6">
-                        <form action="{{ route('quizzes.attempt', $quiz) }}" method="GET">
+                        <form action="{{ route('quizzes.start_attempt', $quiz) }}" method="POST">
+                            @csrf
                             <x-primary-button>
                                 {{ __('Mulai Kerjakan Sekarang') }}
                             </x-primary-button>

@@ -50,7 +50,7 @@
                             @error('body')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
-                            <p class="text-xs text-gray-500 mt-1">Untuk Video, masukkan URL YouTube/Vimeo.</p>
+                            <p class="text-xs text-gray-500 mt-1">Untuk Video, masukkan URL YouTube/Vimeo. Untuk Esai, masukkan pertanyaan di sini.</p>
                         </div>
 
                         <div id="file_upload_field" class="mb-4 hidden">
@@ -134,68 +134,49 @@
         });
 
         function toggleContentTypeFields() {
-            const type = typeSelect.value;
+            const type = document.getElementById('type').value;
             const bodyField = document.getElementById('body_field');
             const fileUploadField = document.getElementById('file_upload_field');
+            const quizFormFieldsContainer = document.getElementById('quiz_form_fields');
             const bodyInput = document.getElementById('body');
             const fileInput = document.getElementById('file_upload');
 
-            // Hancurkan instance TinyMCE yang ada sebelum menyembunyikan/menampilkan
             if (tinymce.get('body')) {
                 tinymce.get('body').destroy();
             }
 
-            // Sembunyikan semua kontainer form input terlebih dahulu
             bodyField.classList.add('hidden');
             fileUploadField.classList.add('hidden');
             quizFormFieldsContainer.classList.add('hidden');
 
-            // Reset required state
             bodyInput.removeAttribute('required');
             fileInput.removeAttribute('required');
 
             if (type === 'text' || type === 'video' || type === 'essay') {
                 bodyField.classList.remove('hidden');
                 bodyInput.setAttribute('required', 'required');
-                if (type === 'text') { // Hanya inisialisasi TinyMCE untuk 'text' type
-                    // Tambahkan penundaan untuk memastikan elemen visible sebelum inisialisasi TinyMCE
+
+                // ✅ PERBAIKAN: Aktifkan TinyMCE untuk 'text' DAN 'essay'
+                if (type === 'text' || type === 'essay') {
                     setTimeout(() => {
                         tinymce.init({
-                            selector: 'textarea#body', // Targetkan #body
+                            selector: 'textarea#body',
                             plugins: 'code table lists link image media autosave wordcount fullscreen template',
                             toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
                             branding: false,
                             setup: function (editor) {
                                 editor.on('change', function () {
-                                    editor.save(); // Pastikan konten disinkronkan ke textarea
+                                    editor.save();
                                 });
                             }
                         });
-                    }, 100); // Penundaan kecil untuk memastikan elemen terlihat
-                } else if (type === 'essay') { // Hanya inisialisasi TinyMCE untuk 'text' type
-                    // Tambahkan penundaan untuk memastikan elemen visible sebelum inisialisasi TinyMCE
-                    setTimeout(() => {
-                        tinymce.init({
-                            selector: 'textarea#body', // Targetkan #body
-                            plugins: 'code table lists link image media autosave wordcount fullscreen template',
-                            toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
-                            branding: false,
-                            setup: function (editor) {
-                                editor.on('change', function () {
-                                    editor.save(); // Pastikan konten disinkronkan ke textarea
-                                });
-                            }
-                        });
-                    }, 100); // Penundaan kecil untuk memastikan elemen terlihat
+                    }, 100);
                 }
             } else if (type === 'document' || type === 'image') {
                 fileUploadField.classList.remove('hidden');
-                // Untuk formulir create, file selalu wajib. Untuk edit, hanya jika tidak ada file yang sudah ada.
-                // Logika ini disesuaikan untuk file create.blade.php
                 fileInput.setAttribute('required', 'required');
             } else if (type === 'quiz') {
                 quizFormFieldsContainer.classList.remove('hidden');
-                // Untuk create, selalu muat form kosong.
                 loadQuizFormPartial(null);
             }
         }

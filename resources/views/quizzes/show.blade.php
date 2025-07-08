@@ -45,7 +45,7 @@
                 </div>
 
                 @auth
-                    @if (Auth::user()->isParticipant())
+                    @if (Auth::user()->hasRole('participant'))
                         @if ($quiz->status == 'published')
                             <form action="{{ route('quizzes.start_attempt', $quiz) }}" method="POST">
                                 @csrf

@@ -42,4 +42,9 @@ class Content extends Model
     {
         return $this->belongsTo(Quiz::class);
     }
+
+    public function essaySubmissions()
+    {
+        return $this->hasMany(EssaySubmission::class);
+    }
 }

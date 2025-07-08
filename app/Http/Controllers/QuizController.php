@@ -420,4 +420,27 @@ class QuizController extends Controller
         // Jika otorisasi berhasil, tampilkan halaman konfirmasi untuk memulai kuis.
         return view('quizzes.start', compact('quiz'));
     }
+
+    public function attempt(Quiz $quiz)
+    {
+        // Gunakan policy 'start' untuk otorisasi, karena logikanya sama.
+        $this->authorize('start', $quiz);
+
+        $user = Auth::user();
+
+        // Pastikan kuis sudah dipublikasikan
+        if ($quiz->status !== 'published') {
+            return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
+        }
+
+        // Buat record percobaan baru di database
+        $attempt = QuizAttempt::create([
+            'quiz_id' => $quiz->id,
+            'user_id' => $user->id,
+            'started_at' => now(),
+        ]);
+
+        // Arahkan ke halaman pengerjaan kuis
+        return view('quizzes.attempt', compact('quiz', 'attempt'));
+    }
 }

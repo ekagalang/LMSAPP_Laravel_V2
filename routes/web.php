@@ -66,14 +66,14 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])->name('quizzes.show');
     Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])->name('quizzes.start_attempt');
-    Route::get('quizzes/{quiz}/start', [QuizController::class, 'startQuiz'])->name('quizzes.start');
-    Route::get('quizzes/{quiz}/attempt', [QuizController::class, 'attempt'])->name('quizzes.attempt');
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
+    Route::get('/quizzes/{quiz}/start', [QuizController::class, 'start'])->name('quizzes.start');
     
     Route::get('/contents/{content}', [\App\Http\Controllers\ContentController::class, 'show'])->name('contents.show');
     Route::resource('contents', \App\Http\Controllers\ContentController::class)->except(['show']);
     Route::post('lessons/{lesson}/complete', [App\Http\Controllers\ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');
+    Route::post('essay-submissions', [App\Http\Controllers\EssaySubmissionController::class, 'store'])->name('essay.submit');
 });
 
 require __DIR__.'/auth.php';

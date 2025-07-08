@@ -1,9 +1,6 @@
-{{-- resources/views/contents/show.blade.php --}}
-
 <x-app-layout>
     {{-- PERBAIKAN: Tambahkan Alpine.js untuk state management sidebar --}}
     <div x-data="{ sidebarOpen: true }" class="flex flex-col md:flex-row min-h-screen">
-        <!-- Sidebar / Timeline -->
         <aside x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full" class="w-full md:w-80 bg-gray-50 border-r p-4 h-full md:h-screen md:sticky top-0 flex-shrink-0">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-gray-800 truncate">{{ $course->title }}</h3>
@@ -43,9 +40,7 @@
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="w-full p-4 md:p-8 transition-all duration-300">
-            <!-- Header Main Content -->
             <div class="flex items-center justify-between mb-6">
                 {{-- PERBAIKAN: Tombol untuk toggle sidebar --}}
                 <button @click="sidebarOpen = !sidebarOpen" class="p-2 rounded-md bg-gray-200 hover:bg-gray-300">
@@ -61,20 +56,20 @@
                 <div class="p-6 bg-white border-b border-gray-200">
                     <h2 class="text-3xl font-bold mb-4 text-gray-900">{{ $content->title }}</h2>
 
+                    {{-- ✅ PERBAIKAN DI SINI --}}
                     @if($content->type == 'video')
                         <div class="aspect-w-16 aspect-h-9"><iframe src="https://www.youtube.com/embed/{{ $content->video_url }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg"></iframe></div>
                     @elseif($content->type == 'file')
                         <a href="{{ Storage::url($content->file_path) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Download File</a>
-                    @elseif($content->type == 'text')
+                    @elseif($content->type == 'text' || $content->type == 'essay')
+                        {{-- Menampilkan isi pertanyaan untuk Teks dan Esai --}}
                         <div class="prose max-w-none">{!! $content->body !!}</div>
                     @endif
 
-                    {{-- PERBAIKAN: Integrasikan logika untuk Esai dan Kuis di sini --}}
                     @include('contents.partials.essay-quiz-section')
                 </div>
             </div>
 
-            <!-- Navigation Buttons -->
             <div class="flex justify-between mt-8">
                 @if ($previousContent)
                     <a href="{{ route('contents.show', $previousContent) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
@@ -97,27 +92,3 @@
         </main>
     </div>
 </x-app-layout>
-
-
-@push('scripts')
-<x-head.tinymce-config/>
-<script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
-<script>
-    // Inisialisasi TinyMCE hanya jika ada textarea #answer
-    if (document.getElementById('answer')) {
-        tinymce.init({
-            selector: 'textarea#answer',
-            plugins: 'lists link autolink wordcount',
-            toolbar: 'undo redo | blocks | bold italic | bullist numlist',
-            branding: false,
-            menubar: false,
-
-            setup: function (editor) {
-                editor.on('change', function () {
-                    editor.save(); // Perintah ini menyalin isi editor ke textarea asli
-                });
-            }
-        });
-    }
-</script>
-@endpush

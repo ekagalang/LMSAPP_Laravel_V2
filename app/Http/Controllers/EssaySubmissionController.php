@@ -54,7 +54,7 @@ class EssaySubmissionController extends Controller
             'user_id' => Auth::id(),
             'content_id' => $content->id,
             // Gunakan input 'essay_content'
-            'content' => $request->input('essay_content'),
+            'answer' => $request->input('essay_content'),
         ]);
 
         return redirect()->route('contents.show', $content)->with('success', 'Essay submitted successfully!');

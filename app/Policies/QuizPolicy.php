@@ -95,4 +95,10 @@ class QuizPolicy
     {
         return $user->hasRole('instructor') && $quiz->user_id === $user->id;
     }
+
+    public function attempt(User $user, Quiz $quiz)
+    {
+        // Izinkan jika pengguna adalah peserta dan terdaftar di kursus ini
+        return $user->hasRole('participant') && $user->courses()->where('course_id', $quiz->course_id)->exists();
+    }
 }
