@@ -26,7 +26,7 @@ class QuizController extends Controller
         // PERBAIKAN: Tambahkan 'start' ke dalam array 'except'
         // Ini akan mengizinkan request untuk masuk ke method start(),
         // di mana otorisasi yang lebih spesifik akan ditangani oleh Policy.
-        $this->middleware('can:manage-courses')->except([
+        $this->middleware('can:manage own courses')->except([
             'show',
             'start', // Tambahkan ini
             'startAttempt',

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use PDF;
 
 class CourseController extends Controller
 {
@@ -15,17 +16,20 @@ class CourseController extends Controller
         $this->middleware('auth')->except('show');
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Course::class);
 
         $user = Auth::user();
-        
-        if ($user->hasRole('super-admin')) {
-            $courses = Course::with('instructor')->latest()->get();
-        } else {
-            $courses = Course::where('user_id', $user->id)->with('instructor')->latest()->get();
+        $query = Course::query();
+
+        if ($user->hasRole('instructor')) {
+            $query->whereHas('instructors', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
         }
+        
+        $courses = $query->with('instructors')->latest()->get();
 
         return view('courses.index', compact('courses'));
     }
@@ -40,24 +44,45 @@ class CourseController extends Controller
     {
         $this->authorize('create', Course::class);
 
+        // Validasi yang bersih dan benar
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'description' => 'nullable|string',
+            'thumbnail' => 'nullable|image|max:2048',
+            'status' => 'required|in:draft,published',
         ]);
 
+        if ($request->hasFile('thumbnail')) {
+            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+        }
+
         $course = new Course($validatedData);
-        $course->user_id = Auth::id();
         $course->save();
+
+        // Otomatis tugaskan pembuat (admin) sebagai instruktur awal
+        $course->instructors()->attach(Auth::id());
 
         return redirect()->route('courses.index')->with('success', 'Kursus berhasil dibuat.');
     }
 
     public function show(Course $course)
     {
-        // Ganti 'participants' menjadi 'enrolledUsers' agar sesuai dengan nama relasi di model Course
-        $course->load('lessons.contents', 'instructor', 'enrolledUsers');
-        return view('courses.show', compact('course'));
+        $this->authorize('view', $course);
+
+        $course->load('lessons.contents', 'instructors', 'enrolledUsers');
+        
+        $availableInstructors = User::role('instructor')
+            ->whereNotIn('id', $course->instructors->pluck('id'))
+            ->get();
+            
+        $unEnrolledParticipants = User::role('participant')
+            ->whereDoesntHave('courses', function ($query) use ($course) {
+                $query->where('course_id', $course->id);
+            })
+            ->orderBy('name')
+            ->get();
+            
+        return view('courses.show', compact('course', 'availableInstructors', 'unEnrolledParticipants'));
     }
 
     public function edit(Course $course)
@@ -72,9 +97,23 @@ class CourseController extends Controller
 
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'description' => 'nullable|string',
+            'thumbnail' => 'nullable|image|max:2048',
+            'status' => 'required|in:draft,published',
+            'clear_thumbnail' => 'nullable|boolean'
         ]);
+
+        if ($request->hasFile('thumbnail')) {
+            if ($course->thumbnail) {
+                Storage::disk('public')->delete($course->thumbnail);
+            }
+            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+        } elseif ($request->boolean('clear_thumbnail')) {
+            if ($course->thumbnail) {
+                Storage::disk('public')->delete($course->thumbnail);
+            }
+            $validatedData['thumbnail'] = null;
+        }
 
         $course->update($validatedData);
 
@@ -84,6 +123,9 @@ class CourseController extends Controller
     public function destroy(Course $course)
     {
         $this->authorize('delete', $course);
+        if ($course->thumbnail) {
+            Storage::disk('public')->delete($course->thumbnail);
+        }
         $course->delete();
         return redirect()->route('courses.index')->with('success', 'Kursus berhasil dihapus.');
     }
@@ -126,7 +168,7 @@ class CourseController extends Controller
 
     public function showProgress(Request $request, Course $course)
     {
-        $this->authorize('update', $course);
+        $this->authorize('viewProgress', $course);
         $user = Auth::user();
 
         // ✅ LOGIKA BARU: Ambil semua kursus yang diajar instruktur ini untuk dropdown
@@ -185,7 +227,7 @@ class CourseController extends Controller
     public function showParticipantProgress(Course $course, User $user)
     {
         // Otorisasi, pastikan yang mengakses adalah instruktur/admin kursus ini
-        $this->authorize('update', $course);
+        $this->authorize('viewProgress', $course);
 
         // Pastikan user yang diminta memang terdaftar di kursus ini
         if (!$course->enrolledUsers()->where('user_id', $user->id)->exists()) {
@@ -207,5 +249,59 @@ class CourseController extends Controller
             'lessons' => $course->lessons,
             'completedContentsMap' => $completedContentsMap
         ]);
+    }
+
+    public function addInstructor(Request $request, Course $course)
+    {
+        $this->authorize('update', $course);
+        $request->validate(['user_ids' => 'required|array']);
+        // Filter hanya user dengan peran instruktur
+        $instructorIds = User::whereIn('id', $request->user_ids)->role('instructor')->pluck('id');
+        $course->instructors()->syncWithoutDetaching($instructorIds);
+        return back()->with('success', 'Instruktur berhasil ditambahkan.');
+    }
+
+    public function removeInstructor(Request $request, Course $course)
+    {
+        $this->authorize('update', $course);
+        $request->validate(['user_ids' => 'required|array']);
+        $course->instructors()->detach($request->user_ids);
+        return back()->with('success', 'Instruktur berhasil dihapus.');
+    }
+
+    public function downloadProgressPdf(Course $course)
+    {
+        // Otorisasi, pastikan hanya user yang berhak yang bisa mengunduh
+        $this->authorize('viewProgress', $course);
+
+        // Mengambil data progres (logika yang sama dengan method showProgress)
+        $course->load('lessons.contents', 'enrolledUsers.completedContents');
+        $allContents = $course->lessons->flatMap(fn($l) => $l->contents);
+        $totalContentCount = $allContents->count();
+        $allContentIds = $allContents->pluck('id');
+
+        $participantsProgress = $course->enrolledUsers->map(function ($participant) use ($allContentIds, $totalContentCount) {
+            $completedCount = $participant->completedContents->whereIn('id', $allContentIds)->count();
+            $progressPercentage = $totalContentCount > 0 ? round(($completedCount / $totalContentCount) * 100) : 0;
+            
+            return [
+                'name' => $participant->name,
+                'email' => $participant->email,
+                'progress_percentage' => $progressPercentage,
+            ];
+        });
+
+        // Data yang akan dikirim ke view PDF
+        $data = [
+            'course' => $course,
+            'participantsProgress' => $participantsProgress,
+            'date' => date('d M Y')
+        ];
+
+        // Membuat PDF
+        $pdf = PDF::loadView('reports.progress_pdf', $data);
+
+        // Mengunduh PDF dengan nama file yang dinamis
+        return $pdf->download('laporan-progres-' . Str::slug($course->title) . '.pdf');
     }
 }

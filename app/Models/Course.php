@@ -20,9 +20,9 @@ class Course extends Model
     ];
 
     // Relasi ke User (instruktur yang membuat kursus)
-    public function instructor()
+    public function instructors()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsToMany(User::class, 'course_instructor');
     }
 
      // Relasi ke Lesson (satu kursus punya banyak pelajaran)
@@ -51,13 +51,4 @@ class Course extends Model
     {
         return $this->hasMany(Feedback::class);
     }
-
-    // Atribut untuk status
-    // public function getStatusColorAttribute()
-    // {
-    //     return [
-    //         'draft' => 'bg-gray-300 text-gray-800',
-    //         'published' => 'bg-green-500 text-white',
-    //     ][$this->status] ?? 'bg-gray-200';
-    // }
 }

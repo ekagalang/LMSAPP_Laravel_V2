@@ -98,4 +98,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Feedback::class, 'user_id');
     }
+
+    public function taughtCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_instructor');
+    }
 }

@@ -17,55 +17,53 @@ class RolesAndPermissionsSeeder extends Seeder
         // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Buat Permissions yang lebih spesifik
+        // --- TAHAP 1: Ciptakan semua Izin yang ada di aplikasi ---
         Permission::create(['name' => 'manage users']);
         Permission::create(['name' => 'manage roles']);
-        
         Permission::create(['name' => 'manage all courses']);
         Permission::create(['name' => 'manage own courses']);
         Permission::create(['name' => 'view courses']);
         Permission::create(['name' => 'enroll courses']);
-        
         Permission::create(['name' => 'attempt quizzes']);
         Permission::create(['name' => 'grade quizzes']);
-
         Permission::create(['name' => 'view progress reports']);
         Permission::create(['name' => 'generate reports']);
-
         Permission::create(['name' => 'manage discussions']);
         Permission::create(['name' => 'assist discussions']);
 
 
-        // Buat Role Participant
+        // --- TAHAP 2: Ciptakan semua Peran ---
         $participantRole = Role::create(['name' => 'participant']);
+        $instructorRole = Role::create(['name' => 'instructor']);
+        $eventOrganizerRole = Role::create(['name' => 'event-organizer']);
+        $superAdminRole = Role::create(['name' => 'super-admin']);
+
+
+        // --- ✅ TAHAP 3: Berikan Izin Default untuk Setiap Peran ---
+
+        // Izin untuk Participant
         $participantRole->givePermissionTo([
-            'view courses',
             'enroll courses',
             'attempt quizzes',
         ]);
 
-        // Buat Role Instructor
-        $instructorRole = Role::create(['name' => 'instructor']);
+        // Izin untuk Instructor
         $instructorRole->givePermissionTo([
-            'manage own courses',
             'view courses',
+            'manage own courses', // Instruktur bisa mengelola kursus yang ditugaskan padanya
             'grade quizzes',
             'view progress reports',
             'manage discussions',
         ]);
 
-        // Buat Role Event Organizer (Asisten Instruktur)
-        $eventOrganizerRole = Role::create(['name' => 'event-organizer']);
+        // Izin untuk Event Organizer
         $eventOrganizerRole->givePermissionTo([
-            'view courses',
             'view progress reports',
             'generate reports',
             'assist discussions',
         ]);
 
-        // Buat Role Super Admin
-        $superAdminRole = Role::create(['name' => 'super-admin']);
-        // Super Admin bisa melakukan segalanya, tidak perlu assign permission satu per satu
-        // karena kita akan memberikannya cek khusus di AuthServiceProvider.
+        // Super Admin secara otomatis mendapatkan semua akses melalui AuthServiceProvider,
+        // jadi tidak perlu ditetapkan di sini.
     }
 }

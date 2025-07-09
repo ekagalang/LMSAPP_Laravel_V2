@@ -104,16 +104,17 @@
 
     {{-- Navigasi Tab Pertanyaan --}}
     <div class="flex border-b border-gray-200 mb-4 overflow-x-auto whitespace-nowrap">
-        <template x-for="(question, index) in Array.from({ length: questionsCount }, (_, i) => i)" :key="index">
-            <button type="button" @click="showQuestion(index)" :class="{ 'border-indigo-500 text-indigo-600': currentQuestionTab === index, 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': currentQuestionTab !== index }" class="py-2 px-4 border-b-2 font-medium text-sm focus:outline-none transition-colors duration-200">
-                <span x-text="index + 1"></span>
+        <template x-for="index in questionsCount" :key="index">
+            <button type="button" @click="showQuestion(index - 1)" 
+                    :class="{ 'border-indigo-500 text-indigo-600': currentQuestionTab === (index - 1), '...' : currentQuestionTab !== (index - 1) }"
+                    class="py-2 px-4 border-b-2 font-medium text-sm">
+                <span x-text="index"></span>
             </button>
         </template>
     </div>
 
-    <div id="questions-container-for-quiz-form" class="space-y-6">
-        {{-- Pertanyaan akan ditambahkan via JavaScript --}}
-        {{-- Setiap question-block akan memiliki x-show="currentQuestionTab === index" --}}
+    <div id="questions-container-for-quiz-form">
+        {{-- Pertanyaan akan ditambahkan ke sini oleh JavaScript --}}
     </div>
 
     <div class="mt-6 flex justify-between items-center">

@@ -47,13 +47,14 @@
             <div x-data="{ currentTab: 'lessons' }" class="mt-8">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button @click="currentTab = 'lessons'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'lessons', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': currentTab !== 'lessons'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            Pelajaran & Konten
-                        </button>
+                        <button @click="currentTab = 'lessons'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'lessons', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'lessons'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pelajaran & Konten</button>
+                        
+                        {{-- Munculkan tab ini hanya jika user punya izin --}}
                         @can('update', $course)
-                            <button @click="currentTab = 'participants'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'participants', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': currentTab !== 'participants'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                                Peserta Kursus
-                            </button>
+                            {{-- ✅ TAB BARU UNTUK MANAJEMEN PENGELOLA --}}
+                            <button @click="currentTab = 'managers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'managers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pengelola Kursus</button>
+
+                            <button @click="currentTab = 'participants'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'participants', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'participants'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Peserta Kursus</button>
                         @endcan
                     </nav>
                 </div>
@@ -131,130 +132,123 @@
                 </div>
 
                 @can('update', $course)
-                    <div x-show="currentTab === 'participants'" x-data="{
-                        selectedEnrollUsers: [],
-                        selectedUnenrollUsers: [],
-                        searchTermEnroll: '', // Search term untuk mendaftarkan peserta baru
-                        searchTermUnenroll: '', // Search term untuk mencabut akses peserta terdaftar
-                        
-                        // Data mentah untuk peserta yang belum terdaftar (PHP ke JS)
-                        unEnrolledParticipantsData: {{ \App\Models\User::where('role', 'participant')->whereNotIn('id', $course->participants->pluck('id'))->orderBy('name')->get()->toJson() }},
-                        filteredUnEnrolledParticipants: [],
+                    <div x-show="currentTab === 'managers'" x-cloak class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Instruktur Ditugaskan</h4>
+                                <form action="{{ route('courses.removeInstructor', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus instruktur terpilih?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                        {{-- ✅ PERUBAHAN DI SINI --}}
+                                        @forelse($course->instructors as $instructor)
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="instructor-{{$instructor->id}}">
+                                                <label for="instructor-{{$instructor->id}}" class="ml-2">{{ $instructor->name }}</label>
+                                            </div>
+                                        @empty
+                                            <p class="text-gray-500 p-2">Belum ada instruktur.</p>
+                                        @endforelse
+                                    </div>
+                                    @if($course->instructors->isNotEmpty())
+                                        <x-danger-button type="submit">Hapus Terpilih</x-danger-button>
+                                    @endif
+                                </form>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Tambahkan Instruktur Baru</h4>
+                                <form action="{{ route('courses.addInstructor', $course) }}" method="POST">
+                                    @csrf
+                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                        @forelse($availableInstructors as $instructor)
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="avail-instructor-{{$instructor->id}}">
+                                                <label for="avail-instructor-{{$instructor->id}}" class="ml-2">{{ $instructor->name }}</label>
+                                            </div>
+                                        @empty
+                                            <p class="text-gray-500 p-2">Semua instruktur sudah ditugaskan.</p>
+                                        @endforelse
+                                    </div>
+                                    @if($availableInstructors->isNotEmpty())
+                                        <x-primary-button type="submit">Tambahkan</x-primary-button>
+                                    @endif
+                                </form>
+                            </div>
+                        </div>
+                    </div>
 
-                        // Data mentah untuk peserta yang sudah terdaftar (PHP ke JS)
-                        enrolledParticipantsData: {{ $course->participants->toJson() }},
-                        filteredEnrolledParticipants: [],
-
-                        init() {
-                            // Pastikan data selalu array
-                            this.unEnrolledParticipantsData = Array.isArray(this.unEnrolledParticipantsData) ? this.unEnrolledParticipantsData : [];
-                            this.enrolledParticipantsData = Array.isArray(this.enrolledParticipantsData) ? this.enrolledParticipantsData : [];
-
-                            // Filter awal saat komponen diinisialisasi
-                            this.filterUnEnrolledParticipants(); // Ini untuk daftar yang BELUM terdaftar
-                            this.filterEnrolledParticipants();   // Ini untuk daftar yang SUDAH terdaftar
-
-                            // Pantau perubahan search terms
-                            this.$watch('searchTermEnroll', () => this.filterUnEnrolledParticipants());
-                            this.$watch('searchTermUnenroll', () => this.filterEnrolledParticipants());
-                        },
-
-                        filterUnEnrolledParticipants() {
-                            // Fungsi ini memfilter daftar yang BELUM terdaftar, menggunakan searchTermEnroll
-                            if (this.searchTermEnroll === '') {
-                                this.filteredUnEnrolledParticipants = this.unEnrolledParticipantsData;
-                            } else {
-                                this.filteredUnEnrolledParticipants = this.unEnrolledParticipantsData.filter(user => {
-                                    const userName = user.name ? user.name.toLowerCase() : '';
-                                    const userEmail = user.email ? user.email.toLowerCase() : '';
-                                    const lowerCaseSearchTerm = this.searchTermEnroll.toLowerCase();
-                                    return userName.includes(lowerCaseSearchTerm) || userEmail.includes(lowerCaseSearchTerm);
-                                });
+                    <div x-show="currentTab === 'participants'" x-cloak class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg"
+                         x-data="{
+                            selectedEnrollUsers: [],
+                            selectedUnenrollUsers: [],
+                            searchTermEnroll: '',
+                            searchTermUnenroll: '',
+                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants) }},
+                            enrolledParticipantsData: {{ Js::from($course->enrolledUsers) }},
+                            get filteredUnEnrolledParticipants() {
+                                if (this.searchTermEnroll === '') return this.unEnrolledParticipantsData;
+                                return this.unEnrolledParticipantsData.filter(user => 
+                                    user.name.toLowerCase().includes(this.searchTermEnroll.toLowerCase()) || 
+                                    user.email.toLowerCase().includes(this.searchTermEnroll.toLowerCase())
+                                );
+                            },
+                            get filteredEnrolledParticipants() {
+                                if (this.searchTermUnenroll === '') return this.enrolledParticipantsData;
+                                return this.enrolledParticipantsData.filter(user => 
+                                    user.name.toLowerCase().includes(this.searchTermUnenroll.toLowerCase()) || 
+                                    user.email.toLowerCase().includes(this.searchTermUnenroll.toLowerCase())
+                                );
                             }
-                        },
-
-                        filterEnrolledParticipants() {
-                            // Fungsi ini memfilter daftar yang SUDAH terdaftar, menggunakan searchTermUnenroll
-                            if (this.searchTermUnenroll === '') {
-                                this.filteredEnrolledParticipants = this.enrolledParticipantsData;
-                            } else {
-                                this.filteredEnrolledParticipants = this.enrolledParticipantsData.filter(user => {
-                                    const userName = user.name ? user.name.toLowerCase() : '';
-                                    const userEmail = user.email ? user.email.toLowerCase() : '';
-                                    const lowerCaseSearchTerm = this.searchTermUnenroll.toLowerCase();
-                                    return userName.includes(lowerCaseSearchTerm) || userEmail.includes(lowerCaseSearchTerm);
-                                });
-                            }
-                        }
-                    }" class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6 text-gray-900">
-                            <h3 class="text-xl font-bold text-gray-900 mb-4">Daftar Peserta Terdaftar</h3>
-
-                            @if ($course->participants->isEmpty())
-                                <p class="text-center text-gray-500 mb-4">Belum ada peserta yang terdaftar di kursus ini.</p>
-                            @else
-                                <div class="mb-4">
-                                    {{-- Search input untuk peserta terdaftar --}}
-                                    <input type="text" x-model="searchTermUnenroll" placeholder="Cari nama atau email..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                </div>
-                                <form id="unenroll-form" method="POST" action="{{ route('courses.unenroll_mass', $course) }}" onsubmit="return confirm('Apakah Anda yakin ingin mencabut akses peserta terpilih?');">
-                                    {{-- Scrolling window untuk peserta terdaftar --}}
-                                    <div class="space-y-2 mb-6 max-h-60 overflow-y-auto border p-2 rounded-md">
-                                        {{-- Menggunakan filteredEnrolledParticipants --}}
-                                        <template x-for="participant in filteredEnrolledParticipants" :key="participant.id">
-                                            <div class="flex items-center bg-gray-50 p-3 rounded-md shadow-sm border border-gray-200">
-                                                <input type="checkbox" name="user_ids[]" :value="participant.id" x-model="selectedUnenrollUsers" class="rounded border-gray-300 text-red-600 shadow-sm focus:ring-red-500 mr-2">
-                                                <span class="font-medium text-gray-800 flex-grow" x-text="`${participant.name} (${participant.email})`"></span>
+                        }">
+                        <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Peserta Terdaftar</h4>
+                                @if($course->enrolledUsers->isEmpty())
+                                    <p class="text-center text-gray-500">Belum ada peserta.</p>
+                                @else
+                                    <form id="unenroll-form" method="POST" action="{{ route('courses.unenroll_mass', $course) }}" onsubmit="return confirm('Anda yakin ingin mencabut akses peserta terpilih?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <div class="mb-4">
+                                            <input type="text" x-model="searchTermUnenroll" placeholder="Cari peserta terdaftar..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                                        </div>
+                                        <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                            <template x-for="participant in filteredEnrolledParticipants" :key="participant.id">
+                                                <div class="flex items-center">
+                                                    <input type="checkbox" name="user_ids[]" :value="participant.id" x-model="selectedUnenrollUsers">
+                                                    <label class="ml-2" x-text="`${participant.name} (${participant.email})`"></label>
+                                                </div>
+                                            </template>
+                                            <template x-if="filteredEnrolledParticipants.length === 0">
+                                                <p class="text-gray-500 p-2">Tidak ada hasil.</p>
+                                            </template>
+                                        </div>
+                                        <x-danger-button type="submit" x-bind:disabled="selectedUnenrollUsers.length === 0">Cabut Akses Terpilih</x-danger-button>
+                                    </form>
+                                @endif
+                            </div>
+                            
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Daftarkan Peserta Baru</h4>
+                                <form id="enroll-form" method="POST" action="{{ route('courses.enroll', $course) }}">
+                                    @csrf
+                                    <div class="mb-4">
+                                        <input type="text" x-model="searchTermEnroll" placeholder="Cari calon peserta..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                        <template x-for="user in filteredUnEnrolledParticipants" :key="user.id">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="user_ids[]" :value="user.id" x-model="selectedEnrollUsers">
+                                                <label class="ml-2" x-text="`${user.name} (${user.email})`"></label>
                                             </div>
                                         </template>
-                                        <template x-if="filteredEnrolledParticipants.length === 0 && searchTermUnenroll === ''">
-                                            <p class="text-gray-500 text-sm">Tidak ada peserta yang terdaftar.</p>
-                                        </template>
-                                        <template x-if="filteredEnrolledParticipants.length === 0 && searchTermUnenroll !== ''">
-                                            <p class="text-gray-500 text-sm">Tidak ada peserta terdaftar yang cocok dengan pencarian Anda.</p>
+                                        <template x-if="filteredUnEnrolledParticipants.length === 0">
+                                            <p class="text-gray-500 p-2">Tidak ada peserta yang tersedia.</p>
                                         </template>
                                     </div>
+                                    <x-primary-button type="submit" x-bind:disabled="selectedEnrollUsers.length === 0">Daftarkan Terpilih</x-primary-button>
                                 </form>
-                                @csrf
-                                    @method('DELETE')
-                                    <div class="mb-4">
-                                        <button type="submit" :disabled="selectedUnenrollUsers.length === 0" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:bg-red-700 active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                                            Cabut Akses Terpilih (<span x-text="selectedUnenrollUsers.length"></span>)
-                                        </button>
-                                    </div>
-                            @endif
-
-                            <h4 class="text-lg font-bold text-gray-800 mb-3">Daftarkan Peserta Baru</h4>
-                            <div class="mb-4">
-                                {{-- Search input untuk peserta baru --}}
-                                <input type="text" x-model="searchTermEnroll" placeholder="Cari nama atau email..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                             </div>
-                            <form id="enroll-form" method="POST" action="{{ route('courses.enroll', $course) }}">
-                                @csrf
-                                {{-- Scrolling window untuk peserta yang belum terdaftar --}}
-                                <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
-                                    {{-- Menggunakan filteredUnEnrolledParticipants --}}
-                                    <template x-for="user in filteredUnEnrolledParticipants" :key="user.id">
-                                        <div class="flex items-center">
-                                            <input type="checkbox" name="user_ids[]" :value="user.id" x-model="selectedEnrollUsers" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 mr-2">
-                                            <label class="text-sm text-gray-700" x-text="`${user.name} (${user.email})`"></label>
-                                        </div>
-                                    </template>
-                                    <template x-if="filteredUnEnrolledParticipants.length === 0 && searchTermEnroll === ''">
-                                        <p class="text-gray-500 text-sm">Tidak ada peserta yang tersedia untuk didaftarkan.</p>
-                                    </template>
-                                    <template x-if="filteredUnEnrolledParticipants.length === 0 && searchTermEnroll !== ''">
-                                        <p class="text-gray-500 text-sm">Tidak ada peserta yang cocok dengan pencarian Anda.</p>
-                                    </template>
-                                </div>
-                                @error('user_ids')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-
-                                <button type="submit" :disabled="selectedEnrollUsers.length === 0" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {{ __('Daftarkan Terpilih') }} (<span x-text="selectedEnrollUsers.length"></span>)
-                                </button>
-                            </form>
                         </div>
                     </div>
                 @endcan

@@ -9,85 +9,74 @@ use Illuminate\Auth\Access\Response;
 class CoursePolicy
 {
     /**
-     * Determine whether the user can view any models.
-     * Metode ini dipanggil saat membuka halaman "Manajemen Kursus".
+     * Pengecekan ini berjalan sebelum method lainnya.
+     * Jika user adalah super-admin, semua aksi diizinkan.
+     */
+    public function before(User $user, string $ability): bool|null
+    {
+        if ($user->hasRole('super-admin')) {
+            return true;
+        }
+        return null;
+    }
+
+    /**
+     * Menentukan siapa yang boleh MELIHAT MENU "Manajemen Kursus".
      */
     public function viewAny(User $user): bool
     {
-        // PERBAIKAN: Gunakan permission yang sudah kita definisikan.
-        // Instruktur dan Super Admin akan memiliki salah satu dari permission ini.
-        return $user->hasPermissionTo('manage all courses') || $user->hasPermissionTo('manage own courses');
+        // ✅ Menggunakan izin yang ada di file Anda: 'view courses'
+        return $user->can('view courses');
     }
 
     /**
-     * Determine whether the user can view the model.
-     * Metode ini untuk melihat detail satu kursus.
+     * Menentukan siapa yang boleh MELIHAT DETAIL sebuah kursus.
      */
     public function view(User $user, Course $course): bool
     {
-        // Semua pengguna yang terdaftar bisa melihat detail kursus.
-        return true;
+        // Jika kursus sudah publish, semua yang terdaftar boleh lihat.
+        if ($course->status === 'published') {
+            return true;
+        }
+
+        // Jika draft, hanya yang punya izin yang sesuai.
+        // Anda bisa memilih 'manage own courses' atau 'manage all courses'.
+        return $user->can('manage own courses') || $user->can('manage all courses');
+    }
+    
+    /**
+     * Menentukan siapa yang boleh melihat halaman progres.
+     */
+    public function viewProgress(User $user, Course $course): bool
+    {
+        // Izinkan jika user adalah instruktur ATAU punya izin lihat laporan
+        return $course->instructors->contains($user) || $user->can('view progress reports');
     }
 
     /**
-     * Determine whether the user can create models.
-     * Metode ini untuk menampilkan tombol "Tambah Kursus Baru".
+     * Menentukan siapa yang boleh MEMBUAT kursus.
      */
     public function create(User $user): bool
     {
-        // PERBAIKAN: Gunakan permission yang sama dengan viewAny.
-        return $user->hasPermissionTo('manage all courses') || $user->hasPermissionTo('manage own courses');
+        // ✅ Menggunakan izin yang ada di file Anda: 'manage all courses'
+        return $user->can('manage all courses');
     }
 
     /**
-     * Determine whether the user can update the model.
-     * Metode ini untuk menampilkan tombol "Edit".
+     * Menentukan siapa yang boleh MENGUBAH kursus.
      */
     public function update(User $user, Course $course): bool
     {
-        // PERBAIKAN: Gunakan permission.
-        // Jika punya permission 'manage all courses' (seperti Super Admin), bisa edit semua kursus.
-        if ($user->hasPermissionTo('manage all courses')) {
-            return true;
-        }
-        // Jika hanya punya 'manage own courses' (seperti Instruktur), hanya bisa edit kursus miliknya sendiri.
-        if ($user->hasPermissionTo('manage own courses')) {
-            return $user->id === $course->user_id;
-        }
-        return false;
+        // ✅ LOGIKA BARU: Izinkan jika user terdaftar sebagai salah satu instruktur di kursus ini
+        return $user->can('manage own courses') && $course->instructors->contains($user);
     }
 
     /**
-     * Determine whether the user can delete the model.
-     * Metode ini untuk menampilkan tombol "Hapus".
+     * Menentukan siapa yang boleh MENGHAPUS kursus.
      */
     public function delete(User $user, Course $course): bool
     {
-        // Logikanya sama persis dengan update.
-        if ($user->hasPermissionTo('manage all courses')) {
-            return true;
-        }
-        if ($user->hasPermissionTo('manage own courses')) {
-            return $user->id === $course->user_id;
-        }
-        return false;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, Course $course): bool
-    {
-        // Hanya Super Admin yang bisa restore.
-        return $user->hasPermissionTo('manage all courses');
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, Course $course): bool
-    {
-        // Hanya Super Admin yang bisa force delete.
-        return $user->hasPermissionTo('manage all courses');
+        // Logikanya sama dengan update
+        return $user->can('manage own courses') && $course->instructors->contains($user);
     }
 }
