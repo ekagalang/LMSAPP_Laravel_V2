@@ -31,11 +31,14 @@
     removeQuestionTab(removedIndex) {
         this.questionsCount--;
         if (this.currentQuestionTab > removedIndex) {
+            // Jika tab yang aktif berada setelah tab yang dihapus, geser ke kiri
             this.currentQuestionTab--;
         } else if (this.currentQuestionTab === removedIndex && this.questionsCount > 0) {
-            this.currentQuestionTab = Math.max(0, this.questionsCount - 1); // Pindah ke tab sebelumnya jika yang dihapus adalah tab aktif
+            // Jika tab yang aktif adalah yang dihapus, pindah ke tab terakhir yang valid
+            this.currentQuestionTab = Math.max(0, this.questionsCount - 1);
         } else if (this.questionsCount === 0) {
-            this.currentQuestionTab = 0; // Reset ke 0 jika tidak ada pertanyaan
+            // Jika tidak ada pertanyaan tersisa, reset
+            this.currentQuestionTab = 0;
         }
     }
 }" class="border border-gray-200 p-6 rounded-lg bg-gray-50">
@@ -127,3 +130,79 @@
         </button>
     </div>
 </div>
+
+
+<div x-data="quizFormManager()" x-init="initializeQuiz($wire.get('quizData'))">
+    <div class="flex border-b">
+        <template x-for="(question, index) in questions" :key="question.id || index">
+            <button type="button" @click="currentTab = index"
+                    :class="{ 'border-indigo-500 text-indigo-600': currentTab === index }"
+                    class="py-2 px-4 border-b-2 font-medium text-sm"
+                    x-text="`Q${index + 1}`"></button>
+        </template>
+    </div>
+
+    <template x-for="(question, qIndex) in questions" :key="question.id || qIndex">
+        <div x-show="currentTab === qIndex" class="question-block">
+            <textarea :name="`questions[${qIndex}][question_text]`" x-model="question.question_text" required></textarea>
+            
+            <select :name="`questions[${qIndex}][type]`" x-model="question.type">
+                <option value="multiple_choice">Pilihan Ganda</option>
+                <option value="true_false">Benar/Salah</option>
+            </select>
+
+            <div x-show="question.type === 'multiple_choice'">
+                <template x-for="(option, oIndex) in question.options" :key="oIndex">
+                    <div>
+                        <input :name="`questions[${qIndex}][options][${oIndex}][option_text]`" x-model="option.option_text" required>
+                        <input type="checkbox" :name="`questions[${qIndex}][options][${oIndex}][is_correct]`" x-model="option.is_correct">
+                        <button type="button" @click="removeOption(qIndex, oIndex)">Hapus Opsi</button>
+                    </div>
+                </template>
+                <button type="button" @click="addOption(qIndex)">Tambah Opsi</button>
+            </div>
+            
+            </div>
+    </template>
+
+    <button type="button" @click="addQuestion()">Tambah Pertanyaan</button>
+    <button type="button" @click="removeQuestion(currentTab)" x-show="questions.length > 1">Hapus Pertanyaan Ini</button>
+</div>
+
+<script>
+    function quizFormManager() {
+        return {
+            currentTab: 0,
+            questions: [],
+            initializeQuiz(quizData) {
+                if (quizData && quizData.questions) {
+                    this.questions = quizData.questions;
+                } else {
+                    this.addQuestion(); // Tambah satu pertanyaan jika kuis baru
+                }
+            },
+            addQuestion() {
+                this.questions.push({
+                    question_text: '',
+                    type: 'multiple_choice',
+                    marks: 1,
+                    options: [{ option_text: '', is_correct: false }]
+                });
+                this.currentTab = this.questions.length - 1;
+            },
+            removeQuestion(index) {
+                if (this.questions.length <= 1) return; // Jangan hapus jika hanya sisa satu
+                this.questions.splice(index, 1);
+                if (this.currentTab >= index && this.currentTab > 0) {
+                    this.currentTab--;
+                }
+            },
+            addOption(qIndex) {
+                this.questions[qIndex].options.push({ option_text: '', is_correct: false });
+            },
+            removeOption(qIndex, oIndex) {
+                this.questions[qIndex].options.splice(oIndex, 1);
+            }
+        }
+    }
+</script>

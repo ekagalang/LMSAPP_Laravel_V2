@@ -84,23 +84,28 @@
                 handleContentTypeChange();
 
                 document.body.addEventListener('click', function(e) {
-                    if (e.target.id === 'add-question-to-quiz-form') {
-                        addQuestionToForm();
-                    }
-                    if (e.target.classList.contains('add-option')) {
-                        addOptionToQuestion(e.target.closest('.question-block'));
-                    }
-                    if (e.target.classList.contains('remove-option')) {
-                        const optionGroup = e.target.closest('.option-group');
-                        const optionId = optionGroup.querySelector('input[type="hidden"]').value;
-                        if (optionId) {
-                            const hiddenInput = document.createElement('input');
-                            hiddenInput.type = 'hidden';
-                            hiddenInput.name = `questions[${optionGroup.closest('.question-block').dataset.questionIndex}][options_to_delete][]`;
-                            hiddenInput.value = optionId;
-                            contentForm.appendChild(hiddenInput);
+                    if (e.target.closest('.remove-question')) {
+                        const questionBlock = e.target.closest('.question-block');
+                        const questionId = questionBlock.querySelector('input[name$="[id]"]').value;
+                        const quizFormRoot = document.getElementById('quiz_form_fields').firstElementChild;
+                        const alpineScope = Alpine.$data(quizFormRoot);
+                        
+                        // Tambahkan ID ke daftar hapus jika ada
+                        if (questionId) {
+                            const deleteInput = document.createElement('input');
+                            deleteInput.type = 'hidden';
+                            deleteInput.name = 'questions_to_delete[]';
+                            deleteInput.value = questionId;
+                            contentForm.appendChild(deleteInput);
                         }
-                        optionGroup.remove();
+                        
+                        const removedIndex = Array.from(questionBlock.parentNode.children).indexOf(questionBlock);
+                        questionBlock.remove();
+
+                        // Panggil fungsi di Alpine scope untuk mengupdate state
+                        if (alpineScope && typeof alpineScope.removeQuestionTab === 'function') {
+                            alpineScope.removeQuestionTab(removedIndex);
+                        }
                     }
                 });
 
@@ -137,31 +142,20 @@
             }
 
             function loadQuizFormPartial(quizData) {
-                const quizFormContainer = document.getElementById('quiz_form_fields');
+                const container = document.getElementById('quiz_form_fields');
+                // Reset kontainer
+                container.innerHTML = '';
+                
                 fetch("{{ route('quiz-full-form-partial') }}")
                     .then(response => response.text())
                     .then(html => {
-                        quizFormContainer.innerHTML = html;
-                        const alpineComponentEl = quizFormContainer.querySelector('[x-data]');
+                        container.innerHTML = html;
+                        const alpineEl = container.querySelector('[x-data]');
                         
-                        // ✅ PERBAIKAN PENTING:
-                        // Hapus fungsi hapus yang lama dan buat fungsi baru yang lebih andal
-                        if (alpineComponentEl.__x) {
-                            alpineComponentEl.__x.getUnobservedData().removeQuestionTab = function(removedIndex) {
-                                this.questionsCount--;
-                                // Logika baru untuk memperbaiki indeks setelah penghapusan
-                                if (this.currentQuestionTab >= removedIndex) {
-                                    this.currentQuestionTab = Math.max(0, this.currentQuestionTab - 1);
-                                }
-                            };
-                        }
-                        
-                        Alpine.initTree(alpineComponentEl);
-
-                        if (quizData) {
-                            populateQuizForm(quizData);
-                        } else {
-                            addQuestionToForm();
+                        // Set data kuis ke komponen Alpine
+                        const alpineComponent = Alpine.$data(alpineEl);
+                        if (alpineComponent) {
+                            alpineComponent.initializeQuiz(quizData);
                         }
                     });
             }
@@ -249,6 +243,17 @@
                 
                 optionsContainer.style.display = select.value === 'multiple_choice' ? 'block' : 'none';
                 trueFalseOptions.style.display = select.value === 'true_false' ? 'block' : 'none';
+            }
+
+            function attachQuizFormListeners(container) {
+                const addQuestionButton = container.querySelector('#add-question-to-quiz-form');
+                if (addQuestionButton) {
+                    addQuestionButton.addEventListener('click', function() {
+                        // Dapatkan kembali quizFormAlpineScope di sini untuk memastikan ia yang terbaru
+                        quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer.firstElementChild); 
+                        addQuestionToQuizForm(globalQuestionCounter++);
+                    });
+                }
             }
 
             init();

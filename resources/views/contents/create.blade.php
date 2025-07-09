@@ -249,9 +249,8 @@
             if (addQuestionButton) {
                 addQuestionButton.addEventListener('click', function() {
                     // Dapatkan kembali quizFormAlpineScope di sini untuk memastikan ia yang terbaru
-                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer.firstElementChild); // Pastikan ini menunjuk ke root Alpine component
+                    quizFormAlpineScope = Alpine.$data(quizFormFieldsContainer.firstElementChild); 
                     addQuestionToQuizForm(globalQuestionCounter++);
-                    // Biarkan addQuestionToQuizForm menangani pembaruan scope Alpine (questionsCount, currentQuestionTab) melalui nextTick
                 });
             }
         }

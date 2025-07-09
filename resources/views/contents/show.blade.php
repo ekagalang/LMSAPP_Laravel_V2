@@ -58,11 +58,11 @@
 
                     {{-- ✅ PERBAIKAN DI SINI --}}
                     @if($content->type == 'video')
-                        <div class="aspect-w-16 aspect-h-9"><iframe src="https://www.youtube.com/embed/{{ $content->video_url }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg"></iframe></div>
+                        <div class="aspect-w-16 aspect-h-9"><iframe src="https://www.youtube.com/embed/{{ $content->video_url }}" frameborder="0" ...></iframe></div>
                     @elseif($content->type == 'file')
-                        <a href="{{ Storage::url($content->file_path) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Download File</a>
+                        <a href="{{ Storage::url($content->file_path) }}" ...>Download File</a>
                     @elseif($content->type == 'text' || $content->type == 'essay')
-                        {{-- Menampilkan isi pertanyaan untuk Teks dan Esai --}}
+                        {{-- Ini akan menampilkan pertanyaan untuk Teks dan Esai --}}
                         <div class="prose max-w-none">{!! $content->body !!}</div>
                     @endif
 

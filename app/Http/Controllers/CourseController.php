@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use PDF;
+use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
@@ -169,13 +170,15 @@ class CourseController extends Controller
     public function showProgress(Request $request, Course $course)
     {
         $this->authorize('viewProgress', $course);
-        $user = Auth::user();
+    $user = Auth::user();
 
-        // ✅ LOGIKA BARU: Ambil semua kursus yang diajar instruktur ini untuk dropdown
-        $instructorCourses = Course::query()
-            ->where('user_id', $user->id)
-            ->orderBy('title')
-            ->get();
+    // LOGIKA BARU: Ambil semua kursus yang diajar instruktur ini untuk dropdown
+    $instructorCourses = Course::query()
+        ->whereHas('instructors', function ($q) use ($user) { // Menggunakan whereHas untuk relasi
+            $q->where('user_id', $user->id);
+        })
+        ->orderBy('title')
+        ->get();
 
         // Ambil query dasar untuk peserta yang terdaftar
         $enrolledUsersQuery = $course->enrolledUsers();

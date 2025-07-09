@@ -162,6 +162,7 @@ class ContentController extends Controller
     public function edit(Lesson $lesson, Content $content)
     {
         $this->authorize('update', $lesson->course);
+        // ✅ PERBAIKAN: Pastikan relasi quiz, questions, dan options selalu termuat.
         if ($content->type === 'quiz' && $content->quiz) {
             $content->load('quiz.questions.options');
         }
