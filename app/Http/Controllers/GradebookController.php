@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; // Pastikan ini ditambahkan
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class GradebookController extends Controller
@@ -20,18 +20,21 @@ class GradebookController extends Controller
         $this->authorize('update', $course);
         $user = Auth::user();
 
-        // ✅ LOGIKA BARU: Ambil daftar kursus untuk filter dropdown
         $allCoursesForFilter = collect();
         if ($user->hasRole('super-admin')) {
             $allCoursesForFilter = Course::orderBy('title')->get();
         } elseif ($user->hasRole('instructor')) {
-            $allCoursesForFilter = Course::where('user_id', $user->id)->orderBy('title')->get();
+            // ✅ PERBAIKAN: Mengganti cara pencarian kursus untuk instruktur.
+            // Sebelumnya: Course::where('user_id', $user->id)->... (INI YANG MENYEBABKAN ERROR)
+            // Sekarang, kita mencari kursus di mana user ini terdaftar sebagai instruktur.
+            $allCoursesForFilter = Course::whereHas('instructors', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })->orderBy('title')->get();
         }
 
         // --- Data untuk Tab Feedback Umum ---
         $participantsQuery = $course->enrolledUsers();
 
-        // Terapkan filter pencarian jika ada
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->search;
             $participantsQuery->where(function ($query) use ($searchTerm) {
@@ -49,6 +52,7 @@ class GradebookController extends Controller
             ->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
 
         if ($request->has('search') && $request->search != '') {
+            $searchTerm = $request->input('search'); // Ambil search term dari sini untuk konsistensi
             $participantsWithEssaysQuery->where(function ($query) use ($searchTerm) {
                 $query->where('name', 'like', '%' . $searchTerm . '%')
                       ->orWhere('email', 'like', '%' . $searchTerm . '%');

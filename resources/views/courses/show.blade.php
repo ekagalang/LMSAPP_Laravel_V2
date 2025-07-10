@@ -12,20 +12,23 @@
                     Detail Kursus: {{ $course->title }}
                 </h2>
             </div>
-            @can('update', $course)
-                {{-- PERUBAHAN: Tambahkan tombol Gradebook di sini --}}
-                <div class="flex space-x-2">
-                    <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600">
-                        {{ __('Buku Nilai & Feedback') }}
-                    </a>
-                    <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
-                        {{ __('Lihat Progres') }}
-                    </a>
-                    <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 focus:bg-purple-700 active:bg-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                        {{ __('Edit Kursus') }}
-                    </a>
-                </div>
+            <div class="flex space-x-2">
+            @can('grade quizzes')
+                <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600">
+                    {{ __('Buku Nilai & Feedback') }}
+                </a
             @endcan
+            @can('view progress reports')
+                <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                    {{ __('Lihat Progres') }}
+                </a>
+            @endcan
+            @can('update', $course)
+                <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 focus:bg-purple-700 active:bg-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                    {{ __('Edit Kursus') }}
+                </a>
+            @endcan
+            </div>
         </div>
     </x-slot>
 
@@ -82,13 +85,23 @@
                                             </h4>
                                             @can('update', $course)
                                                 <div class="flex space-x-2">
-                                                    <a href="{{ route('courses.lessons.edit', [$course, $lesson]) }}" class="text-purple-600 hover:text-purple-900 text-sm">Edit</a>
-                                                    <form action="{{ route('courses.lessons.destroy', [$course, $lesson]) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
+                                                    <a href="{{ route('courses.lessons.edit', [$course, $lesson]) }}"
+                                                    class="inline-flex items-center px-3 py-1 bg-purple-600 text-white text-sm font-semibold rounded hover:bg-purple-700">
+                                                        Edit
+                                                    </a>
+
+                                                    <form action="{{ route('courses.lessons.destroy', [$course, $lesson]) }}" method="POST"
+                                                        onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Hapus</button>
+                                                        <button type="submit"
+                                                                class="inline-flex items-center px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded hover:bg-red-700">
+                                                            Hapus
+                                                        </button>
                                                     </form>
-                                                    <a href="{{ route('lessons.contents.create', $lesson) }}" class="inline-flex items-center px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600">
+
+                                                    <a href="{{ route('lessons.contents.create', $lesson) }}"
+                                                    class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700">
                                                         Tambah Konten
                                                     </a>
                                                 </div>
@@ -110,12 +123,20 @@
                                                                 <a href="{{ route('contents.show', [$lesson, $content]) }}" class="text-blue-600 hover:text-blue-900">{{ $content->title }}</a>
                                                             </div>
                                                             @can('update', $course)
-                                                                <div class="flex space-x-2">
-                                                                    <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}" class="text-purple-600 hover:text-purple-900 text-sm">Edit</a>
-                                                                    <form action="{{ route('lessons.contents.destroy', [$lesson, $content]) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
+                                                                <div class="flex gap-2">
+                                                                    <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}"
+                                                                    class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 px-4 rounded">
+                                                                        Edit
+                                                                    </a>
+
+                                                                    <form action="{{ route('lessons.contents.destroy', [$lesson, $content]) }}" method="POST"
+                                                                        onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
                                                                         @csrf
                                                                         @method('DELETE')
-                                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Hapus</button>
+                                                                        <button type="submit"
+                                                                                class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 px-4 rounded">
+                                                                            Hapus
+                                                                        </button>
                                                                     </form>
                                                                 </div>
                                                             @endcan

@@ -1,6 +1,7 @@
 <div class="border border-gray-200 p-6 rounded-lg bg-gray-50/50 mt-4">
     <h4 class="text-lg font-bold text-gray-800 mb-4">Detail Kuis</h4>
     
+    {{-- Bagian Detail Kuis (Tidak berubah) --}}
     <div class="space-y-4">
         <div>
             <label class="block text-sm font-medium">Judul Kuis</label>
@@ -79,8 +80,11 @@
                                 <div class="flex items-center space-x-2">
                                     <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][id]`" x-model="option.id">
                                     <input type="text" :name="`quiz[questions][${qIndex}][options][${oIndex}][option_text]`" x-model="option.option_text" class="flex-grow rounded-md" placeholder="Teks opsi" required>
-                                    <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="0">
-                                    <input type="checkbox" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="1" x-model="option.is_correct" class="rounded">
+                                    
+                                    {{-- ✅ PERBAIKAN: Checkbox untuk Pilihan Ganda --}}
+                                    <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="false">
+                                    <input type="checkbox" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="true" x-model="option.is_correct" class="rounded">
+                                    
                                     <label class="text-sm">Benar</label>
                                     <button type="button" @click="removeOption(qIndex, oIndex)" class="text-red-500 hover:text-red-700">&times;</button>
                                 </div>
@@ -89,14 +93,16 @@
                         <button type="button" @click="addOption(qIndex)" class="mt-2 text-sm text-blue-600 hover:underline">+ Tambah Opsi</button>
                     </div>
 
+                    {{-- ✅ PERBAIKAN: Radio Button untuk Benar/Salah --}}
                     <div x-show="question.type === 'true_false'" class="mt-4 border-t pt-4">
+                        <h5 class="text-md font-semibold text-gray-700 mb-2">Jawaban Benar:</h5>
                         <div class="flex space-x-4">
                             <label class="flex items-center">
-                                <input type="radio" :name="`quiz[questions][${qIndex}][options][0][is_correct]`" :value="true" :checked="question.options[0] && question.options[0].is_correct">
+                                <input type="radio" :name="`quiz[questions][${qIndex}][correct_answer_tf]`" value="true" x-model="question.correct_answer_tf">
                                 <span class="ml-2">True</span>
                             </label>
                             <label class="flex items-center">
-                                <input type="radio" :name="`quiz[questions][${qIndex}][options][0][is_correct]`" :value="false" :checked="question.options[0] && !question.options[0].is_correct">
+                                <input type="radio" :name="`quiz[questions][${qIndex}][correct_answer_tf]`" value="false" x-model="question.correct_answer_tf">
                                 <span class="ml-2">False</span>
                             </label>
                         </div>

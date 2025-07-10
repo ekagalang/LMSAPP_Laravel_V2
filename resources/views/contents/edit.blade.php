@@ -16,7 +16,6 @@
                 <div class="p-6 text-gray-900" 
                      x-data="contentFormManager({
                          content: {{ Js::from($content) }},
-                         lessonId: {{ $lesson->id }},
                          createUrl: '{{ route('lessons.contents.store', $lesson) }}',
                          updateUrl: '{{ $content->exists ? route('lessons.contents.update', [$lesson, $content]) : '' }}'
                      })"
@@ -63,15 +62,12 @@
                         <div class="mt-4">
                             <div x-show="isType('text') || isType('essay')" x-cloak>
                                 <label for="body_editor" class="block text-sm font-medium text-gray-700" x-text="isType('essay') ? 'Pertanyaan Esai' : 'Isi Konten'"></label>
-                                <textarea name="body" x-model="content.body" class="hidden"></textarea>
-                                <div id="body_editor"></div>
+                                <textarea name="body_text" id="body_editor">{{ old('body', $content->body) }}</textarea>
                             </div>
-
                              <div x-show="isType('video')" x-cloak>
                                 <label for="video_url" class="block text-sm font-medium text-gray-700">URL Video YouTube</label>
-                                <input type="text" id="video_url" name="body" x-model="content.body" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="https://www.youtube.com/watch?v=xxxx">
+                                <input type="text" name="body_video" x-model="content.body" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="https://www.youtube.com/watch?v=xxxx">
                             </div>
-
                             <div x-show="isType('document') || isType('image')" x-cloak>
                                 <label for="file_upload" class="block text-sm font-medium text-gray-700">Unggah File</label>
                                 <template x-if="content.file_path">
@@ -79,7 +75,6 @@
                                 </template>
                                 <input type="file" name="file_upload" id="file_upload" class="mt-1 block w-full">
                             </div>
-                            
                             <div x-show="isType('quiz')" x-cloak>
                                 @include('quizzes.partials.full-quiz-form')
                             </div>
@@ -87,7 +82,10 @@
 
                         <div class="flex items-center justify-end mt-6">
                             <a href="{{ route('courses.show', $lesson->course) }}" class="text-sm text-gray-600 mr-4">Batal</a>
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
+                            <button 
+                                type="button" 
+                                @click="submitForm()" 
+                                class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
                                 <span x-text="content.id ? 'Perbarui Konten' : 'Simpan Konten'"></span>
                             </button>
                         </div>
@@ -107,57 +105,77 @@
                 
                 initForm() {
                     this.$watch('content.type', (newType) => this.handleTypeChange(newType));
-                    this.initTinymce();
 
-                    if (this.isType('quiz') && !this.content.quiz) {
+                    // ✅ PERBAIKAN UTAMA ADA DI SINI
+                    if (this.content.quiz) {
+                        // 1. Konversi nilai "show_answers_after_attempt" ke boolean
+                        this.content.quiz.show_answers_after_attempt = !!parseInt(this.content.quiz.show_answers_after_attempt);
+
+                        if (this.content.quiz.questions) {
+                            this.content.quiz.questions.forEach(q => {
+                                // 2. Konversi nilai "is_correct" untuk setiap opsi ke boolean
+                                if (q.options) {
+                                    q.options.forEach(opt => {
+                                        opt.is_correct = !!parseInt(opt.is_correct);
+                                    });
+                                }
+                                // Siapkan data untuk radio button Benar/Salah
+                                if (q.type === 'true_false') {
+                                    const correctOption = q.options.find(opt => opt.is_correct);
+                                    q.correct_answer_tf = correctOption ? correctOption.option_text.toLowerCase() : 'false';
+                                }
+                            });
+                        }
+                    } else {
+                        // Jika membuat kuis baru, inisialisasi objek kuis
                         this.content.quiz = this.defaultQuizObject();
                     }
-                    if (this.content.quiz) {
-                        this.content.quiz.questions = this.content.quiz.questions || [];
-                        if (this.content.quiz.questions.length === 0) {
-                            this.addQuestion();
-                        }
-                        this.content.quiz.questions.forEach(q => {
-                            q.options = q.options || [];
-                            q.open = q.open === undefined ? true : q.open;
-                        });
-                    }
-                },
 
+                    if (this.content.quiz.questions.length === 0) {
+                        this.addQuestion();
+                    }
+
+                    this.handleTypeChange(this.content.type);
+                },
+                
                 initTinymce() {
+                    if (tinymce.get('body_editor')) tinymce.get('body_editor').destroy();
+                    const textarea = document.getElementById('body_editor');
+                    if (!textarea) return;
+                    const initialContent = textarea.value;
                     tinymce.init({
-                        selector: '#body_editor',
-                        height: 300,
+                        selector: 'textarea#body_editor', height: 300,
+                        plugins: 'code table lists link image media autosave wordcount fullscreen template',
+                        toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
                         setup: (editor) => {
-                            editor.on('init', () => {
-                                editor.setContent(this.content.body || '');
-                                this.handleTypeChange(this.content.type);
-                            });
-                            editor.on('change', () => {
-                                this.content.body = editor.getContent();
-                            });
-                            editor.on('keyup', () => {
-                                this.content.body = editor.getContent();
-                            });
+                            editor.on('init', () => editor.setContent(initialContent));
                         }
                     });
                 },
 
                 isType(type) { return this.content.type === type; },
                 handleTypeChange(type) {
-                    const editor = tinymce.get('body_editor');
-                    if (!editor) return;
-                    if (this.isType('text') || this.isType('essay')) {
-                        editor.show();
+                    if (type === 'text' || type === 'essay') {
+                        this.$nextTick(() => { this.initTinymce(); });
                     } else {
-                        editor.hide();
+                        if (tinymce.get('body_editor')) tinymce.get('body_editor').destroy();
                     }
                 },
                 
-                defaultQuizObject() { return { title: this.content.title, description: '', total_marks: 100, pass_marks: 70, status: 'draft', show_answers_after_attempt: false, questions: [this.defaultQuestionObject()] }; },
-                defaultQuestionObject() { return { id: null, question_text: '', type: 'multiple_choice', marks: 10, options: [this.defaultOptionObject()], open: true }; },
+                submitForm() {
+                    if (tinymce.get('body_editor')) tinymce.triggerSave();
+                    document.getElementById('contentForm').submit();
+                },
+                
+                defaultQuizObject() { return { title: this.content.title, description: '', total_marks: 100, pass_marks: 70, status: 'draft', show_answers_after_attempt: false, questions: [] }; },
+                addQuestion() {
+                    this.content.quiz.questions.push({
+                        id: null, question_text: '', type: 'multiple_choice', marks: 10, open: true,
+                        options: [{ id: null, option_text: '', is_correct: false }],
+                        correct_answer_tf: 'false',
+                    });
+                },
                 defaultOptionObject() { return { id: null, option_text: '', is_correct: false }; },
-                addQuestion() { this.content.quiz.questions.push(this.defaultQuestionObject()); },
                 removeQuestion(qIndex) { if (this.content.quiz.questions.length > 1) this.content.quiz.questions.splice(qIndex, 1); },
                 addOption(qIndex) { this.content.quiz.questions[qIndex].options.push(this.defaultOptionObject()); },
                 removeOption(qIndex, oIndex) { this.content.quiz.questions[qIndex].options.splice(oIndex, 1); }
