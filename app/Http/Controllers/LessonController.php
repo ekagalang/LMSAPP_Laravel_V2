@@ -83,4 +83,24 @@ class LessonController extends Controller
         $lesson->delete();
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil dihapus!');
     }
+
+    public function updateOrder(Request $request)
+    {
+        $request->validate([
+            'lessons' => 'required|array',
+            'lessons.*' => 'integer|exists:lessons,id',
+        ]);
+
+        // Ambil pelajaran pertama untuk otorisasi
+        $firstLesson = Lesson::find($request->lessons[0]);
+        if ($firstLesson) {
+            $this->authorize('update', $firstLesson->course);
+        }
+
+        foreach ($request->lessons as $index => $lessonId) {
+            Lesson::where('id', $lessonId)->update(['order' => $index + 1]);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Urutan pelajaran berhasil diperbarui.']);
+    }
 }

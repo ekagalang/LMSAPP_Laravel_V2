@@ -17,7 +17,7 @@ class GradebookController extends Controller
      */
     public function index(Request $request, Course $course)
     {
-        $this->authorize('update', $course);
+        $this->authorize('viewGradebook', $course);
         $user = Auth::user();
 
         $allCoursesForFilter = collect();

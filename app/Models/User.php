@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-use App\Models\feedback;
 
 class User extends Authenticatable
 {
@@ -22,7 +21,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        // 'role', // Dihapus karena sudah digantikan oleh sistem Spatie
     ];
 
     /**
@@ -35,6 +33,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -43,7 +46,6 @@ class User extends Authenticatable
         ];
     }
 
-
     public function courses()
     {
         return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
@@ -51,12 +53,31 @@ class User extends Authenticatable
 
     public function enrolledCourses()
     {
-        return $this->belongsToMany(Course::class, 'course_user')->withPivot('feedback')->withTimestamps();
+        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
     }
 
-    public function isEnrolled(Course $course)
+    public function taughtCourses()
     {
-        return $this->enrolledCourses->contains($course);
+        return $this->belongsToMany(Course::class, 'course_instructor');
+    }
+
+    // ✅ FUNGSI isEnrolled DIUBAH MENJADI isEnrolledIn AGAR KONSISTEN & LEBIH EFISIEN
+    /**
+     * Memeriksa apakah pengguna terdaftar di kursus tertentu.
+     */
+    public function isEnrolledIn(Course $course): bool
+    {
+        return $this->enrolledCourses()->where('course_id', $course->id)->exists();
+    }
+
+    // ✅ FUNGSI BARU YANG HILANG SEBELUMNYA
+    /**
+     * Memeriksa apakah pengguna adalah instruktur untuk kursus tertentu.
+     */
+    public function isInstructorFor(Course $course): bool
+    {
+        // Mengecek ke tabel relasi 'course_instructor' apakah ada entri untuk user dan course ini.
+        return $this->taughtCourses()->where('course_id', $course->id)->exists();
     }
 
     public function completedLessons()
@@ -84,23 +105,8 @@ class User extends Authenticatable
         return $this->hasMany(EssaySubmission::class);
     }
 
-    public function contents()
-    {
-        return $this->belongsToMany(Content::class, 'content_user')->withTimestamps();
-    }
-
-    public function lessons()
-    {
-        return $this->belongsToMany(Lesson::class, 'lesson_user')->withTimestamps();
-    }
-
     public function feedback()
     {
         return $this->hasMany(Feedback::class, 'user_id');
-    }
-
-    public function taughtCourses()
-    {
-        return $this->belongsToMany(Course::class, 'course_instructor');
     }
 }

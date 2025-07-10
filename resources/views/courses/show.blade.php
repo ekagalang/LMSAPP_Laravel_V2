@@ -1,5 +1,3 @@
-{{-- resources/views/courses/show.blade.php --}}
-
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
@@ -13,21 +11,21 @@
                 </h2>
             </div>
             <div class="flex space-x-2">
-            @can('grade quizzes')
-                <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600">
-                    {{ __('Buku Nilai & Feedback') }}
-                </a
-            @endcan
-            @can('view progress reports')
-                <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
-                    {{ __('Lihat Progres') }}
-                </a>
-            @endcan
-            @can('update', $course)
-                <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 focus:bg-purple-700 active:bg-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                    {{ __('Edit Kursus') }}
-                </a>
-            @endcan
+                @can('grade quizzes')
+                    <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600">
+                        {{ __('Buku Nilai & Feedback') }}
+                    </a>
+                @endcan
+                @can('view progress reports')
+                    <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                        {{ __('Lihat Progres') }}
+                    </a>
+                @endcan
+                @can('update', $course)
+                    <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700">
+                        {{ __('Edit Kursus') }}
+                    </a>
+                @endcan
             </div>
         </div>
     </x-slot>
@@ -36,14 +34,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <strong class="font-bold">Sukses!</strong>
                     <span class="block sm:inline">{{ session('success') }}</span>
-                </div>
-            @endif
-            @if (session('error'))
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <strong class="font-bold">Error!</strong>
-                    <span class="block sm:inline">{{ session('error') }}</span>
                 </div>
             @endif
 
@@ -51,104 +42,90 @@
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                         <button @click="currentTab = 'lessons'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'lessons', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'lessons'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pelajaran & Konten</button>
-                        
-                        {{-- Munculkan tab ini hanya jika user punya izin --}}
                         @can('update', $course)
-                            {{-- ✅ TAB BARU UNTUK MANAJEMEN PENGELOLA --}}
                             <button @click="currentTab = 'managers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'managers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pengelola Kursus</button>
-
                             <button @click="currentTab = 'participants'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'participants', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'participants'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Peserta Kursus</button>
                         @endcan
                     </nav>
                 </div>
 
                 <div x-show="currentTab === 'lessons'" class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
+                    <div class="p-6 text-gray-900" 
+                         x-data="{
+                            lessons: {{ Js::from($course->lessons->sortBy('order')->values()) }},
+                            activeAccordion: null,
+                            moveUp(index) {
+                                if (index === 0) return;
+                                [this.lessons[index - 1], this.lessons[index]] = [this.lessons[index], this.lessons[index - 1]];
+                                this.updateOrderOnServer();
+                            },
+                            moveDown(index) {
+                                if (index === this.lessons.length - 1) return;
+                                [this.lessons[index], this.lessons[index + 1]] = [this.lessons[index + 1], this.lessons[index]];
+                                this.updateOrderOnServer();
+                            },
+                            updateOrderOnServer() {
+                                const orderedIds = this.lessons.map(lesson => lesson.id);
+                                fetch('{{ route('lessons.update_order') }}', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                    body: JSON.stringify({ lessons: orderedIds })
+                                });
+                            }
+                         }">
+                        
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-xl font-bold text-gray-900">Daftar Pelajaran</h3>
                             @can('update', $course)
-                                <a href="{{ route('courses.lessons.create', $course) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                <a href="{{ route('courses.lessons.create', $course) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
                                     {{ __('Tambah Pelajaran') }}
                                 </a>
                             @endcan
                         </div>
 
-                        @if ($course->lessons->isEmpty())
-                            <p class="text-center text-gray-500">Belum ada pelajaran dalam kursus ini.</p>
-                        @else
-                            <div class="space-y-4">
-                                @foreach ($course->lessons as $lesson)
-                                    <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
-                                        <div class="flex justify-between items-center">
-                                            <h4 class="text-lg font-semibold text-gray-800">
-                                                {{ $lesson->order }}. {{ $lesson->title }}
-                                            </h4>
+                        <p x-show="lessons.length === 0" class="text-center text-gray-500">Belum ada pelajaran dalam kursus ini.</p>
+
+                        <div class="space-y-3">
+                            <template x-for="(lesson, index) in lessons" :key="lesson.id">
+                                <div class="bg-gray-50 rounded-lg shadow-sm">
+                                    <div class="p-4 flex justify-between items-center">
+                                        <div class="flex items-center flex-grow">
+                                            {{-- ✅ Tombol Naik/Turun --}}
                                             @can('update', $course)
-                                                <div class="flex space-x-2">
-                                                    <a href="{{ route('courses.lessons.edit', [$course, $lesson]) }}"
-                                                    class="inline-flex items-center px-3 py-1 bg-purple-600 text-white text-sm font-semibold rounded hover:bg-purple-700">
-                                                        Edit
-                                                    </a>
-
-                                                    <form action="{{ route('courses.lessons.destroy', [$course, $lesson]) }}" method="POST"
-                                                        onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit"
-                                                                class="inline-flex items-center px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded hover:bg-red-700">
-                                                            Hapus
-                                                        </button>
-                                                    </form>
-
-                                                    <a href="{{ route('lessons.contents.create', $lesson) }}"
-                                                    class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700">
-                                                        Tambah Konten
-                                                    </a>
+                                                <div class="flex flex-col mr-4">
+                                                    <button @click="moveUp(index)" :disabled="index === 0" :class="{'opacity-25 cursor-not-allowed': index === 0}">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                                    </button>
+                                                    <button @click="moveDown(index)" :disabled="index === lessons.length - 1" :class="{'opacity-25 cursor-not-allowed': index === lessons.length - 1}">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                    </button>
                                                 </div>
                                             @endcan
+                                            <h4 class="text-lg font-semibold text-gray-800" x-text="lesson.title"></h4>
                                         </div>
-                                        <p class="text-gray-600 text-sm mt-1">{{ $lesson->description }}</p>
-
-                                        <div class="mt-4 border-t border-gray-200 pt-4">
-                                            <h5 class="text-md font-semibold text-gray-700 mb-2">Konten Pelajaran:</h5>
-                                            @if ($lesson->contents->isEmpty())
-                                                <p class="text-sm text-gray-500">Belum ada konten dalam pelajaran ini.</p>
-                                            @else
-                                                <ul class="space-y-2">
-                                                    @foreach ($lesson->contents as $content)
-                                                        <li class="flex justify-between items-center bg-white p-3 rounded-md shadow-sm border border-gray-200">
-                                                            <div class="flex items-center">
-                                                                <span class="font-medium text-gray-800 mr-2">{{ $content->order }}.</span>
-                                                                <span class="capitalize text-indigo-700 mr-2">[{{ $content->type }}]</span>
-                                                                <a href="{{ route('contents.show', [$lesson, $content]) }}" class="text-blue-600 hover:text-blue-900">{{ $content->title }}</a>
-                                                            </div>
-                                                            @can('update', $course)
-                                                                <div class="flex gap-2">
-                                                                    <a href="{{ route('lessons.contents.edit', [$lesson, $content]) }}"
-                                                                    class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 px-4 rounded">
-                                                                        Edit
-                                                                    </a>
-
-                                                                    <form action="{{ route('lessons.contents.destroy', [$lesson, $content]) }}" method="POST"
-                                                                        onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <button type="submit"
-                                                                                class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 px-4 rounded">
-                                                                            Hapus
-                                                                        </button>
-                                                                    </form>
-                                                                </div>
-                                                            @endcan
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            @endif
+                                        <div class="flex items-center space-x-4 flex-shrink-0">
+                                            @can('update', $course)
+                                                <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="text-purple-600 hover:text-purple-900 text-sm">Edit</a>
+                                                <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Hapus</button>
+                                                </form>
+                                                <a :href="`/lessons/${lesson.id}/contents/create`" class="inline-flex items-center px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600">Tambah Konten</a>
+                                            @endcan
+                                            <button @click="activeAccordion = (activeAccordion === lesson.id) ? null : lesson.id" class="p-1 rounded-full hover:bg-gray-200">
+                                                <svg class="w-6 h-6 text-gray-600 transition-transform" :class="{'rotate-180': activeAccordion === lesson.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                            </button>
                                         </div>
                                     </div>
-                                @endforeach
-                            </div>
-                        @endif
+                                    
+                                    <div x-show="activeAccordion === lesson.id" x-collapse.duration.300ms class="border-t border-gray-200">
+                                        <div class="p-4">
+                                            <p class="text-gray-600 text-sm mb-4" x-text="lesson.description || 'Tidak ada deskripsi.'"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
 

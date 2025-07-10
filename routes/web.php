@@ -6,12 +6,12 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\QuizController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\GradebookController;
 use App\Http\Controllers\EssaySubmissionController;
 use App\Http\Controllers\EventOrganizerController;
 use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\RoleController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/courses/{course}/participant/{user}/progress', [CourseController::class, 'showParticipantProgress'])->name('courses.participant.progress');
     
     Route::resource('courses.lessons', LessonController::class)->except(['index', 'show']);
+    Route::post('lessons/update-order', [LessonController::class, 'updateOrder'])->name('lessons.update_order');
     Route::resource('lessons.contents', ContentController::class)->except(['index', 'show']);
     Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
     Route::post('lessons/{lesson}/complete', [ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');

@@ -79,4 +79,11 @@ class CoursePolicy
         // Logikanya sama dengan update
         return $user->can('manage own courses') && $course->instructors->contains($user);
     }
+
+    public function viewGradebook(User $user, Course $course): bool
+    {
+        // Pengguna bisa melihat gradebook jika punya izin 'grade quizzes'
+        // DAN merupakan instruktur untuk kursus ini.
+        return $user->can('grade quizzes') && $user->isInstructorFor($course);
+    }
 }
