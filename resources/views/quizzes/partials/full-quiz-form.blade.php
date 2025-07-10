@@ -1,208 +1,112 @@
-<div x-data="{
-    currentQuestionTab: 0,
-    questionsCount: 0, // Akan diupdate oleh JS utama
-    init() {
-        // Callback setelah pertanyaan dimuat untuk update questionsCount
-        this.$watch('questionsCount', (val) => {
-            if (this.currentQuestionTab >= val && val > 0) {
-                this.currentQuestionTab = val - 1; // Kembali ke tab terakhir jika tab saat ini melebihi jumlah
-            } else if (val === 0) {
-                this.currentQuestionTab = 0; // Reset ke 0 jika tidak ada pertanyaan
-            }
-        });
-
-        // Inisialisasi awal jumlah pertanyaan jika ada yang sudah dimuat (misal pada edit)
-        // Ini mungkin perlu disinkronkan dengan globalQuestionCounter dari JS utama
-        const initialQuestions = document.querySelectorAll('#questions-container-for-quiz-form .question-block');
-        this.questionsCount = initialQuestions.length;
-        if (this.questionsCount > 0) {
-            this.currentQuestionTab = 0;
-        } else {
-            this.currentQuestionTab = 0; // Default to 0 if no questions initially
-        }
-    },
-    showQuestion(index) {
-        this.currentQuestionTab = index;
-    },
-    addQuestionTab(newIndex) {
-        this.questionsCount++; // Cukup increment di sini, karena addQuestionToQuizForm akan memberikan indeks baru
-        this.currentQuestionTab = newIndex; // Pindah ke tab pertanyaan baru
-    },
-    removeQuestionTab(removedIndex) {
-        this.questionsCount--;
-        if (this.currentQuestionTab > removedIndex) {
-            // Jika tab yang aktif berada setelah tab yang dihapus, geser ke kiri
-            this.currentQuestionTab--;
-        } else if (this.currentQuestionTab === removedIndex && this.questionsCount > 0) {
-            // Jika tab yang aktif adalah yang dihapus, pindah ke tab terakhir yang valid
-            this.currentQuestionTab = Math.max(0, this.questionsCount - 1);
-        } else if (this.questionsCount === 0) {
-            // Jika tidak ada pertanyaan tersisa, reset
-            this.currentQuestionTab = 0;
-        }
-    }
-}" class="border border-gray-200 p-6 rounded-lg bg-gray-50">
+<div class="border border-gray-200 p-6 rounded-lg bg-gray-50/50 mt-4">
     <h4 class="text-lg font-bold text-gray-800 mb-4">Detail Kuis</h4>
-
-    <div class="mb-4">
-        <label for="quiz_title" class="block text-sm font-medium text-gray-700">Judul Kuis</label>
-        <input type="text" name="quiz_title" id="quiz_title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('quiz_title') }}" required>
-        @error('quiz_title')
-            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-
-    <div class="mb-4">
-        <label for="quiz_description" class="block text-sm font-medium text-gray-700">Deskripsi Kuis (Opsional)</label>
-        <textarea name="quiz_description" id="quiz_description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">{{ old('quiz_description') }}</textarea>
-        @error('quiz_description')
-            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+    
+    <div class="space-y-4">
         <div>
-            <label for="total_marks" class="block text-sm font-medium text-gray-700">Total Nilai Maksimal</label>
-            <input type="number" name="total_marks" id="total_marks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('total_marks', 0) }}" required min="0">
-            @error('total_marks')
-                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-            @enderror
+            <label class="block text-sm font-medium">Judul Kuis</label>
+            <input type="text" name="quiz[title]" x-model="content.quiz.title" class="mt-1 block w-full rounded-md" required>
         </div>
         <div>
-            <label for="pass_marks" class="block text-sm font-medium text-gray-700">Nilai Minimal Lulus</label>
-            <input type="number" name="pass_marks" id="pass_marks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('pass_marks', 0) }}" required min="0">
-            @error('pass_marks')
-                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-            @enderror
+            <label class="block text-sm font-medium">Deskripsi</label>
+            <textarea name="quiz[description]" x-model="content.quiz.description" rows="3" class="mt-1 block w-full rounded-md"></textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium">Total Nilai</label>
+                <input type="number" name="quiz[total_marks]" x-model.number="content.quiz.total_marks" class="mt-1 block w-full rounded-md" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium">Nilai Lulus</label>
+                <input type="number" name="quiz[pass_marks]" x-model.number="content.quiz.pass_marks" class="mt-1 block w-full rounded-md" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium">Status</label>
+                <select name="quiz[status]" x-model="content.quiz.status" class="mt-1 block w-full rounded-md">
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                </select>
+            </div>
         </div>
         <div>
-            <label for="time_limit" class="block text-sm font-medium text-gray-700">Batas Waktu (Menit, Opsional)</label>
-            <input type="number" name="time_limit" id="time_limit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('time_limit') }}" min="1">
-            @error('time_limit')
-                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-            @enderror
+            <label class="flex items-center">
+                <input type="hidden" name="quiz[show_answers_after_attempt]" value="0">
+                <input type="checkbox" name="quiz[show_answers_after_attempt]" value="1" x-model="content.quiz.show_answers_after_attempt" class="rounded">
+                <span class="ml-2 text-sm">Tampilkan jawaban setelah percobaan</span>
+            </label>
         </div>
     </div>
 
-    <div class="mb-4">
-        <label for="quiz_status" class="block text-sm font-medium text-gray-700">Status Kuis</label>
-        <select name="quiz_status" id="quiz_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
-            <option value="draft" {{ old('quiz_status', 'draft') == 'draft' ? 'selected' : '' }}>Draft</option>
-            <option value="published" {{ old('quiz_status', '') == 'published' ? 'selected' : '' }}>Published</option>
-        </select>
-        @error('quiz_status')
-            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+    <hr class="my-6">
 
-    <div class="mb-6">
-        <div class="flex items-center">
-            <input type="checkbox" name="show_answers_after_attempt" id="show_answers_after_attempt" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ old('show_answers_after_attempt') ? 'checked' : '' }}>
-            <label for="show_answers_after_attempt" class="ml-2 text-sm text-gray-700">Tampilkan jawaban benar/salah setelah percobaan kuis</label>
-        </div>
-    </div>
-
-    {{-- Bagian Pertanyaan --}}
-    <h3 class="text-xl font-bold text-gray-900 mb-4 border-t pt-4">Pertanyaan Kuis</h3>
-
-    {{-- Navigasi Tab Pertanyaan --}}
-    <div class="flex border-b border-gray-200 mb-4 overflow-x-auto whitespace-nowrap">
-        <template x-for="index in questionsCount" :key="index">
-            <button type="button" @click="showQuestion(index - 1)" 
-                    :class="{ 'border-indigo-500 text-indigo-600': currentQuestionTab === (index - 1), '...' : currentQuestionTab !== (index - 1) }"
-                    class="py-2 px-4 border-b-2 font-medium text-sm">
-                <span x-text="index"></span>
-            </button>
-        </template>
-    </div>
-
-    <div id="questions-container-for-quiz-form">
-        {{-- Pertanyaan akan ditambahkan ke sini oleh JavaScript --}}
-    </div>
-
-    <div class="mt-6 flex justify-between items-center">
-        <button type="button" id="add-question-to-quiz-form" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
-            {{ __('Tambah Pertanyaan') }}
-        </button>
-        {{-- Tombol Hapus Pertanyaan Saat Ini --}}
-        <button type="button" id="remove-current-question" x-show="questionsCount > 1" @click="$dispatch('remove-question-from-current-tab')" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:bg-red-700 active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150">
-            {{ __('Hapus Pertanyaan Ini') }}
-        </button>
-    </div>
-</div>
-
-
-<div x-data="quizFormManager()" x-init="initializeQuiz($wire.get('quizData'))">
-    <div class="flex border-b">
-        <template x-for="(question, index) in questions" :key="question.id || index">
-            <button type="button" @click="currentTab = index"
-                    :class="{ 'border-indigo-500 text-indigo-600': currentTab === index }"
-                    class="py-2 px-4 border-b-2 font-medium text-sm"
-                    x-text="`Q${index + 1}`"></button>
-        </template>
-    </div>
-
-    <template x-for="(question, qIndex) in questions" :key="question.id || qIndex">
-        <div x-show="currentTab === qIndex" class="question-block">
-            <textarea :name="`questions[${qIndex}][question_text]`" x-model="question.question_text" required></textarea>
-            
-            <select :name="`questions[${qIndex}][type]`" x-model="question.type">
-                <option value="multiple_choice">Pilihan Ganda</option>
-                <option value="true_false">Benar/Salah</option>
-            </select>
-
-            <div x-show="question.type === 'multiple_choice'">
-                <template x-for="(option, oIndex) in question.options" :key="oIndex">
-                    <div>
-                        <input :name="`questions[${qIndex}][options][${oIndex}][option_text]`" x-model="option.option_text" required>
-                        <input type="checkbox" :name="`questions[${qIndex}][options][${oIndex}][is_correct]`" x-model="option.is_correct">
-                        <button type="button" @click="removeOption(qIndex, oIndex)">Hapus Opsi</button>
+    <h3 class="text-xl font-bold text-gray-900 mb-4">Daftar Pertanyaan</h3>
+    
+    <div class="space-y-4">
+        <template x-for="(question, qIndex) in content.quiz.questions" :key="qIndex">
+            <div class="bg-white rounded-lg border">
+                <div @click="question.open = !question.open" class="flex justify-between items-center p-4 cursor-pointer">
+                    <h5 class="font-bold text-md" x-text="question.question_text || `Pertanyaan #${qIndex + 1}`"></h5>
+                    <div class="flex items-center">
+                        <button type="button" @click.stop="removeQuestion(qIndex)" class="text-red-600 hover:text-red-800 mr-4">&times; Hapus</button>
+                        <svg class="w-5 h-5 transition-transform" :class="{'rotate-180': question.open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
-                </template>
-                <button type="button" @click="addOption(qIndex)">Tambah Opsi</button>
-            </div>
-            
-            </div>
-    </template>
+                </div>
+                
+                <div x-show="question.open" x-collapse class="p-4 border-t">
+                    <input type="hidden" :name="`quiz[questions][${qIndex}][id]`" x-model="question.id">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium">Teks Pertanyaan</label>
+                        <textarea :name="`quiz[questions][${qIndex}][question_text]`" x-model="question.question_text" rows="2" class="mt-1 block w-full rounded-md" required></textarea>
+                    </div>
 
-    <button type="button" @click="addQuestion()">Tambah Pertanyaan</button>
-    <button type="button" @click="removeQuestion(currentTab)" x-show="questions.length > 1">Hapus Pertanyaan Ini</button>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium">Tipe</label>
+                            <select :name="`quiz[questions][${qIndex}][type]`" x-model="question.type" class="mt-1 block w-full rounded-md">
+                                <option value="multiple_choice">Pilihan Ganda</option>
+                                <option value="true_false">Benar/Salah</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Nilai</label>
+                            <input type="number" :name="`quiz[questions][${qIndex}][marks]`" x-model.number="question.marks" class="mt-1 block w-full rounded-md" required min="1">
+                        </div>
+                    </div>
+
+                   <div x-show="question.type === 'multiple_choice'" class="mt-4 border-t pt-4">
+                        <div class="space-y-2">
+                            <template x-for="(option, oIndex) in question.options" :key="oIndex">
+                                <div class="flex items-center space-x-2">
+                                    <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][id]`" x-model="option.id">
+                                    <input type="text" :name="`quiz[questions][${qIndex}][options][${oIndex}][option_text]`" x-model="option.option_text" class="flex-grow rounded-md" placeholder="Teks opsi" required>
+                                    <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="0">
+                                    <input type="checkbox" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="1" x-model="option.is_correct" class="rounded">
+                                    <label class="text-sm">Benar</label>
+                                    <button type="button" @click="removeOption(qIndex, oIndex)" class="text-red-500 hover:text-red-700">&times;</button>
+                                </div>
+                            </template>
+                        </div>
+                        <button type="button" @click="addOption(qIndex)" class="mt-2 text-sm text-blue-600 hover:underline">+ Tambah Opsi</button>
+                    </div>
+
+                    <div x-show="question.type === 'true_false'" class="mt-4 border-t pt-4">
+                        <div class="flex space-x-4">
+                            <label class="flex items-center">
+                                <input type="radio" :name="`quiz[questions][${qIndex}][options][0][is_correct]`" :value="true" :checked="question.options[0] && question.options[0].is_correct">
+                                <span class="ml-2">True</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" :name="`quiz[questions][${qIndex}][options][0][is_correct]`" :value="false" :checked="question.options[0] && !question.options[0].is_correct">
+                                <span class="ml-2">False</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div class="mt-6">
+        <button type="button" @click="addQuestion()" class="w-full px-4 py-2 bg-green-100 text-green-800 rounded-md hover:bg-green-200 border border-dashed">Tambah Pertanyaan</button>
+    </div>
 </div>
-
-<script>
-    function quizFormManager() {
-        return {
-            currentTab: 0,
-            questions: [],
-            initializeQuiz(quizData) {
-                if (quizData && quizData.questions) {
-                    this.questions = quizData.questions;
-                } else {
-                    this.addQuestion(); // Tambah satu pertanyaan jika kuis baru
-                }
-            },
-            addQuestion() {
-                this.questions.push({
-                    question_text: '',
-                    type: 'multiple_choice',
-                    marks: 1,
-                    options: [{ option_text: '', is_correct: false }]
-                });
-                this.currentTab = this.questions.length - 1;
-            },
-            removeQuestion(index) {
-                if (this.questions.length <= 1) return; // Jangan hapus jika hanya sisa satu
-                this.questions.splice(index, 1);
-                if (this.currentTab >= index && this.currentTab > 0) {
-                    this.currentTab--;
-                }
-            },
-            addOption(qIndex) {
-                this.questions[qIndex].options.push({ option_text: '', is_correct: false });
-            },
-            removeOption(qIndex, oIndex) {
-                this.questions[qIndex].options.splice(oIndex, 1);
-            }
-        }
-    }
-</script>
