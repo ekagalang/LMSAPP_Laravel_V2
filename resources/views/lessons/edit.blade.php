@@ -39,6 +39,24 @@
                         </div>
 
                         <div class="mb-4">
+                            <label for="prerequisite_id" class="block text-sm font-medium text-gray-700">Prasyarat (Pelajaran yang Harus Selesai Dahulu)</label>
+                            <select name="prerequisite_id" id="prerequisite_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                <option value="">-- Tidak Ada Prasyarat --</option>
+                                @foreach ($course->lessons as $lessonOption)
+                                    {{-- Pastikan pelajaran tidak bisa menjadi prasyarat untuk dirinya sendiri --}}
+                                    @if($lessonOption->id !== $lesson->id)
+                                        <option value="{{ $lessonOption->id }}" @selected(old('prerequisite_id', $lesson->prerequisite_id) == $lessonOption->id)>
+                                            {{ $lessonOption->title }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('prerequisite_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mb-4">
                             <label for="order" class="block text-sm font-medium text-gray-700">Urutan (Opsional)</label>
                             <input type="number" name="order" id="order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('order', $lesson->order) }}">
                             @error('order')

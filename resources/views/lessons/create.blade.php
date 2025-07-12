@@ -37,6 +37,22 @@
                         </div>
 
                         <div class="mb-4">
+                            <label for="prerequisite_id" class="block text-sm font-medium text-gray-700">Prasyarat (Opsional)</label>
+                            <select name="prerequisite_id" id="prerequisite_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                <option value="">-- Tidak Ada Prasyarat --</option>
+                                {{-- Loop semua pelajaran yang sudah ada di kursus ini sebagai pilihan --}}
+                                @foreach ($course->lessons as $lessonOption)
+                                    <option value="{{ $lessonOption->id }}">
+                                        {{ $lessonOption->title }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('prerequisite_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mb-4">
                             <label for="order" class="block text-sm font-medium text-gray-700">Urutan (Opsional, Default ke Akhir)</label>
                             <input type="number" name="order" id="order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('order') }}">
                             @error('order')

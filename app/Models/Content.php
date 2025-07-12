@@ -64,4 +64,9 @@ class Content extends Model
     {
         return $this->hasMany(EssaySubmission::class);
     }
+
+    public function discussions()
+    {
+        return $this->hasMany(Discussion::class)->orderBy('created_at', 'desc');
+    }
 }

@@ -19,7 +19,10 @@ class ContentController extends Controller
     {
         $this->authorize('view', $content->lesson->course);
         $user = Auth::user();
-        $user->contents()->syncWithoutDetaching($content->id);
+        if ($user->hasRole('participant')) {
+            $user->completedContents()->syncWithoutDetaching($content->id);
+        }
+        $content->load(['discussions.user', 'discussions.replies.user']);
         $course = $content->lesson->course->load(['lessons.contents' => fn($q) => $q->orderBy('order')]);
         return view('contents.show', compact('content', 'course'));
     }
@@ -184,5 +187,25 @@ class ContentController extends Controller
         if ($content->quiz) $content->quiz->delete();
         $content->delete();
         return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil dihapus!');
+    }
+
+    public function updateOrder(Request $request)
+    {
+        $request->validate([
+            'contents' => 'required|array',
+            'contents.*' => 'integer|exists:contents,id',
+        ]);
+
+        // Ambil konten pertama untuk otorisasi, pastikan user berhak mengelola kursus ini
+        $firstContent = Content::find($request->contents[0]);
+        if ($firstContent) {
+            $this->authorize('update', $firstContent->lesson->course);
+        }
+
+        foreach ($request->contents as $index => $contentId) {
+            Content::where('id', $contentId)->update(['order' => $index + 1]);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Urutan konten berhasil diperbarui.']);
     }
 }

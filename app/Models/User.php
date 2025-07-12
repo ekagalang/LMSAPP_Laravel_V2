@@ -109,4 +109,24 @@ class User extends Authenticatable
     {
         return $this->hasMany(Feedback::class, 'user_id');
     }
+
+    public function hasCompleted(Lesson $lesson): bool
+    {
+        // Pastikan relasi completers dimuat untuk efisiensi jika belum ada
+        if (!$this->relationLoaded('completedLessons')) {
+            $this->load('completedLessons');
+        }
+        return $this->completedLessons->contains($lesson);
+    }
+
+    public function discussions()
+    {
+        return $this->hasMany(Discussion::class);
+    }
+
+    // Relasi ke balasan yang dibuat user
+    public function discussionReplies()
+    {
+        return $this->hasMany(DiscussionReply::class);
+    }
 }

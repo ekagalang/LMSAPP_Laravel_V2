@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::resource('courses.lessons', LessonController::class)->except(['index', 'show']);
     Route::post('lessons/update-order', [LessonController::class, 'updateOrder'])->name('lessons.update_order');
+    Route::post('contents/update-order', [ContentController::class, 'updateOrder'])->name('contents.update_order');
     Route::resource('lessons.contents', ContentController::class)->except(['index', 'show']);
     Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
     Route::post('lessons/{lesson}/complete', [ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');
@@ -62,6 +63,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
+
+    // Route untuk Forum Diskusi
+    Route::get('/courses/{course}/discussions', [App\Http\Controllers\DiscussionController::class, 'index'])->name('courses.discussions.index');
+    Route::post('/contents/{content}/discussions', [App\Http\Controllers\DiscussionController::class, 'store'])->name('discussions.store');
+    Route::post('/discussions/{discussion}/replies', [App\Http\Controllers\DiscussionController::class, 'storeReply'])->name('discussions.replies.store');
 
     // Grup Route untuk Admin, Instruktur, dan EO
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {

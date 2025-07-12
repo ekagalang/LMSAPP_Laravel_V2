@@ -32,12 +32,14 @@ class LessonController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order' => 'nullable|integer',
+            'prerequisite_id' => 'nullable|exists:lessons,id',
         ]);
 
         $course->lessons()->create([
             'title' => $request->title,
             'description' => $request->description,
-            'order' => $request->order ?? $course->lessons()->count() + 1, // Set order otomatis
+            'order' => $request->order ?? $course->lessons()->count() + 1,
+            'prerequisite_id' => $request->prerequisite_id,
         ]);
 
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil ditambahkan!');
@@ -63,12 +65,14 @@ class LessonController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order' => 'nullable|integer',
+            'prerequisite_id' => 'nullable|exists:lessons,id|not_in:'
         ]);
 
         $lesson->update([
             'title' => $request->title,
             'description' => $request->description,
             'order' => $request->order ?? $lesson->order,
+            'prerequisite_id' => $request->prerequisite_id,
         ]);
 
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil diperbarui!');

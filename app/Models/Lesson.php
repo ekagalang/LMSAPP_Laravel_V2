@@ -44,4 +44,9 @@ class Lesson extends Model
     {
         return $this->hasMany(Quiz::class);
     }
+
+    public function prerequisite()
+    {
+        return $this->belongsTo(Lesson::class, 'prerequisite_id');
+    }
 }

@@ -11,6 +11,11 @@
                 </h2>
             </div>
             <div class="flex space-x-2">
+                @can('update', $course)
+                    <a href="{{ route('courses.discussions.index', $course) }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
+                        Diskusi
+                    </a>
+                @endcan
                 @can('grade quizzes')
                     <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600">
                         {{ __('Buku Nilai & Feedback') }}
@@ -51,28 +56,49 @@
 
                 <div x-show="currentTab === 'lessons'" class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900" 
-                         x-data="{
+                        x-data="{
                             lessons: {{ Js::from($course->lessons->sortBy('order')->values()) }},
                             activeAccordion: null,
                             moveUp(index) {
                                 if (index === 0) return;
                                 [this.lessons[index - 1], this.lessons[index]] = [this.lessons[index], this.lessons[index - 1]];
-                                this.updateOrderOnServer();
+                                this.updateLessonOrderOnServer();
                             },
                             moveDown(index) {
                                 if (index === this.lessons.length - 1) return;
                                 [this.lessons[index], this.lessons[index + 1]] = [this.lessons[index + 1], this.lessons[index]];
-                                this.updateOrderOnServer();
+                                this.updateLessonOrderOnServer();
                             },
-                            updateOrderOnServer() {
+                            updateLessonOrderOnServer() {
                                 const orderedIds = this.lessons.map(lesson => lesson.id);
                                 fetch('{{ route('lessons.update_order') }}', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                                     body: JSON.stringify({ lessons: orderedIds })
                                 });
+                            },
+                            // FUNGSI BARU UNTUK KONTEN
+                            moveContentUp(lessonIndex, contentIndex) {
+                                if (contentIndex === 0) return;
+                                let contents = this.lessons[lessonIndex].contents;
+                                [contents[contentIndex - 1], contents[contentIndex]] = [contents[contentIndex], contents[contentIndex - 1]];
+                                this.updateContentOrderOnServer(lessonIndex);
+                            },
+                            moveContentDown(lessonIndex, contentIndex) {
+                                let contents = this.lessons[lessonIndex].contents;
+                                if (contentIndex === contents.length - 1) return;
+                                [contents[contentIndex], contents[contentIndex + 1]] = [contents[contentIndex + 1], contents[contentIndex]];
+                                this.updateContentOrderOnServer(lessonIndex);
+                            },
+                            updateContentOrderOnServer(lessonIndex) {
+                                const orderedContentIds = this.lessons[lessonIndex].contents.map(content => content.id);
+                                fetch('{{ route('contents.update_order') }}', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                    body: JSON.stringify({ contents: orderedContentIds })
+                                });
                             }
-                         }">
+                        }">
                         
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-xl font-bold text-gray-900">Daftar Pelajaran</h3>
@@ -87,10 +113,11 @@
 
                         <div class="space-y-3">
                             <template x-for="(lesson, index) in lessons" :key="lesson.id">
-                                <div class="bg-gray-50 rounded-lg shadow-sm">
+                                <div class="bg-gray-50 rounded-lg shadow-sm"
+                                    :class="{ 'opacity-50 pointer-events-none': !isLessonUnlocked(lesson, index) }">
+
                                     <div class="p-4 flex justify-between items-center">
                                         <div class="flex items-center flex-grow">
-                                            {{-- ✅ Tombol Naik/Turun --}}
                                             @can('update', $course)
                                                 <div class="flex flex-col mr-4">
                                                     <button @click="moveUp(index)" :disabled="index === 0" :class="{'opacity-25 cursor-not-allowed': index === 0}">
@@ -101,7 +128,12 @@
                                                     </button>
                                                 </div>
                                             @endcan
-                                            <h4 class="text-lg font-semibold text-gray-800" x-text="lesson.title"></h4>
+                                            <div class="flex items-center">
+                                                <template x-if="!isLessonUnlocked(lesson, index)">
+                                                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"></path></svg>
+                                                </template>
+                                                <h4 class="text-lg font-semibold text-gray-800" x-text="lesson.title"></h4>
+                                            </div>
                                         </div>
                                         <div class="flex items-center space-x-4 flex-shrink-0">
                                             @can('update', $course)
@@ -117,10 +149,58 @@
                                             </button>
                                         </div>
                                     </div>
-                                    
+
                                     <div x-show="activeAccordion === lesson.id" x-collapse.duration.300ms class="border-t border-gray-200">
-                                        <div class="p-4">
-                                            <p class="text-gray-600 text-sm mb-4" x-text="lesson.description || 'Tidak ada deskripsi.'"></p>
+                                        <div class="p-4 space-y-4">
+                                            {{-- Tampilkan deskripsi pelajaran jika ada --}}
+                                            <p class="text-gray-600 text-sm" x-text="lesson.description || 'Tidak ada deskripsi.'"></p>
+
+                                            {{-- Daftar Konten --}}
+                                            <h5 class="text-sm font-semibold text-gray-700">Daftar Konten:</h5>
+                                            <ul class="space-y-2">
+                                                {{-- Loop untuk setiap konten di dalam pelajaran --}}
+                                                <template x-for="content in lesson.contents" :key="content.id">
+                                                    <li class="flex items-center justify-between p-2 rounded-md hover:bg-gray-200 transition-colors">
+                                                        <div class="flex items-center">
+
+                                                            @can('update', $course)
+                                                            <div class="flex flex-col mr-3 text-gray-400 hover:text-gray-700">
+                                                                <button @click="moveContentUp(index, contentIndex)" :disabled="contentIndex === 0" :class="{'opacity-25 cursor-not-allowed': contentIndex === 0}">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                                                </button>
+                                                                <button @click="moveContentDown(index, contentIndex)" :disabled="contentIndex === lesson.contents.length - 1" :class="{'opacity-25 cursor-not-allowed': contentIndex === lesson.contents.length - 1}">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                                </button>
+                                                            </div>
+                                                            @endcan
+
+                                                            {{-- Ikon berdasarkan tipe konten --}}
+                                                            <svg class="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                <template x-if="content.type === 'text'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></template>
+                                                                <template x-if="content.type === 'video'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 011.45.89V16.11a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></template>
+                                                                <template x-if="content.type === 'quiz'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></template>
+                                                                <template x-if="!['text', 'video', 'quiz'].includes(content.type)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></template>
+                                                            </svg>
+                                                            <a :href="`/contents/${content.id}`" class="text-indigo-600 hover:underline" x-text="content.title"></a>
+                                                        </div>
+                                                        {{-- Aksi untuk konten (Edit & Hapus) --}}
+                                                        @can('update', $course)
+                                                        <div class="flex items-center space-x-2">
+                                                            <a :href="`/lessons/${lesson.id}/contents/${content.id}/edit`" class="text-xs text-purple-600 hover:text-purple-900">Edit</a>
+                                                            <form :action="`/lessons/${lesson.id}/contents/${content.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="text-xs text-red-600 hover:text-red-900">Hapus</button>
+                                                            </form>
+                                                        </div>
+                                                        @endcan
+                                                    </li>
+                                                </template>
+                                                {{-- Pesan jika tidak ada konten --}}
+                                                <template x-if="lesson.contents.length === 0">
+                                                    <li class="p-2 text-center text-sm text-gray-500">Belum ada konten untuk pelajaran ini.</li>
+                                                </template>
+                                            </ul>
                                         </div>
                                     </div>
                                 </div>
