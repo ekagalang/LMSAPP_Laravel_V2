@@ -520,50 +520,32 @@
         </div>
     </div>
 
-    <!-- Enhanced Floating Action Buttons - Grouped Bottom Right -->
+    <!-- Simple Floating Action Buttons - 2 Buttons Only -->
     <div class="fixed bottom-6 right-6 z-40">
-        <!-- Main Button Group -->
-        <div class="flex flex-col space-y-3">
-            <!-- Top Row -->
-            <div class="flex space-x-3">
-                <!-- Back to Top Button -->
-                <button onclick="scrollToTop()" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border border-blue-400/30 group"
-                        title="Kembali ke atas">
-                    <i class="fas fa-arrow-up text-sm group-hover:animate-bounce"></i>
-                </button>
-                
-                <!-- Progress Button -->
-                <button onclick="scrollToProgress()" 
-                        class="bg-indigo-500 hover:bg-indigo-600 text-white w-12 h-12 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border border-indigo-400/30 group"
-                        title="Lihat progress">
-                    <i class="fas fa-chart-line text-sm group-hover:animate-pulse"></i>
-                </button>
-            </div>
+        <div class="flex space-x-4">
+            <!-- Back to Top Button -->
+            <button onclick="scrollToTop()" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white w-14 h-14 rounded-full shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border-2 border-blue-400/30 group relative"
+                    title="Scroll ke atas">
+                <!-- Ensure icon is visible -->
+                <span class="text-white text-xl font-bold group-hover:animate-bounce">↑</span>
+            </button>
             
-            <!-- Bottom Row -->
-            <div class="flex space-x-3">
-                <!-- Help Button -->
-                <button onclick="showQuizHelp()" 
-                        class="bg-purple-500 hover:bg-purple-600 text-white w-12 h-12 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border border-purple-400/30 group"
-                        title="Bantuan">
-                    <i class="fas fa-question-circle text-sm group-hover:animate-pulse"></i>
-                </button>
+            <!-- Submit Button -->
+            <button onclick="showSubmitConfirmation()" 
+                    class="bg-green-500 hover:bg-green-600 text-white w-16 h-16 rounded-full shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border-2 border-green-400/30 group relative"
+                    title="Kirim jawaban">
+                <!-- Ensure icon is visible -->
+                <span class="text-white text-2xl font-bold group-hover:animate-pulse">✈</span>
                 
-                <!-- Submit Button - Larger & More Prominent -->
-                <button onclick="showSubmitConfirmation()" 
-                        class="bg-green-500 hover:bg-green-600 text-white w-14 h-14 rounded-full shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border-2 border-green-400/30 group relative"
-                        title="Kirim jawaban">
-                    <i class="fas fa-paper-plane text-lg group-hover:animate-pulse"></i>
-                    <!-- Pulse animation for submit button -->
-                    <div class="absolute inset-0 rounded-full bg-green-400 opacity-0 animate-ping group-hover:opacity-75"></div>
-                </button>
-            </div>
+                <!-- Pulse animation for submit button -->
+                <div class="absolute inset-0 rounded-full bg-green-400 opacity-0 animate-ping group-hover:opacity-75"></div>
+            </button>
         </div>
         
-        <!-- Quick Access Badge -->
-        <div class="mt-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-gray-200">
-            <div class="text-xs text-gray-600 font-medium text-center">
+        <!-- Progress Badge -->
+        <div class="mt-3 bg-white/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-gray-200">
+            <div class="text-sm text-gray-700 font-medium text-center">
                 <span id="floating-progress">0%</span> selesai
             </div>
         </div>
@@ -674,15 +656,25 @@
             transform: scale(1.1);
         }
 
-        /* Enhanced Floating button styling */
+        /* Enhanced floating button icons */
+        .fixed button span {
+            font-size: inherit;
+            line-height: 1;
+            display: block;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Ensure icons are always visible */
         .fixed button {
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
         }
 
         .fixed button:hover {
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
         }
 
         /* Enhanced Scroll Behavior */
@@ -690,29 +682,13 @@
             scroll-behavior: smooth;
         }
 
-        /* Floating button group animation */
-        .fixed.bottom-6.right-6 {
-            animation: fadeInUp 0.6s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
         /* Submit button special effects */
-        .fixed button.w-14.h-14 {
+        .fixed button.w-16.h-16 {
             position: relative;
             overflow: hidden;
         }
 
-        .fixed button.w-14.h-14::before {
+        .fixed button.w-16.h-16::before {
             content: '';
             position: absolute;
             top: 0;
@@ -723,20 +699,35 @@
             transition: left 0.5s;
         }
 
-        .fixed button.w-14.h-14:hover::before {
+        .fixed button.w-16.h-16:hover::before {
             left: 100%;
         }
 
-        /* Responsive floating buttons */
+        /* Floating button group entrance animation */
+        .fixed.bottom-6.right-6 {
+            animation: slideInFromRight 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideInFromRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Responsive floating buttons - Updated for 2 buttons */
         @media (max-width: 768px) {
             .fixed.bottom-6.right-6 {
                 bottom: 1rem;
                 right: 1rem;
             }
 
-            .fixed button {
-                width: 2.75rem;
-                height: 2.75rem;
+            .fixed .flex.space-x-4 {
+                gap: 0.75rem;
             }
 
             .fixed button.w-14.h-14 {
@@ -744,12 +735,17 @@
                 height: 3rem;
             }
 
-            .fixed .space-x-3 {
-                gap: 0.5rem;
+            .fixed button.w-16.h-16 {
+                width: 3.5rem;
+                height: 3.5rem;
             }
 
-            .fixed .space-y-3 {
-                gap: 0.5rem;
+            .fixed .text-lg {
+                font-size: 1rem;
+            }
+
+            .fixed .text-xl {
+                font-size: 1.125rem;
             }
         }
 
@@ -1258,21 +1254,6 @@
             }
             
             setInterval(autoSave, 10000);
-            
-            // Add floating button entrance animation
-            setTimeout(() => {
-                const floatingButtons = document.querySelector('.fixed.bottom-6.right-6');
-                if (floatingButtons) {
-                    floatingButtons.style.opacity = '0';
-                    floatingButtons.style.transform = 'translateY(100px)';
-                    
-                    setTimeout(() => {
-                        floatingButtons.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                        floatingButtons.style.opacity = '1';
-                        floatingButtons.style.transform = 'translateY(0)';
-                    }, 500);
-                }
-            }, 100);
         });
 
         // Prevent accidental page close
