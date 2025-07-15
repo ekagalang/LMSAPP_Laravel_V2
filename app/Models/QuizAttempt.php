@@ -4,8 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
 
 class QuizAttempt extends Model
 {
@@ -17,32 +16,72 @@ class QuizAttempt extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',
         'quiz_id',
+        'user_id',
         'score',
+        'passed',
+        'started_at',
+        'completed_at',
     ];
 
     /**
-     * Get the user who made the attempt.
+     * The attributes that should be cast to native types.
+     * INI YANG PENTING! 🔥
+     *
+     * @var array<string, string>
      */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
+    protected $casts = [
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime', // ← TAMBAHKAN INI
+        'passed' => 'boolean',
+        'score' => 'integer',
+    ];
 
     /**
-     * Get the quiz that was attempted.
+     * Relasi ke Quiz
      */
-    public function quiz(): BelongsTo
+    public function quiz()
     {
         return $this->belongsTo(Quiz::class);
     }
 
     /**
-     * Get the answers for the quiz attempt.
+     * Relasi ke User
      */
-    public function answers(): HasMany
+    public function user()
     {
-        return $this->hasMany(QuestionAnswer::class);
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relasi ke jawaban-jawaban
+     */
+    public function answers()
+    {
+        return $this->hasMany(QuestionAnswer::class, 'quiz_attempt_id');
+    }
+
+    /**
+     * Accessor untuk mendapatkan waktu selesai yang diformat
+     */
+    public function getFormattedCompletedAtAttribute()
+    {
+        if (!$this->completed_at) {
+            return 'Belum selesai';
+        }
+
+        return $this->completed_at->format('d M Y, H:i');
+    }
+
+    /**
+     * Accessor untuk mendapatkan durasi pengerjaan
+     */
+    public function getDurationAttribute()
+    {
+        if (!$this->started_at || !$this->completed_at) {
+            return null;
+        }
+
+        return $this->completed_at->diffForHumans($this->started_at, true);
     }
 }

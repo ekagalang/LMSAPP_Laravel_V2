@@ -1,145 +1,473 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <div>
-                <a href="{{ route('courses.show', $lesson->course) }}" class="inline-flex items-center text-gray-500 hover:text-gray-700 text-sm font-medium">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    {{ __('Kembali ke Detail Kursus') }}
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div class="space-y-2">
+                <a href="{{ route('courses.show', $lesson->course) }}"
+                   class="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-200 group">
+                    <svg class="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Kembali ke Detail Kursus
                 </a>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight mt-2">
-                    {{ __('Tambah Konten Baru untuk Pelajaran:') }} {{ $lesson->title }}
-                </h2>
-                <p class="text-sm text-gray-600">Kursus: {{ $lesson->course->title }}</p>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    ✨ Buat Konten Baru
+                </h1>
+                <div class="flex items-center space-x-2 text-sm text-gray-600">
+                    <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-medium">
+                        {{ $lesson->title }}
+                    </span>
+                    <span class="text-gray-400">•</span>
+                    <span>{{ $lesson->course->title }}</span>
+                </div>
             </div>
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form id="contentForm" method="POST" action="{{ route('lessons.contents.store', $lesson) }}" enctype="multipart/form-data">
-                        @csrf
-
-                        <div class="mb-4">
-                            <label for="title" class="block text-sm font-medium text-gray-700">Judul Konten</label>
-                            <input type="text" name="title" id="title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('title') }}" required autofocus>
-                            @error('title')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="type" class="block text-sm font-medium text-gray-700">Tipe Konten</label>
-                            <select name="type" id="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" onchange="toggleContentTypeFields()">
-                                <option value="text" @selected(old('type') == 'text')>Teks</option>
-                                <option value="video" @selected(old('type') == 'video')>Video (URL YouTube/Vimeo)</option>
-                                <option value="document" @selected(old('type') == 'document')>Dokumen (PDF, DOCX, PPTX)</option>
-                                <option value="image" @selected(old('type') == 'image')>Gambar (JPG, PNG)</option>
-                                <option value="quiz" @selected(old('type') == 'quiz')>Kuis</option>
-                                <option value="essay" @selected(old('type') == 'essay')>Esai</option>
-                            </select>
-                            @error('type')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div id="body_field" class="mb-4">
-                            <label for="body" class="block text-sm font-medium text-gray-700">Isi Konten / URL</label>
-                            <textarea name="body" id="body" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">{{ old('body') }}</textarea>
-                            @error('body')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                            <p class="text-xs text-gray-500 mt-1">Untuk Video, masukkan URL YouTube/Vimeo. Untuk Esai, masukkan pertanyaan di sini.</p>
-                        </div>
-
-                        <div id="file_upload_field" class="mb-4 hidden">
-                            <label for="file_upload" class="block text-sm font-medium text-gray-700">Unggah File</label>
-                            <input type="file" name="file_upload" id="file_upload" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
-                            @error('file_upload')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                            <p class="text-xs text-gray-500 mt-1">Maksimal 10MB.</p>
-                        </div>
-
-                        <div id="quiz_form_fields" class="mb-4 hidden">
-                            {{-- Konten form kuis akan dimuat di sini --}}
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="order" class="block text-sm font-medium text-gray-700">Urutan (Opsional, Default ke Akhir)</label>
-                            <input type="number" name="order" id="order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="{{ old('order') }}">
-                            @error('order')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="flex items-center justify-end mt-6">
-                            {{-- ✅ PERBAIKAN: Tombol diubah untuk memanggil fungsi submitCreateForm() --}}
-                            <button type="button" onclick="submitCreateForm()" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                {{ __('Simpan Konten') }}
-                            </button>
-                        </div>
-                    </form>
+    <div class="py-8">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Progress Steps -->
+            <div class="mb-8">
+                <div class="flex items-center justify-center space-x-4">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-medium">1</div>
+                        <span class="ml-2 text-sm font-medium text-indigo-600">Pilih Tipe</span>
+                    </div>
+                    <div class="w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">2</div>
+                        <span class="ml-2 text-sm font-medium text-gray-500">Isi Konten</span>
+                    </div>
+                    <div class="w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">3</div>
+                        <span class="ml-2 text-sm font-medium text-gray-500">Simpan</span>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Main Form Card -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6">
+                    <h2 class="text-2xl font-bold text-white">Informasi Konten</h2>
+                    <p class="text-indigo-100 mt-1">Isi detail konten pembelajaran yang akan dibuat</p>
+                </div>
+
+                <form id="contentForm" method="POST" action="{{ route('lessons.contents.store', $lesson) }}" enctype="multipart/form-data" class="p-8">
+                    @csrf
+
+                    <!-- Basic Information -->
+                    <div class="space-y-6">
+                        <!-- Title Field -->
+                        <div class="group">
+                            <label for="title" class="block text-sm font-semibold text-gray-700 mb-2">
+                                📝 Judul Konten
+                            </label>
+                            <input type="text"
+                                   name="title"
+                                   id="title"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 text-lg placeholder-gray-400"
+                                   placeholder="Masukkan judul konten yang menarik..."
+                                   value="{{ old('title') }}"
+                                   required autofocus>
+                            @error('title')
+                                <p class="text-red-500 text-sm mt-2 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <!-- Description Field -->
+                        <div class="group">
+                            <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
+                                📄 Deskripsi (Opsional)
+                            </label>
+                            <textarea name="description"
+                                      id="description"
+                                      rows="3"
+                                      class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 placeholder-gray-400"
+                                      placeholder="Berikan deskripsi singkat tentang konten ini...">{{ old('description') }}</textarea>
+                        </div>
+
+                        <!-- Content Type Selection -->
+                        <div class="group">
+                            <label class="block text-sm font-semibold text-gray-700 mb-4">
+                                🎯 Pilih Tipe Konten
+                            </label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- Text Content -->
+                                <label class="content-type-card cursor-pointer">
+                                    <input type="radio" name="type" value="text" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'text' ? 'checked' : '' }}>
+                                    <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
+                                        <div class="text-center">
+                                            <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                                                📝
+                                            </div>
+                                            <h3 class="font-semibold text-gray-900">Teks</h3>
+                                            <p class="text-sm text-gray-500 mt-1">Konten berbasis teks dengan editor</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Video Content -->
+                                <label class="content-type-card cursor-pointer">
+                                    <input type="radio" name="type" value="video" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'video' ? 'checked' : '' }}>
+                                    <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
+                                        <div class="text-center">
+                                            <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                                                🎥
+                                            </div>
+                                            <h3 class="font-semibold text-gray-900">Video</h3>
+                                            <p class="text-sm text-gray-500 mt-1">Video dari YouTube/Vimeo</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Document Content -->
+                                <label class="content-type-card cursor-pointer">
+                                    <input type="radio" name="type" value="document" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'document' ? 'checked' : '' }}>
+                                    <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
+                                        <div class="text-center">
+                                            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                                                📄
+                                            </div>
+                                            <h3 class="font-semibold text-gray-900">Dokumen</h3>
+                                            <p class="text-sm text-gray-500 mt-1">PDF, DOCX, PPTX</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Image Content -->
+                                <label class="content-type-card cursor-pointer">
+                                    <input type="radio" name="type" value="image" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'image' ? 'checked' : '' }}>
+                                    <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
+                                        <div class="text-center">
+                                            <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                                                🖼️
+                                            </div>
+                                            <h3 class="font-semibold text-gray-900">Gambar</h3>
+                                            <p class="text-sm text-gray-500 mt-1">JPG, PNG, GIF</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Quiz Content -->
+                                <label class="content-type-card cursor-pointer">
+                                    <input type="radio" name="type" value="quiz" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'quiz' ? 'checked' : '' }}>
+                                    <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
+                                        <div class="text-center">
+                                            <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                                                🧠
+                                            </div>
+                                            <h3 class="font-semibold text-gray-900">Kuis</h3>
+                                            <p class="text-sm text-gray-500 mt-1">Pertanyaan interaktif</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Essay Content -->
+                                <label class="content-type-card cursor-pointer">
+                                    <input type="radio" name="type" value="essay" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'essay' ? 'checked' : '' }}>
+                                    <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
+                                        <div class="text-center">
+                                            <div class="w-12 h-12 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                                                ✍️
+                                            </div>
+                                            <h3 class="font-semibold text-gray-900">Esai</h3>
+                                            <p class="text-sm text-gray-500 mt-1">Tugas menulis</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            @error('type')
+                                <p class="text-red-500 text-sm mt-2">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Content Fields -->
+                    <div class="mt-8 space-y-6">
+                        <!-- Text/Essay Body Field -->
+                        <div id="body_field" class="content-field hidden">
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                                <label for="body_text" class="block text-sm font-semibold text-gray-700 mb-3">
+                                    <span id="body_label">📝 Isi Konten</span>
+                                </label>
+                                <textarea name="body_text"
+                                          id="body_text"
+                                          rows="8"
+                                          class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                                          placeholder="Tulis konten Anda di sini...">{{ old('body_text') }}</textarea>
+                                <p class="text-sm text-gray-500 mt-2 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span id="body_hint">Gunakan editor untuk memformat teks dengan rich content</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Video URL Field -->
+                        <div id="video_field" class="content-field hidden">
+                            <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
+                                <label for="body_video" class="block text-sm font-semibold text-gray-700 mb-3">
+                                    🎥 URL Video YouTube/Vimeo
+                                </label>
+                                <input type="url"
+                                       name="body_video"
+                                       id="body_video"
+                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all duration-300"
+                                       placeholder="https://www.youtube.com/watch?v=..."
+                                       value="{{ old('body_video') }}">
+                                <p class="text-sm text-gray-500 mt-2">Masukkan URL lengkap video dari YouTube atau Vimeo</p>
+                            </div>
+                        </div>
+
+                        <!-- File Upload Field -->
+                        <div id="file_upload_field" class="content-field hidden">
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                                <label for="file_upload" class="block text-sm font-semibold text-gray-700 mb-3">
+                                    📁 Unggah File
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 transition-colors duration-300">
+                                    <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                    </svg>
+                                    <input type="file"
+                                           name="file_upload"
+                                           id="file_upload"
+                                           class="hidden"
+                                           onchange="handleFileSelect(this)">
+                                    <label for="file_upload" class="cursor-pointer">
+                                        <span class="text-indigo-600 font-medium hover:text-indigo-500">Klik untuk memilih file</span>
+                                        <span class="text-gray-500"> atau drag & drop</span>
+                                    </label>
+                                    <p class="text-sm text-gray-500 mt-2">Maksimal 10MB (PDF, DOCX, PPTX, JPG, PNG)</p>
+                                </div>
+                                <div id="file_preview" class="hidden mt-4 p-4 bg-white rounded-lg border">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <svg class="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <div class="ml-3">
+                                                <p class="text-sm font-medium text-gray-900" id="file_name"></p>
+                                                <p class="text-sm text-gray-500" id="file_size"></p>
+                                            </div>
+                                        </div>
+                                        <button type="button" onclick="clearFile()" class="text-red-500 hover:text-red-700">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quiz Form Fields -->
+                        <div id="quiz_form_fields" class="content-field hidden">
+                            <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-100">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">🧠 Pengaturan Kuis</h3>
+                                <!-- Quiz form will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- Order Field -->
+                        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                            <label for="order" class="block text-sm font-semibold text-gray-700 mb-3">
+                                🔢 Urutan Konten (Opsional)
+                            </label>
+                            <input type="number"
+                                   name="order"
+                                   id="order"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                                   placeholder="Biarkan kosong untuk urutan otomatis"
+                                   value="{{ old('order') }}">
+                            <p class="text-sm text-gray-500 mt-2">Jika tidak diisi, konten akan ditambahkan di akhir</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between mt-10 pt-6 border-t border-gray-200 space-y-4 sm:space-y-0">
+                        <a href="{{ route('courses.show', $lesson->course) }}"
+                           class="inline-flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                            Batal
+                        </a>
+
+                        <button type="button"
+                                onclick="submitCreateForm()"
+                                class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Simpan Konten
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
-    <script>
-        // ✅ PERBAIKAN: Fungsi baru untuk menangani submit pada halaman create
-        function submitCreateForm() {
-            // Cek jika editor aktif, panggil triggerSave()
-            if (tinymce.get('body')) {
-                tinymce.get('body').save();
+
+    <style>
+        .content-type-card input:checked + div {
+            @apply border-indigo-500 bg-indigo-50 shadow-lg;
+        }
+
+        .content-field {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
             }
-            // Kirim form
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .group:hover label {
+            @apply text-indigo-600;
+        }
+
+        .step-active {
+            @apply bg-indigo-600 text-white;
+        }
+
+        .step-completed {
+            @apply bg-green-500 text-white;
+        }
+    </style>
+
+    <script>
+        function submitCreateForm() {
+            updateProgressStep(3);
+            if (tinymce.get('body_text')) {
+                tinymce.get('body_text').save();
+            }
             document.getElementById('contentForm').submit();
         }
 
-        function toggleContentTypeFields() {
-            const type = document.getElementById('type').value;
-            const bodyField = document.getElementById('body_field');
-            const fileUploadField = document.getElementById('file_upload_field');
-            const quizFormFieldsContainer = document.getElementById('quiz_form_fields');
-            const bodyInput = document.getElementById('body');
-            const fileInput = document.getElementById('file_upload');
+        function updateProgressStep(step) {
+            // Update progress visual feedback
+            const steps = document.querySelectorAll('.progress-step');
+            steps.forEach((s, index) => {
+                if (index < step) {
+                    s.classList.add('step-completed');
+                    s.classList.remove('step-active');
+                } else if (index === step - 1) {
+                    s.classList.add('step-active');
+                }
+            });
+        }
 
-            if (tinymce.get('body')) {
-                tinymce.get('body').destroy();
+        function toggleContentTypeFields() {
+            const type = document.querySelector('input[name="type"]:checked')?.value;
+            const allFields = document.querySelectorAll('.content-field');
+
+            // Hide all fields first
+            allFields.forEach(field => {
+                field.classList.add('hidden');
+            });
+
+            // Destroy existing TinyMCE if exists
+            if (tinymce.get('body_text')) {
+                tinymce.get('body_text').destroy();
             }
 
-            bodyField.style.display = 'none';
-            fileUploadField.style.display = 'none';
-            quizFormFieldsContainer.style.display = 'none';
+            updateProgressStep(2);
 
-            bodyInput.removeAttribute('required');
-            fileInput.removeAttribute('required');
+            if (type === 'text' || type === 'essay') {
+                document.getElementById('body_field').classList.remove('hidden');
 
-            if (type === 'text' || type === 'video' || type === 'essay') {
-                bodyField.style.display = 'block';
-                bodyInput.setAttribute('required', 'required');
-
-                if (type === 'text' || type === 'essay') {
-                    tinymce.init({
-                        selector: 'textarea#body',
-                        plugins: 'code table lists link image media autosave wordcount fullscreen template',
-                        toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
-                        branding: false,
-                    });
+                // Update labels based on type
+                if (type === 'essay') {
+                    document.getElementById('body_label').textContent = '✍️ Pertanyaan Esai';
+                    document.getElementById('body_hint').textContent = 'Tulis pertanyaan esai yang akan dijawab oleh peserta';
+                } else {
+                    document.getElementById('body_label').textContent = '📝 Isi Konten';
+                    document.getElementById('body_hint').textContent = 'Gunakan editor untuk memformat teks dengan rich content';
                 }
+
+                // Initialize TinyMCE
+                setTimeout(() => {
+                    tinymce.init({
+                        selector: 'textarea#body_text',
+                        height: 400,
+                        plugins: 'code table lists link image media autosave wordcount fullscreen template codesample',
+                        toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright | indent outdent | bullist numlist | code codesample | table | link image media | fullscreen',
+                        branding: false,
+                        skin: 'oxide',
+                        content_css: 'default',
+                        menubar: false,
+                        statusbar: true,
+                        resize: true,
+                    });
+                }, 100);
+
+            } else if (type === 'video') {
+                document.getElementById('video_field').classList.remove('hidden');
             } else if (type === 'document' || type === 'image') {
-                fileUploadField.style.display = 'block';
-                fileInput.setAttribute('required', 'required');
+                document.getElementById('file_upload_field').classList.remove('hidden');
             } else if (type === 'quiz') {
-                quizFormFieldsContainer.style.display = 'block';
-                // Anda mungkin perlu memanggil fungsi untuk memuat form kuis di sini jika ada
+                document.getElementById('quiz_form_fields').classList.remove('hidden');
+                // Load quiz form if needed
             }
         }
 
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (file) {
+                const preview = document.getElementById('file_preview');
+                const fileName = document.getElementById('file_name');
+                const fileSize = document.getElementById('file_size');
+
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                preview.classList.remove('hidden');
+            }
+        }
+
+        function clearFile() {
+            const input = document.getElementById('file_upload');
+            const preview = document.getElementById('file_preview');
+
+            input.value = '';
+            preview.classList.add('hidden');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Set default selection if none selected
+            const checkedInput = document.querySelector('input[name="type"]:checked');
+            if (!checkedInput) {
+                document.querySelector('input[name="type"][value="text"]').checked = true;
+            }
             toggleContentTypeFields();
+        });
+
+        // Add event listeners for radio buttons
+        document.querySelectorAll('input[name="type"]').forEach(input => {
+            input.addEventListener('change', toggleContentTypeFields);
         });
     </script>
 </x-app-layout>

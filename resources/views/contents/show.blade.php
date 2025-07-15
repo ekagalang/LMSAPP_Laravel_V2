@@ -1,144 +1,747 @@
 <x-app-layout>
-    <div x-data="{ sidebarOpen: true }" class="flex flex-col md:flex-row min-h-screen bg-gray-100">
+    <div x-data="{ 
+        sidebarOpen: window.innerWidth >= 768, 
+        showProgress: false,
+        contentCompleted: {{ Auth::user()->completedContents->contains($content->id) ? 'true' : 'false' }},
+        toggleSidebar() { this.sidebarOpen = !this.sidebarOpen },
+        markAsCompleted() { 
+            this.contentCompleted = true;
+            // Add API call here to mark content as completed
+        }
+    }" 
+    class="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
 
+        <!-- Mobile Header -->
+        <div class="lg:hidden bg-white shadow-sm border-b p-4 flex items-center justify-between sticky top-0 z-30">
+            <button @click="toggleSidebar()" class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <div class="flex-1 mx-4">
+                <h1 class="text-lg font-bold text-gray-900 truncate">{{ $content->title }}</h1>
+                <div class="flex items-center space-x-2 mt-1">
+                    <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium capitalize">
+                        {{ ucfirst($content->type) }}
+                    </span>
+                </div>
+            </div>
+            <button @click="showProgress = !showProgress" class="p-2 rounded-xl bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Sidebar Navigation -->
         <aside 
             x-show="sidebarOpen" 
-            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter="transition ease-out duration-300 transform"
             x-transition:enter-start="-translate-x-full"
             x-transition:enter-end="translate-x-0"
-            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave="transition ease-in duration-300 transform"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
-            class="w-full md:w-80 bg-white border-r p-4 h-full md:h-screen md:sticky top-0 flex-shrink-0 z-20">
+            class="fixed lg:static inset-y-0 left-0 w-full sm:w-96 bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-40 lg:z-20">
             
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-800 truncate">{{ $course->title }}</h3>
-                {{-- Tombol tutup sidebar untuk tampilan mobile --}}
-                <button @click="sidebarOpen = false" class="md:hidden text-gray-500 hover:text-gray-800">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+            <!-- Sidebar Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-xl font-bold truncate">{{ $course->title }}</h3>
+                        <p class="text-indigo-100 text-sm mt-1">Pembelajaran Interaktif</p>
+                    </div>
+                    <button @click="sidebarOpen = false" class="lg:hidden p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Progress Bar -->
+                @php
+                    $totalContents = $course->lessons->flatMap->contents->count();
+                    $completedContents = Auth::user()->completedContents()->whereIn('content_id', $course->lessons->flatMap->contents->pluck('id'))->count();
+                    $progressPercentage = $totalContents > 0 ? round(($completedContents / $totalContents) * 100) : 0;
+                @endphp
+                <div class="mt-4">
+                    <div class="flex items-center justify-between text-sm mb-2">
+                        <span>Progress</span>
+                        <span class="font-semibold">{{ $progressPercentage }}%</span>
+                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-yellow-400 to-green-400 h-2 rounded-full transition-all duration-500" 
+                             style="width: {{ $progressPercentage }}%"></div>
+                    </div>
+                    <p class="text-xs text-indigo-100 mt-1">{{ $completedContents }}/{{ $totalContents }} konten selesai</p>
+                </div>
             </div>
             
-            {{-- Daftar pelajaran dan konten dibuat scrollable --}}
-            <nav class="overflow-y-auto h-[calc(100vh-5rem)]">
-                <ul>
-                    @foreach ($course->lessons->sortBy('order') as $lesson)
-                        <li class="mb-3">
-                            <strong class="text-gray-900 px-2">{{ $loop->iteration }}. {{ $lesson->title }}</strong>
-                            <ul class="ml-2 mt-2 space-y-1 border-l-2 border-gray-200">
-                                @foreach ($lesson->contents->sortBy('order') as $c)
-                                    <li class="relative">
-                                        {{-- Navigasi antar konten --}}
-                                        <a href="{{ route('contents.show', $c) }}"
-                                           class="block pl-4 pr-2 py-2 text-sm transition-colors duration-200 rounded-r-md
-                                                {{-- Style untuk konten yang sedang aktif --}}
-                                                @if ($c->id === $content->id) 
-                                                    text-indigo-700 font-bold bg-indigo-100 border-l-4 border-indigo-600 -ml-0.5 
-                                                @else 
-                                                    text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-l-4 border-transparent 
-                                                @endif">
+            <!-- Course Navigation -->
+            <nav class="flex-1 overflow-y-auto p-6">
+                @foreach ($course->lessons->sortBy('order') as $lesson)
+                    <div class="mb-6">
+                        <!-- Lesson Header -->
+                        <div class="flex items-center mb-3 pb-2 border-b border-gray-100">
+                            <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                                {{ $loop->iteration }}
+                            </div>
+                            <h4 class="font-semibold text-gray-900 flex-1">{{ $lesson->title }}</h4>
+                            @php
+                                $lessonContents = $lesson->contents->count();
+                                $lessonCompleted = Auth::user()->completedContents()->whereIn('content_id', $lesson->contents->pluck('id'))->count();
+                            @endphp
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                {{ $lessonCompleted }}/{{ $lessonContents }}
+                            </span>
+                        </div>
+                        
+                        <!-- Content List -->
+                        <ul class="space-y-2">
+                            @foreach ($lesson->contents->sortBy('order') as $c)
+                                @php
+                                    $isCompleted = Auth::user()->completedContents->contains($c->id);
+                                    $isCurrent = $c->id === $content->id;
+                                @endphp
+                                <li>
+                                    <a href="{{ route('contents.show', $c) }}"
+                                       class="group block p-3 rounded-xl transition-all duration-200 hover:shadow-md
+                                              {{ $isCurrent 
+                                                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' 
+                                                  : ($isCompleted 
+                                                      ? 'bg-green-50 hover:bg-green-100 text-green-800' 
+                                                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700') }}">
+                                        
+                                        <div class="flex items-center">
+                                            <!-- Content Type Icon -->
+                                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0
+                                                        {{ $isCurrent 
+                                                            ? 'bg-white/20 text-white' 
+                                                            : ($isCompleted 
+                                                                ? 'bg-green-100 text-green-600' 
+                                                                : 'bg-gray-200 text-gray-600') }}">
+                                                @switch($c->type)
+                                                    @case('video')
+                                                        🎥
+                                                        @break
+                                                    @case('document')
+                                                        📄
+                                                        @break
+                                                    @case('image')
+                                                        🖼️
+                                                        @break
+                                                    @case('quiz')
+                                                        🧠
+                                                        @break
+                                                    @case('essay')
+                                                        ✍️
+                                                        @break
+                                                    @default
+                                                        📝
+                                                @endswitch
+                                            </div>
                                             
-                                            <div class="flex items-center justify-between">
-                                                <span>{{ $c->title }}</span>
-                                                {{-- Tanda centang jika sudah selesai --}}
-                                                @if (Auth::user()->completedContents->contains($c->id))
-                                                    <span class="text-green-500">&#10004;</span>
+                                            <!-- Content Info -->
+                                            <div class="flex-1 min-w-0">
+                                                <p class="font-medium truncate">{{ $c->title }}</p>
+                                                <p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p>
+                                            </div>
+                                            
+                                            <!-- Status Icon -->
+                                            <div class="ml-2 flex-shrink-0">
+                                                @if($isCurrent)
+                                                    <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 8.207a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 9.586z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                    </div>
+                                                @elseif($isCompleted)
+                                                    <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center">
+                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                    </div>
+                                                @else
+                                                    <div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
+                                                        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                                    </div>
                                                 @endif
                                             </div>
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </li>
-                    @endforeach
-                </ul>
+                                        </div>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
             </nav>
+            
+            <!-- Sidebar Footer -->
+            <div class="p-6 border-t border-gray-200 bg-gray-50">
+                <a href="{{ route('courses.show', $course->id) }}" 
+                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Kembali ke Kursus
+                </a>
+            </div>
         </aside>
 
-        <main class="w-full p-4 md:p-8 flex-1">
-            <div class="max-w-4xl mx-auto">
-                {{-- Tombol untuk membuka sidebar & kembali ke kursus --}}
-                <div class="flex items-center justify-between mb-6">
-                    <button @click="sidebarOpen = !sidebarOpen" class="p-2 rounded-md bg-white hover:bg-gray-200 shadow-sm">
-                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col min-h-screen lg:min-h-0">
+            <!-- Simplified Desktop Header -->
+            <header class="hidden lg:flex items-center justify-between p-6 bg-white border-b border-gray-200">
+                <div class="flex items-center space-x-4">
+                    <button @click="toggleSidebar()" 
+                            class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
                     </button>
-                    <a href="{{ route('courses.show', $course->id) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-500">
-                        &larr; Kembali ke Detail Kursus
-                    </a>
-                </div>
-
-                {{-- Card untuk isi konten --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-24"> {{-- beri margin bottom agar tidak tertutup nav bawah --}}
-                    <div class="p-6 md:p-8">
-                        <h2 class="text-3xl font-bold mb-2 text-gray-900">{{ $content->title }}</h2>
-                        
-                        @if($content->description)
-                            <p class="text-md text-gray-600 mb-6 pb-6 border-b">{{ $content->description }}</p>
-                        @endif
-
-                        {{-- Tampilkan isi konten berdasarkan tipenya --}}
-                        @if($content->type == 'video' && $content->body)
-                            <div class="aspect-video rounded-lg overflow-hidden shadow-lg mb-6">
-                                <iframe class="w-full h-full" src="{{ str_replace('watch?v=', 'embed/', $content->body) }}?autoplay=1&amp;modestbranding=1&amp;rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                            </div>
-                        @elseif(in_array($content->type, ['document', 'image']))
-                            <div class="my-6">
-                                 @if($content->type == 'image')
-                                    <img src="{{ Storage::url($content->file_path) }}" alt="{{ $content->title }}" class="max-w-full h-auto rounded-lg shadow-md">
-                                 @else
-                                    <a href="{{ Storage::url($content->file_path) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Download Dokumen: {{ basename($content->file_path) }}</a>
-                                 @endif
-                            </div>
-                        @elseif(in_array($content->type, ['text', 'essay']))
-                            <div class="prose max-w-none mt-4">{!! $content->body !!}</div>
-                        @endif
-
-                        {{-- Bagian untuk form Esai atau tombol Kuis --}}
-                        @include('contents.partials.essay-quiz-section')
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">{{ $content->title }}</h1>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize">
+                                {{ ucfirst($content->type) }}
+                            </span>
+                            @if($content->description)
+                                <span class="text-gray-400">•</span>
+                                <span class="text-sm text-gray-600">{{ Str::limit($content->description, 50) }}</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
+                
+                <!-- Completion Status Only -->
+                <div class="flex items-center space-x-3">
+                    <div x-show="!contentCompleted">
+                        <button @click="markAsCompleted()" 
+                                class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">Tandai Selesai</span>
+                        </button>
+                    </div>
+                    <div x-show="contentCompleted">
+                        <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 font-medium rounded-lg">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="text-sm">Selesai</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-8">
-                    <div class="p-6 md:p-8">
-                        @include('contents.partials.discussion-section')
+            <!-- Content Container -->
+            <div class="flex-1 overflow-y-auto pb-36 lg:pb-40">
+                <div class="max-w-4xl mx-auto p-6 lg:p-8">
+                    <!-- Content Card -->
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+                        <!-- Content Header (Mobile) -->
+                        <div class="lg:hidden bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white">
+                            <h2 class="text-xl font-bold mb-2">{{ $content->title }}</h2>
+                            @if($content->description)
+                                <p class="text-indigo-100">{{ $content->description }}</p>
+                            @endif
+                        </div>
+
+                        <!-- Content Body -->
+                        <div class="p-6 lg:p-8">
+                            @if($content->description)
+                                <div class="mb-6 pb-6 border-b border-gray-100">
+                                    <p class="text-lg text-gray-600 leading-relaxed">{{ $content->description }}</p>
+                                </div>
+                            @endif
+
+                            <!-- Content Display Based on Type -->
+                            <div class="content-display">
+                                @if($content->type == 'video' && $content->body)
+                                    <div class="relative">
+                                        <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+                                            <iframe class="w-full h-full" 
+                                                    src="{{ str_replace('watch?v=', 'embed/', $content->body) }}?autoplay=0&modestbranding=1&rel=0&color=white" 
+                                                    frameborder="0" 
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                                    allowfullscreen></iframe>
+                                        </div>
+                                        <div class="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm backdrop-blur-sm">
+                                            🎥 Video
+                                        </div>
+                                    </div>
+                                    
+                                @elseif($content->type == 'image' && $content->file_path)
+                                    <div class="text-center">
+                                        <div class="inline-block rounded-2xl overflow-hidden shadow-2xl">
+                                            <img src="{{ Storage::url($content->file_path) }}" 
+                                                 alt="{{ $content->title }}" 
+                                                 class="max-w-full h-auto max-h-96 object-contain">
+                                        </div>
+                                        <p class="text-sm text-gray-500 mt-4">{{ $content->title }}</p>
+                                    </div>
+                                    
+                                @elseif($content->type == 'document' && $content->file_path)
+                                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 text-center border border-blue-100">
+                                        <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                            <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Dokumen Pembelajaran</h3>
+                                        <p class="text-gray-600 mb-6">{{ basename($content->file_path) }}</p>
+                                        <a href="{{ Storage::url($content->file_path) }}" 
+                                           target="_blank" 
+                                           class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            Download Dokumen
+                                        </a>
+                                    </div>
+                                    
+                                @elseif(in_array($content->type, ['text', 'essay']))
+                                    <div class="prose prose-lg max-w-none">
+                                        <div class="content-text text-gray-800 leading-relaxed">
+                                            {!! $content->body !!}
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Essay/Quiz Section -->
+                            @if($content->type == 'essay' || $content->type == 'quiz')
+                                <div class="mt-8 pt-8 border-t border-gray-200">
+                                    @include('contents.partials.essay-quiz-section')
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Discussion Section -->
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                        <div class="bg-gradient-to-r from-purple-500 to-pink-600 p-6 text-white">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a9.863 9.863 0 01-4.906-1.304L3 21l1.304-5.094A9.863 9.863 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"/>
+                                </svg>
+                                Diskusi & Tanya Jawab
+                            </h3>
+                            <p class="text-purple-100 mt-1">Berbagi pemikiran dan bertanya tentang materi ini</p>
+                        </div>
+                        <div class="p-6 lg:p-8">
+                            @include('contents.partials.discussion-section')
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
 
-        {{-- Logika untuk menentukan konten sebelumnya dan selanjutnya --}}
-        @php
-            $allContents = $course->lessons->sortBy('order')->flatMap->contents->sortBy('order')->values();
-            $currentIndex = $allContents->search(fn($item) => $item->id === $content->id);
-            $previousContent = $currentIndex > 0 ? $allContents[$currentIndex - 1] : null;
-            $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents[$currentIndex + 1] : null;
-        @endphp
-
-        <footer class="fixed bottom-0 left-0 w-full bg-white border-t p-4 z-10 shadow-lg-top">
-            <div class="max-w-7xl mx-auto flex justify-between items-center">
-                {{-- Tombol Kembali --}}
-                <div>
-                    @if ($previousContent)
-                        <a href="{{ route('contents.show', $previousContent) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                            &larr; Sebelumnya
-                        </a>
-                    @endif
+        <!-- Compact Bottom Navigation -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-xl z-30">
+            @php
+                $allContents = $course->lessons->sortBy('order')->flatMap->contents->sortBy('order')->values();
+                $currentIndex = $allContents->search(fn($item) => $item->id === $content->id);
+                $previousContent = $currentIndex > 0 ? $allContents[$currentIndex - 1] : null;
+                $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents[$currentIndex + 1] : null;
+            @endphp
+            
+            <!-- Mobile Bottom Navigation -->
+            <div class="lg:hidden">
+                <!-- Compact Progress Section -->
+                <div class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-medium">Progress:</span>
+                        <span class="text-xs font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
+                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-1">
+                        <div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1 rounded-full transition-all duration-500" 
+                             style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div>
+                    </div>
+                    <div class="text-center mt-1">
+                        <span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span>
+                    </div>
                 </div>
+                
+                <!-- Compact Navigation Buttons -->
+                <div class="px-4 py-3">
+                    <div class="flex items-center space-x-3">
+                        <!-- Previous Button (Small) -->
+                        @if ($previousContent)
+                            <a href="{{ route('contents.show', $previousContent) }}" 
+                               class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                            </a>
+                        @endif
 
-                {{-- Tombol Lanjut / Selesai --}}
-                <div>
-                    @if ($nextContent)
-                        <a href="{{ route('contents.show', $nextContent) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500">
-                            Selanjutnya &rarr;
+                        <!-- Main Next Button -->
+                        <div class="flex-1">
+                            @if ($nextContent)
+                                <a href="{{ route('contents.show', $nextContent) }}" 
+                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group">
+                                    <span class="text-sm mr-2">Selanjutnya</span>
+                                    <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
+                            @else
+                                <a href="{{ route('courses.show', $course->id) }}" 
+                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
+                                    <span class="text-sm mr-2">Selesai 🎉</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </a>
+                            @endif
+                        </div>
+
+                        <!-- Menu Button -->
+                        <a href="{{ route('courses.show', $course->id) }}" 
+                           class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            </svg>
                         </a>
-                    @else
-                        {{-- Jika ini konten terakhir, tombol berubah jadi Selesai --}}
-                        <a href="{{ route('courses.show', $course->id) }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500">
-                            Selesai Kursus
-                        </a>
-                    @endif
+                    </div>
                 </div>
             </div>
-        </footer>
+
+            <!-- Desktop Bottom Navigation -->
+            <div class="hidden lg:block">
+                <!-- Compact Progress Section -->
+                <div class="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                    <div class="max-w-6xl mx-auto">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-sm">Progress:</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
+                                <span class="text-sm font-medium text-yellow-200">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <div class="w-full bg-white/20 rounded-full h-1.5">
+                                <div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1.5 rounded-full transition-all duration-500 relative" 
+                                     style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%">
+                                    <div class="absolute right-0 top-0 w-3 h-3 bg-white rounded-full -mt-0.5 -mr-1.5 shadow-sm"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Compact Navigation Buttons -->
+                <div class="px-6 py-3">
+                    <div class="max-w-6xl mx-auto flex items-center justify-between">
+                        <!-- Previous Content -->
+                        <div class="flex-1">
+                            @if ($previousContent)
+                                <a href="{{ route('contents.show', $previousContent) }}" 
+                                   class="inline-flex items-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm">
+                                    <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                    </svg>
+                                    <div class="text-left">
+                                        <div class="text-xs text-gray-500">Sebelumnya</div>
+                                        <div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div>
+                                    </div>
+                                </a>
+                            @endif
+                        </div>
+
+                        <!-- Center Action -->
+                        <div class="flex-shrink-0 mx-6">
+                            @if ($nextContent)
+                                <a href="{{ route('contents.show', $nextContent) }}" 
+                                   class="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 group">
+                                    <div class="text-center mr-3">
+                                        <div class="text-xs text-indigo-100">Selanjutnya</div>
+                                        <div class="text-sm font-bold">{{ Str::limit($nextContent->title, 20) }}</div>
+                                    </div>
+                                    <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
+                            @else
+                                <a href="{{ route('courses.show', $course->id) }}" 
+                                   class="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105">
+                                    <div class="text-center mr-3">
+                                        <div class="text-xs text-green-100">Selesai</div>
+                                        <div class="text-sm font-bold">Kursus Selesai! 🎉</div>
+                                    </div>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </a>
+                            @endif
+                        </div>
+
+                        <!-- View Course -->
+                        <div class="flex-1 text-right">
+                            <a href="{{ route('courses.show', $course->id) }}" 
+                               class="inline-flex items-center px-3 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-medium rounded-lg transition-all duration-200 hover:shadow-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                </svg>
+                                <span class="text-xs">Lihat Kursus</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Mobile Progress Modal -->
+        <div x-show="showProgress" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             @click="showProgress = false">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" @click.stop>
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Progress Pembelajaran</h3>
+                    <p class="text-gray-600 text-sm">{{ $course->title }}</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">Total Progress</span>
+                        <span class="text-lg font-bold text-indigo-600">{{ $progressPercentage }}%</span>
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-1000 relative overflow-hidden" 
+                                 style="width: {{ $progressPercentage }}%">
+                                <div class="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-xs font-semibold text-white drop-shadow-lg">{{ $progressPercentage }}%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center text-sm">
+                        <div class="text-center">
+                            <div class="font-semibold text-green-600">{{ $completedContents }}</div>
+                            <div class="text-gray-500">Selesai</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-semibold text-indigo-600">{{ $totalContents - $completedContents }}</div>
+                            <div class="text-gray-500">Tersisa</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-semibold text-gray-700">{{ $totalContents }}</div>
+                            <div class="text-gray-500">Total</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Completion Action -->
+                    <div class="pt-4 border-t border-gray-100">
+                        <div x-show="!contentCompleted" class="space-y-3">
+                            <p class="text-sm text-gray-600 text-center">Tandai konten ini sebagai selesai?</p>
+                            <button @click="markAsCompleted(); showProgress = false" 
+                                    class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200">
+                                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Tandai Selesai
+                            </button>
+                        </div>
+                        <div x-show="contentCompleted" class="text-center">
+                            <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 font-medium rounded-xl">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Konten Selesai ✨
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button @click="showProgress = false" 
+                        class="w-full mt-6 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors">
+                    Tutup
+                </button>
+            </div>
+        </div>
     </div>
+
+    <style>
+        .prose {
+            color: #374151;
+        }
+        
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+            color: #111827;
+            font-weight: 600;
+        }
+        
+        .prose p {
+            margin-bottom: 1.25rem;
+            line-height: 1.75;
+        }
+        
+        .prose ul, .prose ol {
+            margin: 1.25rem 0;
+            padding-left: 1.625rem;
+        }
+        
+        .prose li {
+            margin: 0.5rem 0;
+        }
+        
+        .prose blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+            font-style: italic;
+            color: #6b7280;
+        }
+        
+        .prose code {
+            background-color: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+        
+        .prose pre {
+            background-color: #1f2937;
+            color: #f9fafb;
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        
+        .prose a {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+        
+        .prose a:hover {
+            color: #1d4ed8;
+        }
+        
+        .prose img {
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.25rem 0;
+        }
+        
+        .prose th, .prose td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        .prose th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+        
+        /* Custom scrollbar */
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Compact Bottom Navigation Enhancements */
+        .fixed {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        /* Enhanced button animations */
+        .group:hover {
+            transform: translateY(-0.5px);
+        }
+        
+        /* Responsive Typography */
+        @media (max-width: 640px) {
+            .max-w-48 {
+                max-width: 180px;
+            }
+        }
+        
+        /* Backdrop blur support */
+        .backdrop-blur-md {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        .backdrop-blur-sm {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+    </style>
+
+    <script>
+        // Auto-hide mobile sidebar when scrolling
+        let lastScrollTop = 0;
+        
+        window.addEventListener('scroll', function() {
+            if (window.innerWidth < 1024) {
+                let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                if (scrollTop > lastScrollTop && scrollTop > 100) {
+                    if (window.Alpine) {
+                        Alpine.store('sidebarOpen', false);
+                    }
+                }
+                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+            }
+        }, false);
+        
+        // Simple keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Arrow key navigation (with Ctrl)
+            if (e.ctrlKey) {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    const prevLink = document.querySelector('.fixed a[href*="contents.show"]');
+                    if (prevLink) prevLink.click();
+                }
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const nextLink = document.querySelector('.fixed .bg-gradient-to-r a');
+                    if (nextLink) nextLink.click();
+                }
+            }
+            
+            // Escape to toggle sidebar
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (window.Alpine) {
+                    Alpine.store('sidebarOpen', !Alpine.store('sidebarOpen'));
+                }
+            }
+        });
+    </script>
 </x-app-layout>
