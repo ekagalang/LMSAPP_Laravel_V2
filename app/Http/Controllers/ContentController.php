@@ -74,8 +74,7 @@ class ContentController extends Controller
                 $bodySource = 'body_text';
                 break;
             case 'video':
-                // Untuk video, kita tidak perlu validasi body karena akan diambil dari input lain
-                // Namun, kita tetap set source-nya
+                $rules['body_video'] = 'nullable|url';
                 $bodySource = 'body_video';
                 break;
         }
@@ -83,6 +82,7 @@ class ContentController extends Controller
         if ($request->input('type') === 'quiz') {
             $rules['quiz'] = 'required|array';
             $rules['quiz.title'] = 'required|string|max:255';
+            $rules['time_limit'] = 'nullable|integer|min:0';
         }
 
         $validated = $request->validate($rules);
@@ -104,8 +104,11 @@ class ContentController extends Controller
                 $content->file_path = $request->file('file_upload')->store('content_files', 'public');
             }
 
+
             if ($validated['type'] === 'quiz' && $request->has('quiz')) {
-                $quiz = $this->saveQuiz($request->input('quiz'), $lesson, $content->quiz_id);
+                $quizData = $request->input('quiz');
+                $quizData['time_limit'] = $validated['time_limit'] ?? null;
+                $quiz = $this->saveQuiz($quizData, $lesson, $content->quiz_id);
                 $content->quiz_id = $quiz->id;
             } else {
                 if ($content->quiz) $content->quiz->delete();
