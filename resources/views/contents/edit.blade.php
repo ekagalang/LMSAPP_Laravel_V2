@@ -64,7 +64,6 @@
                 </div>
             @endif
 
-            <!-- Main Content Card -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden"
                  x-data="contentFormManager({
                      content: {{ Js::from($content) }},
@@ -73,7 +72,6 @@
                  })"
                  x-init="initForm()">
 
-                <!-- Header -->
                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6">
                     <div class="flex items-center justify-between">
                         <div>
@@ -97,14 +95,12 @@
                     </div>
                 </div>
 
-                <!-- Form Content -->
                 <form id="contentForm" :action="formAction" method="POST" enctype="multipart/form-data" class="p-8">
                     @csrf
                     <template x-if="content.id">
                         <input type="hidden" name="_method" value="PUT">
                     </template>
 
-                    <!-- Basic Information Section -->
                     <div class="space-y-6 mb-8">
                         <div class="border-b border-gray-200 pb-4">
                             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -113,7 +109,6 @@
                             </h3>
                         </div>
 
-                        <!-- Title Field -->
                         <div class="group">
                             <label for="title" class="block text-sm font-semibold text-gray-700 mb-2">
                                 📝 Judul Konten
@@ -127,7 +122,6 @@
                                    required>
                         </div>
 
-                        <!-- Description Field -->
                         <div class="group">
                             <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
                                 📄 Deskripsi (Opsional)
@@ -140,13 +134,11 @@
                                       placeholder="Berikan deskripsi singkat tentang konten ini..."></textarea>
                         </div>
 
-                        <!-- Content Type Field -->
                         <div class="group">
                             <label for="type" class="block text-sm font-semibold text-gray-700 mb-3">
                                 🎯 Tipe Konten
                             </label>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                                <!-- Text -->
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="text" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -156,7 +148,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Video -->
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="video" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -166,7 +157,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Document -->
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="document" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -176,7 +166,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Image -->
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="image" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -186,7 +175,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Quiz -->
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="quiz" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -196,7 +184,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Essay -->
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="essay" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -209,7 +196,6 @@
                         </div>
                     </div>
 
-                    <!-- Dynamic Content Section -->
                     <div class="space-y-6 mb-8">
                         <div class="border-b border-gray-200 pb-4">
                             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -218,7 +204,6 @@
                             </h3>
                         </div>
 
-                        <!-- Text/Essay Content -->
                         <div x-show="isType('text') || isType('essay')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                                 <label for="body_editor" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -231,7 +216,6 @@
                             </div>
                         </div>
 
-                        <!-- Video Content -->
                         <div x-show="isType('video')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
                                 <label for="video_url" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -244,7 +228,6 @@
                                        placeholder="https://www.youtube.com/watch?v=...">
                                 <p class="text-sm text-gray-500 mt-2">Masukkan URL lengkap video dari YouTube atau Vimeo</p>
 
-                                <!-- Video Preview -->
                                 <div x-show="content.body && content.body.includes('youtube')" class="mt-4">
                                     <div class="bg-white rounded-lg p-4 border">
                                         <h4 class="font-medium text-gray-900 mb-2">Preview Video:</h4>
@@ -256,14 +239,12 @@
                             </div>
                         </div>
 
-                        <!-- File Upload Content -->
                         <div x-show="isType('document') || isType('image')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
                                 <label class="block text-sm font-semibold text-gray-700 mb-3">
                                     📁 <span x-text="isType('image') ? 'Unggah Gambar' : 'Unggah Dokumen'"></span>
                                 </label>
 
-                                <!-- Current File Display -->
                                 <div x-show="content.file_path" class="mb-4 p-4 bg-white rounded-lg border border-green-200">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center">
@@ -284,7 +265,6 @@
                                     </div>
                                 </div>
 
-                                <!-- File Upload -->
                                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 transition-colors duration-300">
                                     <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
@@ -301,7 +281,6 @@
                             </div>
                         </div>
 
-                        <!-- Quiz Content -->
                         <div x-show="isType('quiz')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-100">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -310,12 +289,29 @@
                                         <span x-text="content.quiz && content.quiz.questions ? content.quiz.questions.length : 0"></span> Pertanyaan
                                     </span>
                                 </h3>
+                                
+                                <div class="mb-4">
+    <label for="quiz_duration" class="block text-sm font-semibold text-gray-700 mb-2">
+        ⏱️ Durasi Pengerjaan (Menit)
+    </label>
+    <input 
+        type="text"  {{-- 1. Ubah tipe menjadi text --}}
+        inputmode="numeric" {{-- Menampilkan keyboard numerik di perangkat mobile --}}
+        name="time_limit"
+        id="quiz_time_limit"
+        x-model.number="content.quiz.time_limit"
+        {{-- 2. Tambahkan event listener untuk hanya mengizinkan angka --}}
+        @input="$event.target.value = $event.target.value.replace(/[^0-9]/g, '')"
+        class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+        placeholder="Contoh: 60">
+    <p class="text-sm text-gray-500 mt-1">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
+</div>
+
                                 @include('quizzes.partials.full-quiz-form')
                             </div>
                         </div>
                     </div>
 
-                    <!-- Settings Section -->
                     <div class="space-y-6 mb-8">
                         <div class="border-b border-gray-200 pb-4">
                             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -338,7 +334,6 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-gray-200 space-y-4 sm:space-y-0">
                         <div class="flex items-center space-x-4">
                             <a href="{{ route('courses.show', $lesson->course) }}"
@@ -498,6 +493,7 @@
                     return {
                         title: this.content.title || '',
                         description: '',
+                        duration: 0, // Ditambahkan: default duration
                         total_marks: 100,
                         pass_marks: 70,
                         status: 'draft',

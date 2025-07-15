@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Content; // Diperlukan jika ada interaksi dengan model Content
+use App\Models\Content;
 use App\Models\Lesson;
 use App\Models\Course;
 use App\Models\Quiz;
@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class QuizController extends Controller
 {
@@ -23,21 +24,18 @@ class QuizController extends Controller
 
     public function __construct()
     {
-        // PERBAIKAN: Tambahkan 'start' ke dalam array 'except'
-        // Ini akan mengizinkan request untuk masuk ke method start(),
-        // di mana otorisasi yang lebih spesifik akan ditangani oleh Policy.
         $this->middleware('can:manage own courses')->except([
             'show',
-            'start', // Tambahkan ini
+            'start',
             'startAttempt',
             'submitAttempt',
-            'showResult'
+            'showResult',
+            'checkTimeRemaining' // ✅ BARU: Tambahkan method untuk cek waktu tersisa
         ]);
     }
 
     /**
      * Display a listing of the resource.
-     * Biasanya untuk daftar kuis (admin/instruktur).
      */
     public function index()
     {
@@ -60,11 +58,9 @@ class QuizController extends Controller
 
     /**
      * Display the specified quiz.
-     * Menampilkan detail kuis (sebelum memulai percobaan).
      */
     public function show(Quiz $quiz)
     {
-        // Pastikan relasi lesson dan course dimuat
         $quiz->load('questions.options', 'lesson.course', 'instructor');
         $this->authorize('view', $quiz);
         return view('quizzes.show', compact('quiz'));
@@ -76,9 +72,8 @@ class QuizController extends Controller
     public function create()
     {
         $this->authorize('create', Quiz::class);
-        // Anda mungkin perlu menyesuaikan pelajaran yang ditampilkan di sini
         $lessons = Lesson::whereHas('course', function ($query) {
-            $query->where('user_id', Auth::id()); // Hanya pelajaran dari kursus yang dibuat instruktur ini
+            $query->where('user_id', Auth::id());
         })->get();
         return view('quizzes.create', compact('lessons'));
     }
@@ -97,7 +92,7 @@ class QuizController extends Controller
             'total_marks' => 'required|integer|min:0',
             'pass_marks' => 'required|integer|min:0|lte:total_marks',
             'show_answers_after_attempt' => 'boolean',
-            'time_limit' => 'nullable|integer|min:1',
+            'time_limit' => 'nullable|integer|min:1|max:1440', // ✅ BARU: Validasi time limit (max 24 jam)
             'status' => ['required', Rule::in(['draft', 'published'])],
             'questions' => 'required|array|min:1',
             'questions.*.question_text' => 'required|string',
@@ -117,7 +112,7 @@ class QuizController extends Controller
             'total_marks' => $validatedData['total_marks'],
             'pass_marks' => $validatedData['pass_marks'],
             'show_answers_after_attempt' => $request->has('show_answers_after_attempt'),
-            'time_limit' => $validatedData['time_limit'],
+            'time_limit' => $validatedData['time_limit'], // ✅ BARU: Simpan time limit
             'status' => $validatedData['status'],
         ]);
 
@@ -178,7 +173,7 @@ class QuizController extends Controller
             'total_marks' => 'required|integer|min:0',
             'pass_marks' => 'required|integer|min:0|lte:total_marks',
             'show_answers_after_attempt' => 'boolean',
-            'time_limit' => 'nullable|integer|min:1',
+            'time_limit' => 'nullable|integer|min:1|max:1440', // ✅ BARU: Validasi time limit
             'status' => ['required', Rule::in(['draft', 'published'])],
             'questions_to_delete' => 'array',
             'questions_to_delete.*' => 'exists:questions,id',
@@ -203,7 +198,7 @@ class QuizController extends Controller
             'total_marks' => $validatedData['total_marks'],
             'pass_marks' => $validatedData['pass_marks'],
             'show_answers_after_attempt' => $request->has('show_answers_after_attempt'),
-            'time_limit' => $validatedData['time_limit'],
+            'time_limit' => $validatedData['time_limit'], // ✅ BARU: Update time limit
             'status' => $validatedData['status'],
         ]);
 
@@ -273,7 +268,6 @@ class QuizController extends Controller
         $quiz->load('lesson.course');
         $user = Auth::user();
 
-        // PERBAIKAN: Ganti isParticipant() dengan hasRole('participant')
         if (!$user->hasRole('participant')) {
             abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
         }
@@ -292,7 +286,66 @@ class QuizController extends Controller
             'started_at' => now(),
         ]);
 
-        return view('quizzes.attempt', compact('quiz', 'attempt'));
+        // ✅ BARU: Hitung deadline jika ada time limit
+        $deadline = null;
+        if ($quiz->time_limit) {
+            $deadline = $attempt->started_at->addMinutes($quiz->time_limit);
+        }
+
+        return view('quizzes.attempt', compact('quiz', 'attempt', 'deadline'));
+    }
+
+    /**
+     * ✅ BARU: Check time remaining for quiz attempt
+     */
+    public function checkTimeRemaining(Quiz $quiz, QuizAttempt $attempt)
+    {
+        $user = Auth::user();
+
+        if ($attempt->user_id !== $user->id || $attempt->quiz_id !== $quiz->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($attempt->completed_at) {
+            return response()->json(['completed' => true]);
+        }
+
+        if (!$quiz->time_limit) {
+            return response()->json(['unlimited' => true]);
+        }
+
+        $deadline = $attempt->started_at->addMinutes($quiz->time_limit);
+        $now = now();
+        
+        if ($now->gte($deadline)) {
+            // ✅ Time's up, auto submit
+            $this->autoSubmitAttempt($quiz, $attempt);
+            return response()->json(['expired' => true]);
+        }
+
+        $remainingSeconds = $now->diffInSeconds($deadline, false);
+        
+        return response()->json([
+            'remaining_seconds' => max(0, $remainingSeconds),
+            'deadline' => $deadline->toISOString()
+        ]);
+    }
+
+    /**
+     * ✅ BARU: Auto submit when time is up
+     */
+    private function autoSubmitAttempt(Quiz $quiz, QuizAttempt $attempt)
+    {
+        if ($attempt->completed_at) {
+            return; // Already completed
+        }
+
+        // Score akan 0 karena tidak ada jawaban yang disubmit
+        $attempt->update([
+            'score' => 0,
+            'passed' => false,
+            'completed_at' => now(),
+        ]);
     }
 
     /**
@@ -307,7 +360,18 @@ class QuizController extends Controller
         }
 
         if ($attempt->completed_at) {
-            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $attempt])->with('info', 'Anda sudah menyelesaikan percobaan ini.');
+            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $attempt])
+                ->with('info', 'Anda sudah menyelesaikan percobaan ini.');
+        }
+
+        // ✅ BARU: Check if time limit exceeded
+        if ($quiz->time_limit) {
+            $deadline = $attempt->started_at->addMinutes($quiz->time_limit);
+            if (now() > $deadline) {
+                $this->autoSubmitAttempt($quiz, $attempt);
+                return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $attempt])
+                    ->with('warning', 'Waktu kuis telah habis. Jawaban Anda otomatis disimpan.');
+            }
         }
 
         $validatedData = $request->validate([
@@ -393,7 +457,6 @@ class QuizController extends Controller
         return view('quizzes.result', compact('quiz', 'quizAttempt'));
     }
 
-
     /**
      * Get quiz question form partial for AJAX.
      */
@@ -413,34 +476,26 @@ class QuizController extends Controller
 
     public function start(Quiz $quiz)
     {
-        // Baris ini akan memanggil method start() di QuizPolicy
-        // untuk memeriksa apakah pengguna berhak memulai kuis ini.
         $this->authorize('start', $quiz);
-
-        // Jika otorisasi berhasil, tampilkan halaman konfirmasi untuk memulai kuis.
         return view('quizzes.start', compact('quiz'));
     }
 
     public function attempt(Quiz $quiz)
     {
-        // Gunakan policy 'start' untuk otorisasi, karena logikanya sama.
         $this->authorize('start', $quiz);
 
         $user = Auth::user();
 
-        // Pastikan kuis sudah dipublikasikan
         if ($quiz->status !== 'published') {
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
         }
 
-        // Buat record percobaan baru di database
         $attempt = QuizAttempt::create([
             'quiz_id' => $quiz->id,
             'user_id' => $user->id,
             'started_at' => now(),
         ]);
 
-        // Arahkan ke halaman pengerjaan kuis
         return view('quizzes.attempt', compact('quiz', 'attempt'));
     }
 }

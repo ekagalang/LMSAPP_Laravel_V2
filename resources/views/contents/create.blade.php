@@ -26,7 +26,6 @@
 
     <div class="py-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Progress Steps -->
             <div class="mb-8">
                 <div class="flex items-center justify-center space-x-4">
                     <div class="flex items-center">
@@ -46,7 +45,6 @@
                 </div>
             </div>
 
-            <!-- Main Form Card -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6">
                     <h2 class="text-2xl font-bold text-white">Informasi Konten</h2>
@@ -56,9 +54,7 @@
                 <form id="contentForm" method="POST" action="{{ route('lessons.contents.store', $lesson) }}" enctype="multipart/form-data" class="p-8">
                     @csrf
 
-                    <!-- Basic Information -->
                     <div class="space-y-6">
-                        <!-- Title Field -->
                         <div class="group">
                             <label for="title" class="block text-sm font-semibold text-gray-700 mb-2">
                                 📝 Judul Konten
@@ -80,7 +76,6 @@
                             @enderror
                         </div>
 
-                        <!-- Description Field -->
                         <div class="group">
                             <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
                                 📄 Deskripsi (Opsional)
@@ -92,13 +87,11 @@
                                       placeholder="Berikan deskripsi singkat tentang konten ini...">{{ old('description') }}</textarea>
                         </div>
 
-                        <!-- Content Type Selection -->
                         <div class="group">
                             <label class="block text-sm font-semibold text-gray-700 mb-4">
                                 🎯 Pilih Tipe Konten
                             </label>
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <!-- Text Content -->
                                 <label class="content-type-card cursor-pointer">
                                     <input type="radio" name="type" value="text" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'text' ? 'checked' : '' }}>
                                     <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
@@ -112,7 +105,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Video Content -->
                                 <label class="content-type-card cursor-pointer">
                                     <input type="radio" name="type" value="video" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'video' ? 'checked' : '' }}>
                                     <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
@@ -126,7 +118,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Document Content -->
                                 <label class="content-type-card cursor-pointer">
                                     <input type="radio" name="type" value="document" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'document' ? 'checked' : '' }}>
                                     <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
@@ -140,7 +131,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Image Content -->
                                 <label class="content-type-card cursor-pointer">
                                     <input type="radio" name="type" value="image" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'image' ? 'checked' : '' }}>
                                     <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
@@ -154,7 +144,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Quiz Content -->
                                 <label class="content-type-card cursor-pointer">
                                     <input type="radio" name="type" value="quiz" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'quiz' ? 'checked' : '' }}>
                                     <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
@@ -168,7 +157,6 @@
                                     </div>
                                 </label>
 
-                                <!-- Essay Content -->
                                 <label class="content-type-card cursor-pointer">
                                     <input type="radio" name="type" value="essay" class="sr-only" onchange="toggleContentTypeFields()" {{ old('type') == 'essay' ? 'checked' : '' }}>
                                     <div class="p-6 border-2 border-gray-200 rounded-xl hover:border-indigo-300 transition-all duration-300 hover:shadow-lg group">
@@ -188,9 +176,7 @@
                         </div>
                     </div>
 
-                    <!-- Dynamic Content Fields -->
                     <div class="mt-8 space-y-6">
-                        <!-- Text/Essay Body Field -->
                         <div id="body_field" class="content-field hidden">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                                 <label for="body_text" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -210,7 +196,6 @@
                             </div>
                         </div>
 
-                        <!-- Video URL Field -->
                         <div id="video_field" class="content-field hidden">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
                                 <label for="body_video" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -226,7 +211,6 @@
                             </div>
                         </div>
 
-                        <!-- File Upload Field -->
                         <div id="file_upload_field" class="content-field hidden">
                             <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
                                 <label for="file_upload" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -268,15 +252,30 @@
                             </div>
                         </div>
 
-                        <!-- Quiz Form Fields -->
                         <div id="quiz_form_fields" class="content-field hidden">
                             <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-100">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4">🧠 Pengaturan Kuis</h3>
-                                <!-- Quiz form will be loaded here -->
+                                
+                                <div class="mb-4">
+    <label for="time_limit" class="block text-sm font-semibold text-gray-700 mb-2">
+        ⏱️ Durasi Pengerjaan (Menit)
+    </label>
+    <input 
+        type="text"                      {{-- 1. Ubah tipe --}}
+        inputmode="numeric"              {{-- Keyboard numerik di mobile --}}
+        name="time_limit"                {{-- 2. Ganti nama agar sesuai Controller --}}
+        id="time_limit"                  {{-- Ganti id agar sesuai label --}}
+        oninput="this.value = this.value.replace(/[^0-9]/g, '')"  {{-- 3. Tambah filter JS --}}
+        class="w-full max-w-xs px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+        placeholder="Contoh: 60"
+        value="{{ old('time_limit') }}"> {{-- Sesuaikan juga 'old' helper --}}
+    <p class="text-sm text-gray-500 mt-2">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
+</div>
+
+                                <p class="text-center text-gray-600 italic">Pengaturan pertanyaan lebih lanjut tersedia dalam mode edit.</p>
                             </div>
                         </div>
 
-                        <!-- Order Field -->
                         <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
                             <label for="order" class="block text-sm font-semibold text-gray-700 mb-3">
                                 🔢 Urutan Konten (Opsional)
@@ -291,7 +290,6 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row items-center justify-between mt-10 pt-6 border-t border-gray-200 space-y-4 sm:space-y-0">
                         <a href="{{ route('courses.show', $lesson->course) }}"
                            class="inline-flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200">
