@@ -280,11 +280,22 @@ class QuizController extends Controller
             return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
         }
 
-        $attempt = QuizAttempt::create([
-            'quiz_id' => $quiz->id,
-            'user_id' => $user->id,
-            'started_at' => now(),
-        ]);
+        $attempt = QuizAttempt::firstOrCreate(
+            [
+                'quiz_id' => $quiz->id,
+                'user_id' => $user->id,
+                'completed_at' => null,
+            
+            ],
+            [
+                'started_at' => now(),
+            ]
+        );
+
+        if(is_null($attempt->started_at)) {
+            $attempt->started_at = now();
+            $attempt->save();
+        }
 
         // ✅ BARU: Hitung deadline jika ada time limit
         $deadline = null;

@@ -83,7 +83,7 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        $recentDiscussions = Discussion::with(['user', 'content.lesson.course'])
+        $recentDiscussionsList = Discussion::with(['user', 'content.lesson.course'])
             ->latest()
             ->take(5)
             ->get();
@@ -130,7 +130,7 @@ class DashboardController extends Controller
             'recent_activities' => [
                 'courses' => $recentCourses,
                 'users' => $recentUsers,
-                'discussions' => $recentDiscussions,
+                'discussions' => $recentDiscussionsList,
             ],
             'trends' => [
                 'monthly_enrollments' => $monthlyEnrollments,
