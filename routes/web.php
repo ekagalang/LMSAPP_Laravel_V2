@@ -60,6 +60,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])->name('quizzes.show');
     Route::get('/quizzes/{quiz}/start', [QuizController::class, 'start'])->name('quizzes.start');
     Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])->name('quizzes.start_attempt');
+    Route::post('/quizzes/{quiz}/attempts/{attempt}/save-progress', [QuizController::class, 'saveProgress'])
+        ->name('quizzes.save_progress')
+        ->middleware('auth');
+    Route::get('/quizzes/{quiz}/attempts/{attempt}/check-time', [QuizController::class, 'checkTimeRemaining'])
+        ->name('quizzes.check_time')
+        ->middleware('auth');
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
