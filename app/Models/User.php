@@ -278,4 +278,24 @@ class User extends Authenticatable
             ->sortByDesc('created_at')
             ->take($limit);
     }
+
+    public function feedback()
+    {
+        return $this->hasMany(Feedback::class, 'user_id');
+    }
+
+    public function taughtCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_instructor');
+    }
+
+    public function eventOrganizedCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_event_organizer');
+    }
+
+    public function enrolledCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
+    }
 }

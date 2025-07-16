@@ -291,46 +291,24 @@
                                 </h3>
                                 
                                 <div class="mb-4">
-    <label for="quiz_duration" class="block text-sm font-semibold text-gray-700 mb-2">
-        ⏱️ Durasi Pengerjaan (Menit)
-    </label>
-    <input 
-        type="text"  {{-- 1. Ubah tipe menjadi text --}}
-        inputmode="numeric" {{-- Menampilkan keyboard numerik di perangkat mobile --}}
-        name="time_limit"
-        id="quiz_time_limit"
-        x-model.number="content.quiz.time_limit"
-        {{-- 2. Tambahkan event listener untuk hanya mengizinkan angka --}}
-        @input="$event.target.value = $event.target.value.replace(/[^0-9]/g, '')"
-        class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
-        placeholder="Contoh: 60">
-    <p class="text-sm text-gray-500 mt-1">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
-</div>
+                                    <label for="quiz_duration" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        ⏱️ Durasi Pengerjaan (Menit)
+                                    </label>
+                                    <input 
+                                        type="text"  {{-- 1. Ubah tipe menjadi text --}}
+                                        inputmode="numeric" {{-- Menampilkan keyboard numerik di perangkat mobile --}}
+                                        name="time_limit"
+                                        id="quiz_time_limit"
+                                        x-model.number="content.quiz.time_limit"
+                                        {{-- 2. Tambahkan event listener untuk hanya mengizinkan angka --}}
+                                        @input="$event.target.value = $event.target.value.replace(/[^0-9]/g, '')"
+                                        class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                                        placeholder="Contoh: 60">
+                                    <p class="text-sm text-gray-500 mt-1">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
+                                </div>
 
                                 @include('quizzes.partials.full-quiz-form')
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-6 mb-8">
-                        <div class="border-b border-gray-200 pb-4">
-                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                                <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3 text-sm font-bold">3</div>
-                                Pengaturan Tambahan
-                            </h3>
-                        </div>
-
-                        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                            <label for="order" class="block text-sm font-semibold text-gray-700 mb-3">
-                                🔢 Urutan Konten
-                            </label>
-                            <input type="number"
-                                   name="order"
-                                   id="order"
-                                   x-model="content.order"
-                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
-                                   placeholder="Urutan otomatis jika kosong">
-                            <p class="text-sm text-gray-500 mt-2">Nomor urutan untuk menentukan posisi konten dalam pelajaran</p>
                         </div>
                     </div>
 

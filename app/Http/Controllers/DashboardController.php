@@ -11,6 +11,7 @@ use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
+use App\Models\CourseEnrollment;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -22,24 +23,24 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Menggunakan sistem peran dari Spatie
         if ($user->hasRole('super-admin')) {
-            // Ambil statistik untuk admin dashboard
             $stats = $this->getAdminStats();
             return view('dashboard.admin', compact('stats'));
-        } elseif ($user->hasRole('instructor')) {
-            // Ambil statistik untuk instructor dashboard
+        }
+
+        if ($user->hasRole('instructor')) {
             $stats = $this->getInstructorStats($user);
             return view('dashboard.instructor', compact('stats'));
-        } elseif ($user->hasRole('event-organizer')) {
-            // Untuk sementara, EO melihat dasbor yang sama dengan instruktur.
-            // Nanti bisa kita buatkan dasbor khusus.
-            return view('dashboard.instructor');
-        } else {
-            // Semua peran lain (defaultnya Participant) akan melihat dasbor ini.
-            $stats = $this->getParticipantStats($user);
-            return view('dashboard.participant', compact('stats'));
         }
+
+        if ($user->hasRole('event-organizer')) {
+            $stats = $this->getEoStats($user);
+            return view('dashboard.eo', compact('stats'));
+        }
+
+        // For Participant
+        $enrolledCourses = $user->enrolledCourses()->with('instructor')->where('status', 'published')->get();
+        return view('dashboard.participant', compact('enrolledCourses'));
     }
 
     private function getAdminStats()
@@ -437,6 +438,83 @@ class DashboardController extends Controller
                 'students' => $recentStudents,
                 'discussions' => $recentDiscussionsList,
             ],
+        ];
+    }
+
+    private function getEoStats(User $user): array
+    {
+        // 1. Ambil semua kursus yang dikelola oleh EO ini
+        $managedCourses = $user->eventOrganizedCourses()->with(['enrolledUsers', 'lessons.contents'])->get();
+        $courseIds = $managedCourses->pluck('id');
+
+        // 2. Statistik Kursus
+        $totalCourses = $managedCourses->count();
+        $publishedCourses = $managedCourses->where('status', 'published')->count();
+        $draftCourses = $managedCourses->where('status', 'draft')->count();
+
+        // 3. Statistik Peserta
+        $totalParticipants = DB::table('course_user')
+            ->whereIn('course_id', $courseIds)
+            ->distinct('user_id')
+            ->count();
+        
+        $recentEnrollments = DB::table('course_user')
+            ->whereIn('course_id', $courseIds)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->count();
+
+        // 4. Statistik Aktivitas
+        $totalDiscussions = Discussion::whereHas('content.lesson.course', function ($query) use ($courseIds) {
+            $query->whereIn('id', $courseIds);
+        })->count();
+
+        // 5. Performa Kursus (Ringkasan per kursus)
+        $coursePerformance = $managedCourses->map(function ($course) {
+            $participantCount = $course->enrolledUsers->count();
+            $totalContents = $course->lessons->sum(fn($lesson) => $lesson->contents->count());
+            
+            $averageProgress = 0;
+            if ($participantCount > 0 && $totalContents > 0) {
+                // ✅ FIX: Menggunakan whereIn untuk mencocokkan dengan array/collection ID pelajaran
+                $completedContentsCount = DB::table('content_user')
+                    ->join('contents', 'content_user.content_id', '=', 'contents.id')
+                    ->whereIn('contents.lesson_id', $course->lessons->pluck('id'))
+                    ->where('content_user.completed', true)
+                    ->count();
+                
+                $averageProgress = round(($completedContentsCount / ($participantCount * $totalContents)) * 100, 1);
+            }
+
+            return [
+                'title' => $course->title,
+                'status' => $course->status,
+                'participants' => $participantCount,
+                'progress' => $averageProgress,
+            ];
+        });
+
+        // 6. Aktivitas Terbaru
+        $recentUsers = User::whereHas('enrolledCourses', function ($query) use ($courseIds) {
+            $query->whereIn('course_id', $courseIds);
+        })->where('created_at', '>=', now()->subDays(7))->latest()->take(5)->get();
+
+
+        // 7. Susun data untuk dikirim ke view
+        return [
+            'overview' => [
+                ['label' => 'Kursus Dikelola', 'value' => $totalCourses, 'icon' => 'briefcase'],
+                ['label' => 'Total Peserta', 'value' => $totalParticipants, 'icon' => 'users'],
+                ['label' => 'Pendaftar Baru (30 Hari)', 'value' => $recentEnrollments, 'icon' => 'user-plus'],
+                ['label' => 'Total Diskusi', 'value' => $totalDiscussions, 'icon' => 'chat-bubble-left-right'],
+            ],
+            'course_summary' => [
+                'published' => $publishedCourses,
+                'draft' => $draftCourses,
+            ],
+            'course_performance' => $coursePerformance,
+            'recent_activity' => [
+                'users' => $recentUsers,
+            ]
         ];
     }
 }

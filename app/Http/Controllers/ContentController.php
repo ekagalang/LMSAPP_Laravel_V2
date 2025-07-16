@@ -104,6 +104,13 @@ class ContentController extends Controller
                 $content->file_path = $request->file('file_upload')->store('content_files', 'public');
             }
 
+            if (!$content->exists) {
+                $lastOrder = $lesson->contents()->max('order') ?? 0;
+                $content->order = $lastOrder + 1;
+            } else {
+                // Jika konten sudah ada, gunakan urutan dari request atau yang sudah ada
+                $content->order = $request->input('order', $content->order);
+            }
 
             if ($validated['type'] === 'quiz' && $request->has('quiz')) {
                 $quizData = $request->input('quiz');

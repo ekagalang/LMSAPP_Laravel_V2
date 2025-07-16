@@ -69,11 +69,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
+    Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
 
     // Route untuk Forum Diskusi
     Route::get('/courses/{course}/discussions', [App\Http\Controllers\DiscussionController::class, 'index'])->name('courses.discussions.index');
     Route::post('/contents/{content}/discussions', [App\Http\Controllers\DiscussionController::class, 'store'])->name('discussions.store');
     Route::post('/discussions/{discussion}/replies', [App\Http\Controllers\DiscussionController::class, 'storeReply'])->name('discussions.replies.store');
+
+    // Route Assing EO
+    Route::post('/courses/{course}/add-eo', [CourseController::class, 'addEventOrganizer'])->name('courses.addEo');
+    Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
 
     // Grup Route untuk Admin, Instruktur, dan EO
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -91,6 +96,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['permission:view progress reports'])->prefix('event-organizer')->name('eo.')->group(function () {
         Route::get('/courses', [EventOrganizerController::class, 'index'])->name('courses.index');
     });
+
+    // Export PDF
+    Route::get('/courses/{course}/export-progress-pdf', [ProgressController::class, 'exportCourseProgressPdf'])
+        ->name('courses.exportProgressPdf')
+        ->middleware('auth');
 
 });
 

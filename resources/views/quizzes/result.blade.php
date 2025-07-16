@@ -351,10 +351,8 @@
                         
                         <!-- Tombol Lihat Kuis Lain (Opsional) -->
                         @if($isPassed)
-                            <a href="{{ route('quizzes.index') }}" 
-                               class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold btn-hover flex items-center justify-center space-x-2">
-                                <i class="fas fa-list"></i>
-                                <span>Kuis Lainnya</span>
+                             <a href="{{ route('courses.show', $quiz->lesson->course) }}" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all duration-300 transform hover:scale-105">
+                                ✅ Lanjut ke Materi Berikutnya
                             </a>
                         @endif
                     </div>

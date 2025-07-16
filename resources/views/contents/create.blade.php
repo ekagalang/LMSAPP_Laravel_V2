@@ -257,36 +257,23 @@
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4">🧠 Pengaturan Kuis</h3>
                                 
                                 <div class="mb-4">
-    <label for="time_limit" class="block text-sm font-semibold text-gray-700 mb-2">
-        ⏱️ Durasi Pengerjaan (Menit)
-    </label>
-    <input 
-        type="text"                      {{-- 1. Ubah tipe --}}
-        inputmode="numeric"              {{-- Keyboard numerik di mobile --}}
-        name="time_limit"                {{-- 2. Ganti nama agar sesuai Controller --}}
-        id="time_limit"                  {{-- Ganti id agar sesuai label --}}
-        oninput="this.value = this.value.replace(/[^0-9]/g, '')"  {{-- 3. Tambah filter JS --}}
-        class="w-full max-w-xs px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
-        placeholder="Contoh: 60"
-        value="{{ old('time_limit') }}"> {{-- Sesuaikan juga 'old' helper --}}
-    <p class="text-sm text-gray-500 mt-2">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
-</div>
+                                    <label for="time_limit" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        ⏱️ Durasi Pengerjaan (Menit)
+                                    </label>
+                                    <input 
+                                        type="text"                      {{-- 1. Ubah tipe --}}
+                                        inputmode="numeric"              {{-- Keyboard numerik di mobile --}}
+                                        name="time_limit"                {{-- 2. Ganti nama agar sesuai Controller --}}
+                                        id="time_limit"                  {{-- Ganti id agar sesuai label --}}
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"  {{-- 3. Tambah filter JS --}}
+                                        class="w-full max-w-xs px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                                        placeholder="Contoh: 60"
+                                        value="{{ old('time_limit') }}"> {{-- Sesuaikan juga 'old' helper --}}
+                                    <p class="text-sm text-gray-500 mt-2">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
+                                </div>
 
                                 <p class="text-center text-gray-600 italic">Pengaturan pertanyaan lebih lanjut tersedia dalam mode edit.</p>
                             </div>
-                        </div>
-
-                        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                            <label for="order" class="block text-sm font-semibold text-gray-700 mb-3">
-                                🔢 Urutan Konten (Opsional)
-                            </label>
-                            <input type="number"
-                                   name="order"
-                                   id="order"
-                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
-                                   placeholder="Biarkan kosong untuk urutan otomatis"
-                                   value="{{ old('order') }}">
-                            <p class="text-sm text-gray-500 mt-2">Jika tidak diisi, konten akan ditambahkan di akhir</p>
                         </div>
                     </div>
 

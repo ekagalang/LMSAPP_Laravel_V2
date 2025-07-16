@@ -82,8 +82,12 @@ class CourseController extends Controller
             })
             ->orderBy('name')
             ->get();
+
+        $availableOrganizers = User::role('event-organizer')
+            ->whereNotIn('id', $course->eventOrganizers->pluck('id'))
+            ->get();
             
-        return view('courses.show', compact('course', 'availableInstructors', 'unEnrolledParticipants'));
+        return view('courses.show', compact('course', 'availableInstructors', 'availableOrganizers', 'unEnrolledParticipants'));
     }
 
     public function edit(Course $course)
@@ -306,5 +310,22 @@ class CourseController extends Controller
 
         // Mengunduh PDF dengan nama file yang dinamis
         return $pdf->download('laporan-progres-' . Str::slug($course->title) . '.pdf');
+    }
+
+    public function addEventOrganizer(Request $request, Course $course)
+    {
+        $this->authorize('update', $course);
+        $request->validate(['user_ids' => 'required|array']);
+        $organizerIds = User::whereIn('id', $request->user_ids)->role('event-organizer')->pluck('id');
+        $course->eventOrganizers()->syncWithoutDetaching($organizerIds);
+        return back()->with('success', 'Event Organizer berhasil ditambahkan.');
+    }
+
+    public function removeEventOrganizer(Request $request, Course $course)
+    {
+        $this->authorize('update', $course);
+        $request->validate(['user_ids' => 'required|array']);
+        $course->eventOrganizers()->detach($request->user_ids);
+        return back()->with('success', 'Event Organizer berhasil dihapus.');
     }
 }

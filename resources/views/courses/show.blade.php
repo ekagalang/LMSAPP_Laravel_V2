@@ -48,7 +48,8 @@
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                         <button @click="currentTab = 'lessons'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'lessons', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'lessons'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pelajaran & Konten</button>
                         @can('update', $course)
-                            <button @click="currentTab = 'managers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'managers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pengelola Kursus</button>
+                            <button @click="currentTab = 'managers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'managers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Assign Instruktur</button>
+                            <button @click="currentTab = 'event_organizers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'event_organizers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'event_organizers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Assign EO</button>
                             <button @click="currentTab = 'participants'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'participants', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'participants'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Peserta Kursus</button>
                         @endcan
                     </nav>
@@ -325,6 +326,50 @@
                                         </template>
                                     </div>
                                     <x-primary-button type="submit" x-bind:disabled="selectedEnrollUsers.length === 0">Daftarkan Terpilih</x-primary-button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="currentTab === 'event_organizers'" x-cloak class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Event Organizer Ditugaskan</h4>
+                                <form action="{{ route('courses.removeEo', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus EO terpilih?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                        @forelse($course->eventOrganizers as $organizer)
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="organizer-{{$organizer->id}}">
+                                                <label for="organizer-{{$organizer->id}}" class="ml-2">{{ $organizer->name }}</label>
+                                            </div>
+                                        @empty
+                                            <p class="text-gray-500 p-2">Belum ada EO.</p>
+                                        @endforelse
+                                    </div>
+                                    @if($course->eventOrganizers->isNotEmpty())
+                                        <x-danger-button type="submit">Hapus Terpilih</x-danger-button>
+                                    @endif
+                                </form>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Tambahkan Event Organizer</h4>
+                                <form action="{{ route('courses.addEo', $course) }}" method="POST">
+                                    @csrf
+                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                        @forelse($availableOrganizers as $organizer)
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="avail-organizer-{{$organizer->id}}">
+                                                <label for="avail-organizer-{{$organizer->id}}" class="ml-2">{{ $organizer->name }}</label>
+                                            </div>
+                                        @empty
+                                            <p class="text-gray-500 p-2">Semua EO sudah ditugaskan.</p>
+                                        @endforelse
+                                    </div>
+                                    @if($availableOrganizers->isNotEmpty())
+                                        <x-primary-button type="submit">Tambahkan</x-primary-button>
+                                    @endif
                                 </form>
                             </div>
                         </div>

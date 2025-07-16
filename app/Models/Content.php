@@ -69,4 +69,35 @@ class Content extends Model
     {
         return $this->hasMany(Discussion::class)->orderBy('created_at', 'desc');
     }
+
+    public function getYoutubeVideoIdAttribute(): ?string
+    {
+        if ($this->type !== 'video' || empty($this->body)) {
+            return null;
+        }
+        // Regex ini akan mengekstrak ID dari hampir semua format URL YouTube
+        preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $this->body, $match);
+        return $match[1] ?? null;
+    }
+
+    /**
+     * Accessor untuk URL embed YouTube.
+     * @return string|null
+     */
+    public function getYoutubeEmbedUrlAttribute(): ?string
+    {
+        $videoId = $this->getYoutubeVideoIdAttribute();
+        return $videoId ? 'https://www.youtube.com/embed/' . $videoId . '?autoplay=0&modestbranding=1&rel=0&color=white' : null;
+    }
+
+    /**
+     * Accessor untuk URL thumbnail YouTube.
+     * @return string|null
+     */
+    public function getYoutubeThumbnailUrlAttribute(): ?string
+    {
+        $videoId = $this->getYoutubeVideoIdAttribute();
+        // Menggunakan thumbnail kualitas tinggi
+        return $videoId ? 'https://img.youtube.com/vi/' . $videoId . '/hqdefault.jpg' : null;
+    }
 }

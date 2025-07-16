@@ -51,4 +51,9 @@ class Course extends Model
     {
         return $this->hasMany(Feedback::class);
     }
+
+    public function eventOrganizers()
+    {
+        return $this->belongsToMany(User::class, 'course_event_organizer');
+    }
 }

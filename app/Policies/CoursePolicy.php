@@ -34,14 +34,17 @@ class CoursePolicy
      */
     public function view(User $user, Course $course): bool
     {
-        // Jika kursus sudah publish, semua yang terdaftar boleh lihat.
-        if ($course->status === 'published') {
+        // Jika user adalah instruktur atau admin, izinkan.
+        if ($user->can('manage own courses') || $user->can('manage all courses')) {
             return true;
         }
 
-        // Jika draft, hanya yang punya izin yang sesuai.
-        // Anda bisa memilih 'manage own courses' atau 'manage all courses'.
-        return $user->can('manage own courses') || $user->can('manage all courses');
+        // Jika kursus sudah publish DAN user terdaftar di kursus tersebut, izinkan.
+        if ($course->status === 'published' && $course->enrolledUsers->contains($user)) {
+            return true;
+        }
+
+        return false;
     }
     
     /**

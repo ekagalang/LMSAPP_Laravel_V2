@@ -42,7 +42,9 @@ class GradebookController extends Controller
                       ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
-        $participants = $participantsQuery->with(['feedback' => fn($q) => $q->where('course_id', $course->id)])->get();
+        $participants = $participantsQuery->with(['feedback' => function ($query) use ($course) {
+            $query->where('course_id', $course->id);
+        }])->get();
 
         // --- Data untuk Tab Penilaian Esai ---
         $essayContentIds = $course->lessons()->with('contents')
