@@ -38,9 +38,9 @@ class DashboardController extends Controller
             return view('dashboard.eo', compact('stats'));
         }
 
-        // For Participant
-        $enrolledCourses = $user->enrolledCourses()->with('instructor')->where('status', 'published')->get();
-        return view('dashboard.participant', compact('enrolledCourses'));
+        // For Participant - Fixed to use consistent pattern and correct relationship
+        $stats = $this->getParticipantStats($user);
+        return view('dashboard.participant', compact('stats'));
     }
 
     private function getAdminStats()
@@ -457,7 +457,7 @@ class DashboardController extends Controller
             ->whereIn('course_id', $courseIds)
             ->distinct('user_id')
             ->count();
-        
+
         $recentEnrollments = DB::table('course_user')
             ->whereIn('course_id', $courseIds)
             ->where('created_at', '>=', now()->subDays(30))
@@ -472,7 +472,7 @@ class DashboardController extends Controller
         $coursePerformance = $managedCourses->map(function ($course) {
             $participantCount = $course->enrolledUsers->count();
             $totalContents = $course->lessons->sum(fn($lesson) => $lesson->contents->count());
-            
+
             $averageProgress = 0;
             if ($participantCount > 0 && $totalContents > 0) {
                 // ✅ FIX: Menggunakan whereIn untuk mencocokkan dengan array/collection ID pelajaran
@@ -481,7 +481,7 @@ class DashboardController extends Controller
                     ->whereIn('contents.lesson_id', $course->lessons->pluck('id'))
                     ->where('content_user.completed', true)
                     ->count();
-                
+
                 $averageProgress = round(($completedContentsCount / ($participantCount * $totalContents)) * 100, 1);
             }
 
