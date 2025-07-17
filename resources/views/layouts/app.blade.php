@@ -51,6 +51,9 @@
                                 <x-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
                                     {{ __('Manajemen Peran') }}
                                 </x-nav-link>
+                                <x-nav-link :href="route('admin.announcements.index')">
+                                    {{ __('Manajemen Pengumuman') }}
+                                </x-nav-link>
                             @endrole
                         </div>
                     </div>

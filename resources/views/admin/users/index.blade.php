@@ -3,6 +3,16 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Manajemen Pengguna') }}
         </h2>
+        
+        <div class="flex justify-end mb-4">
+            <!-- Tombol Impor Baru -->
+            <a href="{{ route('admin.users.import.show') }}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2">
+                Impor Pengguna
+            </a>
+            <a href="{{ route('admin.users.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Tambah Pengguna Baru
+            </a>
+        </div>
     </x-slot>
 
     <div class="py-12">

@@ -7,6 +7,8 @@ use App\Models\Lesson;
 use App\Models\Quiz;
 use App\Models\Question;
 use App\Models\Option;
+use App\Models\User;
+use App\Models\Course;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -17,14 +19,90 @@ class ContentController extends Controller
 {
     public function show(Content $content)
     {
-        $this->authorize('view', $content->lesson->course);
         $user = Auth::user();
-        if ($user->hasRole('participant')) {
-            $user->completedContents()->syncWithoutDetaching($content->id);
+        $course = $content->lesson->course;
+
+        // Otorisasi dasar: pastikan pengguna terdaftar di kursus
+        $this->authorize('view', $course);
+
+        // Ambil semua konten dalam urutan yang benar
+        $orderedContents = $this->getOrderedContents($course);
+        
+        // Cek apakah konten yang diminta sudah terbuka (unlocked)
+        $unlockedContents = $this->getUnlockedContents($user, $orderedContents);
+
+        if (!$unlockedContents->contains('id', $content->id) && !$user->hasRole('super-admin|instructor')) {
+            // Jika konten terkunci (dan pengguna bukan admin/instruktur), kembalikan dengan pesan error.
+            return redirect()->back()->with('error', 'Anda harus menyelesaikan materi sebelumnya terlebih dahulu.');
         }
-        $content->load(['discussions.user', 'discussions.replies.user']);
-        $course = $content->lesson->course->load(['lessons.contents' => fn($q) => $q->orderBy('order')]);
-        return view('contents.show', compact('content', 'course'));
+
+        // Jika lolos, kirim data yang diperlukan ke view
+        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user');
+        
+        // Untuk admin/instruktur, semua konten dianggap terbuka
+        if ($user->hasRole('super-admin|instructor')) {
+            $unlockedContents = $orderedContents;
+        }
+
+        return view('contents.show', compact('content', 'course', 'unlockedContents'));
+    }
+
+    public function completeAndContinue(Request $request, Content $content)
+    {
+        $user = Auth::user();
+        $course = $content->lesson->course;
+
+        // Tandai konten saat ini sebagai selesai
+        $user->completedContents()->syncWithoutDetaching($content->id);
+
+        // Cari konten berikutnya dalam urutan
+        $orderedContents = $this->getOrderedContents($course);
+        $currentIndex = $orderedContents->search(fn($item) => $item->id === $content->id);
+        
+        $nextContent = null;
+        if ($currentIndex !== false && ($currentIndex + 1) < $orderedContents->count()) {
+            $nextContent = $orderedContents[$currentIndex + 1];
+        }
+
+        // Jika ada materi selanjutnya, arahkan ke sana.
+        if ($nextContent) {
+            return redirect()->route('contents.show', $nextContent->id)->with('success', 'Materi selesai! Lanjut ke materi berikutnya.');
+        }
+
+        // Jika tidak ada, berarti kursus selesai.
+        return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan semua materi di kursus ini.');
+    }
+
+    private function getOrderedContents(Course $course)
+    {
+        return $course->lessons()->orderBy('order')->with(['contents' => function ($query) {
+            $query->orderBy('order');
+        }])->get()->flatMap->contents;
+    }
+
+    private function getUnlockedContents(User $user, $orderedContents)
+    {
+        $completedMap = $user->completedContents->keyBy('id');
+        $unlocked = collect();
+        $previousCompleted = true; // Materi pertama selalu dianggap terbuka
+
+        foreach ($orderedContents as $content) {
+            if ($previousCompleted) {
+                $unlocked->push($content);
+                // Untuk kuis/esai, anggap selesai jika sudah ada attempt/submission
+                if ($content->type === 'quiz' && $content->quiz) {
+                    $previousCompleted = $user->quizAttempts()->where('quiz_id', $content->quiz_id)->where('passed', true)->exists();
+                } elseif ($content->type === 'essay') {
+                    $previousCompleted = $user->essaySubmissions()->where('content_id', $content->id)->whereNotNull('graded_at')->exists();
+                } else {
+                    $previousCompleted = isset($completedMap[$content->id]);
+                }
+            } else {
+                // Begitu menemukan satu materi yang belum selesai, hentikan perulangan.
+                break;
+            }
+        }
+        return $unlocked;
     }
 
     public function create(Lesson $lesson)

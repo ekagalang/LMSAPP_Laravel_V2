@@ -2,14 +2,45 @@
     <div x-data="{ 
         sidebarOpen: window.innerWidth >= 768, 
         showProgress: false,
-        contentCompleted: {{ Auth::user()->completedContents->contains($content->id) ? 'true' : 'false' }},
+        // [LOGIKA BARU] Menentukan apakah konten ini dianggap selesai.
+        // Untuk kuis, harus lulus. Untuk esai, harus dinilai.
+        @php
+            $user = Auth::user();
+            $isTask = in_array($content->type, ['quiz', 'essay']);
+            $isContentEffectivelyCompleted = false;
+
+            if ($content->type === 'quiz' && $content->quiz) {
+                // Dianggap selesai jika ada percobaan yang lulus
+                $isContentEffectivelyCompleted = $user->quizAttempts()->where('quiz_id', $content->quiz_id)->where('passed', true)->exists();
+            } elseif ($content->type === 'essay') {
+                // Dianggap selesai jika sudah ada submission yang dinilai
+                $isContentEffectivelyCompleted = $user->essaySubmissions()->where('content_id', $content->id)->whereNotNull('graded_at')->exists();
+            } else {
+                // Untuk konten biasa, cek di tabel pivot
+                $isContentEffectivelyCompleted = $user->completedContents->contains($content->id);
+            }
+        @endphp
+        contentCompleted: {{ $isContentEffectivelyCompleted ? 'true' : 'false' }},
+
         toggleSidebar() { this.sidebarOpen = !this.sidebarOpen },
+        
+        // Fungsi ini akan men-submit form untuk menandai selesai
         markAsCompleted() { 
-            this.contentCompleted = true;
-            // Add API call here to mark content as completed
+            // Hanya submit jika bukan tugas (kuis/esai)
+            @if(!$isTask)
+                document.getElementById('complete-form').submit();
+            @endif
         }
     }" 
     class="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+
+        <!-- [BARU] Form tersembunyi untuk menandai selesai (hanya untuk konten non-tugas) -->
+        @if(!$isTask)
+        <form id="complete-form" action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" style="display: none;">
+            @csrf
+        </form>
+        @endif
+
 
         <!-- Mobile Header -->
         <div class="lg:hidden bg-white shadow-sm border-b p-4 flex items-center justify-between sticky top-0 z-30">
@@ -42,7 +73,7 @@
             x-transition:leave="transition ease-in duration-300 transform"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
-            class="fixed lg:static inset-y-0 left-0 w-full sm:w-96 bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-40 lg:z-20">
+            class="fixed lg:static inset-y-0 left-0 w-full sm:w-96 bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-40 lg:z-20 flex flex-col">
             
             <!-- Sidebar Header -->
             <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
@@ -60,9 +91,9 @@
                 
                 <!-- Progress Bar -->
                 @php
-                    $totalContents = $course->lessons->flatMap->contents->count();
-                    $completedContents = Auth::user()->completedContents()->whereIn('content_id', $course->lessons->flatMap->contents->pluck('id'))->count();
-                    $progressPercentage = $totalContents > 0 ? round(($completedContents / $totalContents) * 100) : 0;
+                    $totalContentsInCourse = $course->lessons->flatMap->contents->count();
+                    $completedContentsCount = Auth::user()->completedContents()->whereIn('content_id', $course->lessons->flatMap->contents->pluck('id'))->count();
+                    $progressPercentage = $totalContentsInCourse > 0 ? round(($completedContentsCount / $totalContentsInCourse) * 100) : 0;
                 @endphp
                 <div class="mt-4">
                     <div class="flex items-center justify-between text-sm mb-2">
@@ -73,7 +104,7 @@
                         <div class="bg-gradient-to-r from-yellow-400 to-green-400 h-2 rounded-full transition-all duration-500" 
                              style="width: {{ $progressPercentage }}%"></div>
                     </div>
-                    <p class="text-xs text-indigo-100 mt-1">{{ $completedContents }}/{{ $totalContents }} konten selesai</p>
+                    <p class="text-xs text-indigo-100 mt-1">{{ $completedContentsCount }}/{{ $totalContentsInCourse }} konten selesai</p>
                 </div>
             </div>
             
@@ -88,11 +119,11 @@
                             </div>
                             <h4 class="font-semibold text-gray-900 flex-1">{{ $lesson->title }}</h4>
                             @php
-                                $lessonContents = $lesson->contents->count();
-                                $lessonCompleted = Auth::user()->completedContents()->whereIn('content_id', $lesson->contents->pluck('id'))->count();
+                                $lessonContentsCount = $lesson->contents->count();
+                                $lessonCompletedCount = Auth::user()->completedContents()->whereIn('content_id', $lesson->contents->pluck('id'))->count();
                             @endphp
                             <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                {{ $lessonCompleted }}/{{ $lessonContents }}
+                                {{ $lessonCompletedCount }}/{{ $lessonContentsCount }}
                             </span>
                         </div>
                         
@@ -100,75 +131,53 @@
                         <ul class="space-y-2">
                             @foreach ($lesson->contents->sortBy('order') as $c)
                                 @php
-                                    $isCompleted = Auth::user()->completedContents->contains($c->id);
+                                    $cIsTask = in_array($c->type, ['quiz', 'essay']);
+                                    if ($c->type === 'quiz' && $c->quiz) {
+                                        $isCompleted = $user->quizAttempts()->where('quiz_id', $c->quiz_id)->where('passed', true)->exists();
+                                    } elseif ($c->type === 'essay') {
+                                        $isCompleted = $user->essaySubmissions()->where('content_id', $c->id)->whereNotNull('graded_at')->exists();
+                                    } else {
+                                        $isCompleted = $user->completedContents->contains($c->id);
+                                    }
                                     $isCurrent = $c->id === $content->id;
+                                    $isUnlocked = $unlockedContents->contains('id', $c->id);
                                 @endphp
                                 <li>
-                                    <a href="{{ route('contents.show', $c) }}"
-                                       class="group block p-3 rounded-xl transition-all duration-200 hover:shadow-md
-                                              {{ $isCurrent 
-                                                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' 
-                                                  : ($isCompleted 
-                                                      ? 'bg-green-50 hover:bg-green-100 text-green-800' 
-                                                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700') }}">
-                                        
-                                        <div class="flex items-center">
-                                            <!-- Content Type Icon -->
-                                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0
-                                                        {{ $isCurrent 
-                                                            ? 'bg-white/20 text-white' 
-                                                            : ($isCompleted 
-                                                                ? 'bg-green-100 text-green-600' 
-                                                                : 'bg-gray-200 text-gray-600') }}">
-                                                @switch($c->type)
-                                                    @case('video')
-                                                        🎥
-                                                        @break
-                                                    @case('document')
-                                                        📄
-                                                        @break
-                                                    @case('image')
-                                                        🖼️
-                                                        @break
-                                                    @case('quiz')
-                                                        🧠
-                                                        @break
-                                                    @case('essay')
-                                                        ✍️
-                                                        @break
-                                                    @default
-                                                        📝
-                                                @endswitch
-                                            </div>
+                                    @if($isUnlocked)
+                                        <a href="{{ route('contents.show', $c) }}"
+                                           class="group block p-3 rounded-xl transition-all duration-200 hover:shadow-md
+                                                  {{ $isCurrent 
+                                                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' 
+                                                      : ($isCompleted 
+                                                          ? 'bg-green-50 hover:bg-green-100 text-green-800' 
+                                                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700') }}">
                                             
-                                            <!-- Content Info -->
-                                            <div class="flex-1 min-w-0">
-                                                <p class="font-medium truncate">{{ $c->title }}</p>
-                                                <p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p>
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0
+                                                            {{ $isCurrent ? 'bg-white/20 text-white' : ($isCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600') }}">
+                                                    @switch($c->type)
+                                                        @case('video') 🎥 @break @case('document') 📄 @break @case('image') 🖼️ @break
+                                                        @case('quiz') 🧠 @break @case('essay') ✍️ @break @default 📝
+                                                    @endswitch
+                                                </div>
+                                                <div class="flex-1 min-w-0"><p class="font-medium truncate">{{ $c->title }}</p><p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p></div>
+                                                <div class="ml-2 flex-shrink-0">
+                                                    @if($isCurrent)<div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 8.207a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 9.586z" clip-rule="evenodd"/></svg></div>
+                                                    @elseif($isCompleted)<div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+                                                    @else<div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center"><div class="w-2 h-2 bg-gray-500 rounded-full"></div></div>
+                                                    @endif
+                                                </div>
                                             </div>
-                                            
-                                            <!-- Status Icon -->
-                                            <div class="ml-2 flex-shrink-0">
-                                                @if($isCurrent)
-                                                    <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 8.207a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 9.586z" clip-rule="evenodd"/>
-                                                        </svg>
-                                                    </div>
-                                                @elseif($isCompleted)
-                                                    <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center">
-                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                                        </svg>
-                                                    </div>
-                                                @else
-                                                    <div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                                                        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                                                    </div>
-                                                @endif
+                                        </a>
+                                    @else
+                                        <div class="group block p-3 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gray-200 text-gray-500"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg></div>
+                                                <div class="flex-1 min-w-0"><p class="font-medium truncate">{{ $c->title }}</p><p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p></div>
+                                                <div class="ml-2 flex-shrink-0"><div class="w-6 h-6 bg-gray-300 rounded-full"></div></div>
                                             </div>
                                         </div>
-                                    </a>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>
@@ -176,13 +185,9 @@
                 @endforeach
             </nav>
             
-            <!-- Sidebar Footer -->
             <div class="p-6 border-t border-gray-200 bg-gray-50">
-                <a href="{{ route('dashboard') }}" 
-                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
+                <a href="{{ route('dashboard') }}" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     Kembali ke Dashboard
                 </a>
             </div>
@@ -190,48 +195,22 @@
 
         <!-- Main Content Area -->
         <main class="flex-1 flex flex-col min-h-screen lg:min-h-0">
-            <!-- Simplified Desktop Header -->
             <header class="hidden lg:flex items-center justify-between p-6 bg-white border-b border-gray-200">
                 <div class="flex items-center space-x-4">
-                    <button @click="toggleSidebar()" 
-                            class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        </svg>
+                    <button @click="toggleSidebar()" class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">{{ $content->title }}</h1>
                         <div class="flex items-center space-x-2 mt-1">
-                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize">
-                                {{ ucfirst($content->type) }}
-                            </span>
-                            @if($content->description)
-                                <span class="text-gray-400">•</span>
-                                <span class="text-sm text-gray-600">{{ Str::limit($content->description, 50) }}</span>
-                            @endif
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize">{{ ucfirst($content->type) }}</span>
+                            @if($content->description)<span class="text-gray-400">•</span><span class="text-sm text-gray-600">{{ Str::limit($content->description, 50) }}</span>@endif
                         </div>
                     </div>
                 </div>
-                
-                <!-- Completion Status Only -->
                 <div class="flex items-center space-x-3">
-                    <div x-show="!contentCompleted">
-                        <button @click="markAsCompleted()" 
-                                class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            <span class="text-sm">Tandai Selesai</span>
-                        </button>
-                    </div>
-                    <div x-show="contentCompleted">
-                        <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 font-medium rounded-lg">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <span class="text-sm">Selesai</span>
-                        </div>
-                    </div>
+                    <div x-show="!contentCompleted">@if(!$isTask)<button @click="markAsCompleted()" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span class="text-sm">Tandai Selesai</span></button>@endif</div>
+                    <div x-show="contentCompleted"><div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 font-medium rounded-lg"><svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span class="text-sm">Selesai</span></div></div>
                 </div>
             </header>
 
@@ -361,114 +340,67 @@
         </main>
 
         <!-- Compact Bottom Navigation -->
-        <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-xl z-30">
+        <div class="fixed bottom-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-xl z-30 transition-all duration-300"
+             :class="{ 'lg:left-96': sidebarOpen, 'lg:left-0': !sidebarOpen }">
             @php
                 $allContents = $course->lessons->sortBy('order')->flatMap->contents->sortBy('order')->values();
                 $currentIndex = $allContents->search(fn($item) => $item->id === $content->id);
-                $previousContent = $currentIndex > 0 ? $allContents[$currentIndex - 1] : null;
-                $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents[$currentIndex + 1] : null;
+                
+                $previousContent = $currentIndex > 0 ? $allContents->get($currentIndex - 1) : null;
+                $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents->get($currentIndex + 1) : null;
+
+                $canGoNext = $isContentEffectivelyCompleted && $nextContent;
             @endphp
             
             <!-- Mobile Bottom Navigation -->
             <div class="lg:hidden">
-                <!-- Compact Progress Section -->
-                <div class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <div class="px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
                     <div class="flex items-center justify-between mb-1">
                         <span class="text-xs font-medium">Progress:</span>
                         <span class="text-xs font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
                     </div>
-                    <div class="w-full bg-white/20 rounded-full h-1">
-                        <div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1 rounded-full transition-all duration-500" 
-                             style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div>
-                    </div>
-                    <div class="text-center mt-1">
-                        <span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span>
-                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-1"><div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1 rounded-full transition-all duration-500" style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div></div>
+                    <div class="text-center mt-1"><span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span></div>
                 </div>
                 
-                <!-- Compact Navigation Buttons -->
-                <div class="px-4 py-3">
+                <div class="px-4 py-2">
                     <div class="flex items-center space-x-3">
-                        <!-- Previous Button (Small) -->
-                        @if ($previousContent)
-                            <a href="{{ route('contents.show', $previousContent) }}" 
-                               class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                                </svg>
-                            </a>
+                        @if ($previousContent && $unlockedContents->contains('id', $previousContent->id))
+                            <a href="{{ route('contents.show', $previousContent) }}" class="flex-shrink-0 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
                         @endif
-
-                        <!-- Main Next Button -->
                         <div class="flex-1">
-                            @if ($nextContent)
-                                <a href="{{ route('contents.show', $nextContent) }}" 
-                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group">
-                                    <span class="text-sm mr-2">Selanjutnya</span>
-                                    <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                </a>
-                            @else
-                                <a href="{{ route('courses.show', $course->id) }}" 
-                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
-                                    <span class="text-sm mr-2">Selesai 🎉</span>
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </a>
+                            @if ($canGoNext)
+                                <a href="{{ route('contents.show', $nextContent) }}" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group"><span class="text-sm mr-2">Selanjutnya</span><svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></a>
+                            @elseif(!$nextContent && $isContentEffectivelyCompleted)
+                                <a href="{{ route('courses.show', $course->id) }}" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"><span class="text-sm mr-2">Selesai 🎉</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></a>
+                            @elseif(!$isContentEffectivelyCompleted && !$isTask)
+                                <button @click="markAsCompleted()" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md">Tandai Selesai</button>
                             @endif
                         </div>
-
-                        <!-- Menu Button -->
-                        <a href="{{ route('courses.show', $course->id) }}" 
-                           class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                            </svg>
-                        </a>
+                        <a href="{{ route('courses.show', $course->id) }}" class="flex-shrink-0 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></a>
                     </div>
                 </div>
             </div>
 
-            <!-- [PERBAIKAN] Desktop Bottom Navigation -->
+            <!-- Desktop Bottom Navigation -->
             <div class="hidden lg:block">
-                <div class="px-6 py-2"> {{-- Dibuat lebih ramping --}}
+                <div class="px-6 py-1.5">
                     <div class="max-w-6xl mx-auto flex items-center justify-center space-x-4">
-                        
-                        <!-- Tombol Sebelumnya -->
                         <div>
-                            @if ($previousContent)
-                                <a href="{{ route('contents.show', $previousContent) }}" 
-                                   class="inline-flex items-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm">
-                                    <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                                    </svg>
-                                    <div class="text-left">
-                                        <div class="text-xs text-gray-500">Sebelumnya</div>
-                                        <div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div>
-                                    </div>
+                            @if ($previousContent && $unlockedContents->contains('id', $previousContent->id))
+                                <a href="{{ route('contents.show', $previousContent) }}" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm">
+                                    <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                    <div class="text-left"><div class="text-xs text-gray-500">Sebelumnya</div><div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div></div>
                                 </a>
                             @endif
                         </div>
-
-                        <!-- Tombol Selanjutnya / Selesai -->
                         <div>
-                            @if ($nextContent)
-                                <a href="{{ route('contents.show', $nextContent) }}" 
-                                   class="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 group">
-                                    <div class="text-center">
-                                        <div class="text-sm font-bold">Selanjutnya</div>
-                                    </div>
-                                    <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                </a>
-                            @else
-                                <a href="{{ route('courses.show', $course->id) }}" 
-                                   class="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105">
-                                    <div class="text-sm font-bold">Selesai Kursus 🎉</div>
-                                </a>
+                            @if ($canGoNext)
+                                <a href="{{ route('contents.show', $nextContent) }}" class="inline-flex items-center px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md">Selanjutnya</a>
+                            @elseif (!$nextContent && $isContentEffectivelyCompleted)
+                                <a href="{{ route('courses.show', $course->id) }}" class="inline-flex items-center px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md">Selesai Kursus 🎉</a>
+                            @elseif (!$isContentEffectivelyCompleted && !$isTask)
+                                <button @click="markAsCompleted()" class="inline-flex items-center px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md">Tandai Selesai untuk Lanjut</button>
                             @endif
                         </div>
                     </div>
@@ -489,9 +421,7 @@
             <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" @click.stop>
                 <div class="text-center mb-6">
                     <div class="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 mb-2">Progress Pembelajaran</h3>
                     <p class="text-gray-600 text-sm">{{ $course->title }}</p>
@@ -517,15 +447,18 @@
                     
                     <div class="flex justify-between items-center text-sm">
                         <div class="text-center">
-                            <div class="font-semibold text-green-600">{{ $completedContents }}</div>
+                            {{-- [PERBAIKAN] Menggunakan $completedContentsCount --}}
+                            <div class="font-semibold text-green-600">{{ $completedContentsCount }}</div>
                             <div class="text-gray-500">Selesai</div>
                         </div>
                         <div class="text-center">
-                            <div class="font-semibold text-indigo-600">{{ $totalContents - $completedContents }}</div>
+                            {{-- [PERBAIKAN] Menggunakan variabel yang benar --}}
+                            <div class="font-semibold text-indigo-600">{{ $totalContentsInCourse - $completedContentsCount }}</div>
                             <div class="text-gray-500">Tersisa</div>
                         </div>
                         <div class="text-center">
-                            <div class="font-semibold text-gray-700">{{ $totalContents }}</div>
+                            {{-- [PERBAIKAN] Menggunakan $totalContentsInCourse --}}
+                            <div class="font-semibold text-gray-700">{{ $totalContentsInCourse }}</div>
                             <div class="text-gray-500">Total</div>
                         </div>
                     </div>
@@ -559,7 +492,6 @@
                 </button>
             </div>
         </div>
-    </div>
 
     <style>
         .prose {

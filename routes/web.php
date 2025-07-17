@@ -1,18 +1,21 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ContentController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserImportController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\GradebookController;
-use App\Http\Controllers\EssaySubmissionController;
+use App\Http\Controllers\DiscussionController;
 use App\Http\Controllers\EventOrganizerController;
 use App\Http\Controllers\ProgressController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\RoleController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\EssaySubmissionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,14 +79,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/contents/{content}/discussions', [App\Http\Controllers\DiscussionController::class, 'store'])->name('discussions.store');
     Route::post('/discussions/{discussion}/replies', [App\Http\Controllers\DiscussionController::class, 'storeReply'])->name('discussions.replies.store');
 
-    // Route Assing EO
+    // Route Assign EO
     Route::post('/courses/{course}/add-eo', [CourseController::class, 'addEventOrganizer'])->name('courses.addEo');
     Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
 
     // Grup Route untuk Admin, Instruktur, dan EO
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('roles', RoleController::class);
         Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
         Route::resource('roles', RoleController::class)->except(['show']);
+
+        // [BARU] Route untuk Manajemen Pengumuman
+        Route::resource('announcements', AnnouncementController::class);
+
+        // [PERBAIKAN] Mendefinisikan rute pengguna secara eksplisit
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        // Bulk Import User
+        Route::get('/users/import', [UserImportController::class, 'show'])->name('users.import.show');
+        Route::post('/users/import', [UserImportController::class, 'store'])->name('users.import.store');
+        Route::get('/users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
     });
 
     // Route untuk Gradebook
@@ -104,6 +124,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/courses/{course}/export-progress-pdf', [ProgressController::class, 'exportCourseProgressPdf'])
         ->name('courses.exportProgressPdf')
         ->middleware('auth');
+
+    // Prasyarat
+    Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
 
 });
 

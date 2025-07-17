@@ -12,6 +12,7 @@ use App\Models\QuizAttempt;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
 use App\Models\CourseEnrollment;
+use App\Models\Announcement;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -22,6 +23,14 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $user = Auth::user();
+
+        $announcements = Announcement::where(function ($query) {
+                $query->where('published_at', '<=', now())
+                      ->orWhereNull('published_at');
+            })
+            ->latest()
+            ->take(5) // Ambil 5 pengumuman terbaru
+            ->get();
 
         if ($user->hasRole('super-admin')) {
             $stats = $this->getAdminStats();
