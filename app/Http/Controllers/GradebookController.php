@@ -24,15 +24,11 @@ class GradebookController extends Controller
         if ($user->hasRole('super-admin')) {
             $allCoursesForFilter = Course::orderBy('title')->get();
         } elseif ($user->hasRole('instructor')) {
-            // ✅ PERBAIKAN: Mengganti cara pencarian kursus untuk instruktur.
-            // Sebelumnya: Course::where('user_id', $user->id)->... (INI YANG MENYEBABKAN ERROR)
-            // Sekarang, kita mencari kursus di mana user ini terdaftar sebagai instruktur.
             $allCoursesForFilter = Course::whereHas('instructors', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->orderBy('title')->get();
         }
 
-        // --- Data untuk Tab Feedback Umum ---
         $participantsQuery = $course->enrolledUsers();
 
         if ($request->has('search') && $request->search != '') {
@@ -46,7 +42,6 @@ class GradebookController extends Controller
             $query->where('course_id', $course->id);
         }])->get();
 
-        // --- Data untuk Tab Penilaian Esai ---
         $essayContentIds = $course->lessons()->with('contents')
             ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
 
@@ -54,7 +49,7 @@ class GradebookController extends Controller
             ->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
 
         if ($request->has('search') && $request->search != '') {
-            $searchTerm = $request->input('search'); // Ambil search term dari sini untuk konsistensi
+            $searchTerm = $request->input('search');
             $participantsWithEssaysQuery->where(function ($query) use ($searchTerm) {
                 $query->where('name', 'like', '%' . $searchTerm . '%')
                       ->orWhere('email', 'like', '%' . $searchTerm . '%');
@@ -70,7 +65,8 @@ class GradebookController extends Controller
      */
     public function showUserEssays(Course $course, User $user)
     {
-        $this->authorize('update', $course);
+        // PERBAIKAN: Menggunakan 'grade' sebagai otorisasi, bukan 'update'
+        $this->authorize('grade', $course);
 
         $essayContentIds = $course->lessons()->with('contents')
             ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
@@ -89,7 +85,8 @@ class GradebookController extends Controller
      */
     public function storeEssayGrade(Request $request, EssaySubmission $submission)
     {
-        $this->authorize('update', $submission->content->lesson->course);
+        // PERBAIKAN: Menggunakan 'grade' sebagai otorisasi, bukan 'update'
+        $this->authorize('grade', $submission->content->lesson->course);
 
         $validated = $request->validate([
             'score' => 'required|integer|min:0|max:100',
@@ -109,7 +106,8 @@ class GradebookController extends Controller
      */
     public function storeFeedback(Request $request, Course $course, User $user)
     {
-        $this->authorize('update', $course);
+        // PERBAIKAN: Menggunakan 'grade' sebagai otorisasi, bukan 'update'
+        $this->authorize('grade', $course);
 
         $request->validate(['feedback' => 'required|string']);
 

@@ -86,12 +86,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('roles', RoleController::class)->except(['show']);
     });
 
+    // Route untuk Gradebook
     Route::middleware(['permission:grade quizzes'])->group(function () {
         Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
         Route::get('/courses/{course}/gradebook/essays/user/{user}', [GradebookController::class, 'showUserEssays'])->name('gradebook.user_essays');
         Route::post('/essay-submissions/{submission}/grade', [GradebookController::class, 'storeEssayGrade'])->name('gradebook.storeEssayGrade');
         Route::post('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'storeFeedback'])->name('gradebook.storeFeedback');
     });
+
+    Route::get('/essay-submissions/{submission}/result', [EssaySubmissionController::class, 'showResult'])->name('essays.result');
 
     Route::middleware(['permission:view progress reports'])->prefix('event-organizer')->name('eo.')->group(function () {
         Route::get('/courses', [EventOrganizerController::class, 'index'])->name('courses.index');

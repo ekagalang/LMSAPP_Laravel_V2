@@ -281,7 +281,6 @@ class QuizController extends Controller
             return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
         }
 
-        // ✅ PERBAIKAN: Handling yang lebih robust untuk attempt
         $attempt = QuizAttempt::where([
             'quiz_id' => $quiz->id,
             'user_id' => $user->id,
@@ -289,13 +288,11 @@ class QuizController extends Controller
         ])->first();
 
         if ($attempt) {
-            // ✅ PASTIKAN started_at tidak null
             if (is_null($attempt->started_at)) {
                 $attempt->started_at = now();
                 $attempt->save();
             }
         } else {
-            // Buat attempt baru dengan started_at yang pasti terisi
             $attempt = QuizAttempt::create([
                 'quiz_id' => $quiz->id,
                 'user_id' => $user->id,
@@ -303,28 +300,23 @@ class QuizController extends Controller
             ]);
         }
 
-        // ✅ DOUBLE CHECK: Pastikan started_at tidak null sebelum digunakan
         if (is_null($attempt->started_at)) {
             $attempt->started_at = now();
             $attempt->save();
         }
 
-        // Hitung sisa waktu
         $timeRemaining = null;
         if ($quiz->time_limit && $attempt->started_at) {
-            // ✅ PERBAIKAN: Clone started_at untuk menghindari mutasi
             $startedAt = $attempt->started_at->copy();
             $deadline = $startedAt->addMinutes($quiz->time_limit);
             $now = now();
 
             if ($now->gte($deadline)) {
-                // Waktu sudah habis, auto submit dengan jawaban yang ada
                 $this->autoSubmitAttempt($quiz, $attempt);
                 return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $attempt])
                     ->with('warning', 'Waktu kuis telah habis. Jawaban yang sudah terisi akan dinilai.');
             }
 
-            // ✅ PERBAIKAN: Pastikan timeRemaining adalah integer dalam detik
             $timeRemaining = (int) $now->diffInSeconds($deadline, false);
         }
 
@@ -332,7 +324,7 @@ class QuizController extends Controller
     }
 
     /**
-     * ✅ BARU: Save progress untuk auto-save
+     * Save progress for auto-save
      */
     public function saveProgress(Request $request, Quiz $quiz, QuizAttempt $attempt)
     {
@@ -346,13 +338,11 @@ class QuizController extends Controller
             return response()->json(['error' => 'Quiz already completed'], 400);
         }
 
-        // ✅ PERBAIKAN: Pastikan started_at tidak null
         if (is_null($attempt->started_at)) {
             $attempt->started_at = now();
             $attempt->save();
         }
 
-        // Cek apakah waktu masih tersisa
         if ($quiz->time_limit) {
             $startedAt = $attempt->started_at->copy();
             $deadline = $startedAt->addMinutes($quiz->time_limit);
@@ -362,7 +352,6 @@ class QuizController extends Controller
             }
         }
 
-        // Simpan progress ke session atau bisa ke database jika mau
         $answers = $request->input('answers', []);
         session()->put("quiz_progress_{$quiz->id}_{$user->id}", $answers);
 
@@ -370,7 +359,7 @@ class QuizController extends Controller
     }
 
     /**
-     * ✅ Check time remaining for quiz attempt
+     * Check time remaining for quiz attempt
      */
     public function checkTimeRemaining(Quiz $quiz, QuizAttempt $attempt)
     {
@@ -388,36 +377,29 @@ class QuizController extends Controller
             return response()->json(['unlimited' => true]);
         }
 
-        // ✅ PERBAIKAN: Pastikan started_at tidak null
         if (is_null($attempt->started_at)) {
             $attempt->started_at = now();
             $attempt->save();
         }
 
-        // Clone untuk menghindari mutasi
         $startedAt = $attempt->started_at->copy();
         $deadline = $startedAt->addMinutes($quiz->time_limit);
         $now = now();
 
         if ($now->gte($deadline)) {
-            // Time's up, auto submit dengan jawaban yang ada
             $this->autoSubmitAttempt($quiz, $attempt);
             return response()->json(['expired' => true]);
         }
 
-        // ✅ PERBAIKAN: Pastikan format integer yang benar
         $remainingSeconds = (int) $now->diffInSeconds($deadline, false);
 
         return response()->json([
             'remaining_seconds' => max(0, $remainingSeconds),
             'deadline' => $deadline->toISOString(),
-            'formatted_time' => $this->formatTime($remainingSeconds) // ✅ Tambahan untuk debug
+            'formatted_time' => $this->formatTime($remainingSeconds)
         ]);
     }
 
-    /**
-     * ✅ BARU: Helper method untuk format waktu
-     */
     private function formatTime(int $seconds): string
     {
         $minutes = intval($seconds / 60);
@@ -425,28 +407,22 @@ class QuizController extends Controller
         return sprintf('%02d:%02d', $minutes, $secs);
     }
 
-    /**
-     * ✅ DIPERBAIKI: Auto submit ketika waktu habis TAPI jawaban yang ada tetap dinilai
-     */
     private function autoSubmitAttempt(Quiz $quiz, QuizAttempt $attempt)
     {
         if ($attempt->completed_at) {
-            return; // Already completed
+            return;
         }
 
-        // ✅ PERBAIKAN: Pastikan started_at tidak null
         if (is_null($attempt->started_at)) {
             $attempt->started_at = now();
             $attempt->save();
         }
 
-        // Ambil jawaban yang mungkin tersimpan di session
         $user = Auth::user();
         $savedAnswers = session()->get("quiz_progress_{$quiz->id}_{$user->id}", []);
 
         $score = 0;
 
-        // Proses jawaban yang tersimpan
         foreach ($savedAnswers as $answerData) {
             if (empty($answerData['question_id'])) continue;
             if (empty($answerData['option_id']) && empty($answerData['answer_text'])) continue;
@@ -475,7 +451,6 @@ class QuizController extends Controller
             }
 
             if ($optionToSaveId !== null) {
-                // Cek apakah jawaban sudah ada untuk mencegah duplikasi
                 $existingAnswer = QuestionAnswer::where([
                     'user_id' => $user->id,
                     'quiz_attempt_id' => $attempt->id,
@@ -499,7 +474,6 @@ class QuizController extends Controller
             'completed_at' => now(),
         ]);
 
-        // Hapus session setelah selesai
         session()->forget("quiz_progress_{$quiz->id}_{$user->id}");
     }
 
@@ -519,13 +493,11 @@ class QuizController extends Controller
                 ->with('info', 'Anda sudah menyelesaikan percobaan ini.');
         }
 
-        // ✅ PERBAIKAN: Pastikan started_at tidak null
         if (is_null($attempt->started_at)) {
             $attempt->started_at = now();
             $attempt->save();
         }
 
-        // Check if time limit exceeded
         if ($quiz->time_limit) {
             $startedAt = $attempt->started_at->copy();
             $deadline = $startedAt->addMinutes($quiz->time_limit);
@@ -594,7 +566,6 @@ class QuizController extends Controller
         $attempt->completed_at = now();
         $attempt->save();
 
-        // Hapus session progress setelah submit
         session()->forget("quiz_progress_{$quiz->id}_{$user->id}");
 
         return redirect()->route('quizzes.result', [
@@ -616,10 +587,14 @@ class QuizController extends Controller
             return redirect()->route('quizzes.start_attempt', $quiz)->with('error', 'Percobaan kuis belum selesai.');
         }
 
+        // [PERBAIKAN] Ambil data content yang terkait dengan quiz ini
+        $content = Content::where('quiz_id', $quiz->id)->firstOrFail();
+
         $attempt->load('answers.question.options', 'user');
         $quizAttempt = $attempt;
         
-        return view('quizzes.result', compact('quiz', 'quizAttempt'));
+        // [PERBAIKAN] Kirim variabel $content ke view
+        return view('quizzes.result', compact('quiz', 'quizAttempt', 'content'));
     }
 
     /**

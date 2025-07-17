@@ -178,12 +178,12 @@
             
             <!-- Sidebar Footer -->
             <div class="p-6 border-t border-gray-200 bg-gray-50">
-                <a href="{{ route('courses.show', $course->id) }}" 
+                <a href="{{ route('dashboard') }}" 
                    class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
-                    Kembali ke Kursus
+                    Kembali ke Dashboard
                 </a>
             </div>
         </aside>
@@ -431,34 +431,13 @@
                 </div>
             </div>
 
-            <!-- Desktop Bottom Navigation -->
+            <!-- [PERBAIKAN] Desktop Bottom Navigation -->
             <div class="hidden lg:block">
-                <!-- Compact Progress Section -->
-                <div class="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
-                    <div class="max-w-6xl mx-auto">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="font-medium text-sm">Progress:</span>
-                            <div class="flex items-center space-x-2">
-                                <span class="font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
-                                <span class="text-sm font-medium text-yellow-200">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span>
-                            </div>
-                        </div>
-                        <div class="relative">
-                            <div class="w-full bg-white/20 rounded-full h-1.5">
-                                <div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1.5 rounded-full transition-all duration-500 relative" 
-                                     style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%">
-                                    <div class="absolute right-0 top-0 w-3 h-3 bg-white rounded-full -mt-0.5 -mr-1.5 shadow-sm"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Compact Navigation Buttons -->
-                <div class="px-6 py-3">
-                    <div class="max-w-6xl mx-auto flex items-center justify-between">
-                        <!-- Previous Content -->
-                        <div class="flex-1">
+                <div class="px-6 py-2"> {{-- Dibuat lebih ramping --}}
+                    <div class="max-w-6xl mx-auto flex items-center justify-center space-x-4">
+                        
+                        <!-- Tombol Sebelumnya -->
+                        <div>
                             @if ($previousContent)
                                 <a href="{{ route('contents.show', $previousContent) }}" 
                                    class="inline-flex items-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm">
@@ -473,42 +452,24 @@
                             @endif
                         </div>
 
-                        <!-- Center Action -->
-                        <div class="flex-shrink-0 mx-6">
+                        <!-- Tombol Selanjutnya / Selesai -->
+                        <div>
                             @if ($nextContent)
                                 <a href="{{ route('contents.show', $nextContent) }}" 
                                    class="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 group">
-                                    <div class="text-center mr-3">
-                                        <div class="text-xs text-indigo-100">Selanjutnya</div>
-                                        <div class="text-sm font-bold">{{ Str::limit($nextContent->title, 20) }}</div>
+                                    <div class="text-center">
+                                        <div class="text-sm font-bold">Selanjutnya</div>
                                     </div>
-                                    <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                     </svg>
                                 </a>
                             @else
                                 <a href="{{ route('courses.show', $course->id) }}" 
                                    class="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105">
-                                    <div class="text-center mr-3">
-                                        <div class="text-xs text-green-100">Selesai</div>
-                                        <div class="text-sm font-bold">Kursus Selesai! 🎉</div>
-                                    </div>
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
+                                    <div class="text-sm font-bold">Selesai Kursus 🎉</div>
                                 </a>
                             @endif
-                        </div>
-
-                        <!-- View Course -->
-                        <div class="flex-1 text-right">
-                            <a href="{{ route('courses.show', $course->id) }}" 
-                               class="inline-flex items-center px-3 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-medium rounded-lg transition-all duration-200 hover:shadow-sm">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                                </svg>
-                                <span class="text-xs">Lihat Kursus</span>
-                            </a>
                         </div>
                     </div>
                 </div>

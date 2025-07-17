@@ -82,17 +82,6 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
-        
-        /* Debug info styling */
-        .debug-info {
-            font-family: 'Courier New', monospace;
-            background: #f8f9fa;
-            border: 1px dashed #dee2e6;
-            padding: 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            color: #6c757d;
-        }
     </style>
 
     <div class="py-4">
@@ -326,11 +315,11 @@
 
                     <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        <!-- Tombol Kembali ke Kursus - SELALU MUNCUL -->
-                        <a href="{{ route('courses.show', $quiz->lesson->course) }}" 
+                        {{-- [PERBAIKAN] Arahkan tombol kembali ke halaman materi (content) --}}
+                        <a href="{{ route('contents.show', $content->id) }}" 
                            class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold btn-hover flex items-center justify-center space-x-2">
-                            <i class="fas fa-book"></i>
-                            <span>Kembali ke Kursus</span>
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Kembali ke Materi</span>
                         </a>
                         
                         <!-- Tombol Coba Lagi - HANYA JIKA TIDAK LULUS -->
@@ -349,32 +338,19 @@
                             <span>Unduh Hasil</span>
                         </button>
                         
-                        <!-- Tombol Lihat Kuis Lain (Opsional) -->
+                        <!-- Tombol Lanjut ke Materi Berikutnya (jika lulus) -->
                         @if($isPassed)
-                             <a href="{{ route('courses.show', $quiz->lesson->course) }}" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all duration-300 transform hover:scale-105">
-                                ✅ Lanjut ke Materi Berikutnya
+                             {{-- [PERBAIKAN] Arahkan juga ke halaman materi agar pengguna bisa klik tombol 'selesai' --}}
+                             <a href="{{ route('contents.show', $content->id) }}" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
+                                <i class="fas fa-check"></i>
+                                <span>Lanjut Belajar</span>
                             </a>
                         @endif
                     </div>
-
-                    <!-- Debug Info (Hapus di production) -->
-                    {{-- @if(app()->environment('local'))
-                        <div class="mt-8 p-4 bg-gray-100 rounded-lg debug-info">
-                            <h5 class="font-semibold mb-2">Debug Info (Development Only):</h5>
-                            <div class="space-y-1 text-xs">
-                                <div><strong>Course ID:</strong> {{ $quiz->lesson->course->id }}</div>
-                                <div><strong>Course URL:</strong> {{ route('courses.show', $quiz->lesson->course) }}</div>
-                                <div><strong>Quiz ID:</strong> {{ $quiz->id }}</div>
-                                <div><strong>Quiz Start URL:</strong> {{ route('quizzes.start', $quiz) }}</div>
-                                <div><strong>Is Passed:</strong> {{ $isPassed ? 'Yes' : 'No' }}</div>
-                                <div><strong>Environment:</strong> {{ app()->environment() }}</div>
-                            </div>
-                        </div>
-                    @endif --}}
                 </div>
             </div>
 
-            <!-- Additional Info Cards -->
+            <!-- [DIKEMBALIKAN] Additional Info Cards -->
             <div class="grid md:grid-cols-2 gap-6 mt-8 mb-12">
                 <!-- Performance Chart -->
                 <div class="bg-white rounded-lg card-shadow p-6">

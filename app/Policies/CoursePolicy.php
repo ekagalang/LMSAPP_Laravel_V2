@@ -25,7 +25,6 @@ class CoursePolicy
      */
     public function viewAny(User $user): bool
     {
-        // ✅ Menggunakan izin yang ada di file Anda: 'view courses'
         return $user->can('view courses');
     }
 
@@ -61,7 +60,6 @@ class CoursePolicy
      */
     public function create(User $user): bool
     {
-        // ✅ Menggunakan izin yang ada di file Anda: 'manage all courses'
         return $user->can('manage all courses');
     }
 
@@ -70,7 +68,7 @@ class CoursePolicy
      */
     public function update(User $user, Course $course): bool
     {
-        // ✅ LOGIKA BARU: Izinkan jika user terdaftar sebagai salah satu instruktur di kursus ini
+        // Izinkan jika user terdaftar sebagai salah satu instruktur di kursus ini
         return $user->can('manage own courses') && $course->instructors->contains($user);
     }
 
@@ -83,10 +81,23 @@ class CoursePolicy
         return $user->can('manage own courses') && $course->instructors->contains($user);
     }
 
+    /**
+     * Menentukan siapa yang boleh melihat gradebook.
+     */
     public function viewGradebook(User $user, Course $course): bool
     {
         // Pengguna bisa melihat gradebook jika punya izin 'grade quizzes'
         // DAN merupakan instruktur untuk kursus ini.
-        return $user->can('grade quizzes') && $user->isInstructorFor($course);
+        return $user->can('grade quizzes') && $course->instructors->contains($user);
+    }
+
+    /**
+     * [BARU] Menentukan siapa yang boleh menilai (grade) kursus.
+     * Ini akan dipanggil oleh GradebookController.
+     */
+    public function grade(User $user, Course $course): bool
+    {
+        // Izinkan jika pengguna adalah salah satu instruktur yang ditugaskan ke kursus ini.
+        return $course->instructors->contains($user);
     }
 }

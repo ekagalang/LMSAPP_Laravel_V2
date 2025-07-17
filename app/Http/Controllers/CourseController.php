@@ -69,7 +69,29 @@ class CourseController extends Controller
     public function show(Course $course)
     {
         $this->authorize('view', $course);
+        $user = Auth::user();
 
+        // [LOGIKA BARU] Jika pengguna adalah peserta, coba arahkan langsung ke materi pertama.
+        if ($user && $user->hasRole('participant')) {
+            // Pastikan peserta terdaftar di kursus ini untuk bisa langsung masuk
+            if ($course->enrolledUsers->contains($user)) {
+                // Urutkan lesson berdasarkan 'order' jika ada, jika tidak pakai 'id'
+                $firstLesson = $course->lessons()->orderBy('order', 'asc')->orderBy('id', 'asc')->first();
+                
+                if ($firstLesson) {
+                    // Urutkan content berdasarkan 'order' jika ada, jika tidak pakai 'id'
+                    $firstContent = $firstLesson->contents()->orderBy('order', 'asc')->orderBy('id', 'asc')->first();
+
+                    // Jika content pertama ditemukan, langsung redirect.
+                    if ($firstContent) {
+                        return redirect()->route('contents.show', $firstContent->id);
+                    }
+                }
+            }
+        }
+
+        // Jika bukan peserta, atau jika tidak ada content, atau jika tidak terdaftar,
+        // tampilkan halaman detail seperti biasa.
         $course->load('lessons.contents', 'instructors', 'enrolledUsers');
         
         $availableInstructors = User::role('instructor')
@@ -174,20 +196,18 @@ class CourseController extends Controller
     public function showProgress(Request $request, Course $course)
     {
         $this->authorize('viewProgress', $course);
-    $user = Auth::user();
+        $user = Auth::user();
 
-    // LOGIKA BARU: Ambil semua kursus yang diajar instruktur ini untuk dropdown
-    $instructorCourses = Course::query()
-        ->whereHas('instructors', function ($q) use ($user) { // Menggunakan whereHas untuk relasi
-            $q->where('user_id', $user->id);
-        })
-        ->orderBy('title')
-        ->get();
+        // LOGIKA BARU: Ambil semua kursus yang diajar instruktur ini untuk dropdown
+        $instructorCourses = Course::query()
+            ->whereHas('instructors', function ($q) use ($user) { // Menggunakan whereHas untuk relasi
+                $q->where('user_id', $user->id);
+            })
+            ->orderBy('title')
+            ->get();
 
-        // Ambil query dasar untuk peserta yang terdaftar
         $enrolledUsersQuery = $course->enrolledUsers();
 
-        // Terapkan filter pencarian jika ada
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->search;
             $enrolledUsersQuery->where(function ($query) use ($searchTerm) {
@@ -196,16 +216,13 @@ class CourseController extends Controller
             });
         }
 
-        // Ambil data peserta yang sudah difilter
         $enrolledUsers = $enrolledUsersQuery->with('completedContents.lesson')->get();
 
-        // Ambil semua konten kursus
         $course->load('lessons.contents');
         $allContents = $course->lessons->flatMap(fn($l) => $l->contents);
         $totalContentCount = $allContents->count();
         $allContentIds = $allContents->pluck('id');
 
-        // Proses data progres untuk peserta yang sudah difilter
         $participantsProgress = $enrolledUsers->map(function ($participant) use ($allContentIds, $totalContentCount) {
             $completedContents = $participant->completedContents->whereIn('id', $allContentIds);
             $completedCount = $completedContents->count();
@@ -225,7 +242,7 @@ class CourseController extends Controller
 
         return view('courses.progress', [
             'course' => $course,
-            'instructorCourses' => $instructorCourses, // Kirim daftar kursus ke view
+            'instructorCourses' => $instructorCourses,
             'participantsProgress' => $participantsProgress,
             'totalContentCount' => $totalContentCount,
         ]);
@@ -233,23 +250,18 @@ class CourseController extends Controller
 
     public function showParticipantProgress(Course $course, User $user)
     {
-        // Otorisasi, pastikan yang mengakses adalah instruktur/admin kursus ini
         $this->authorize('viewProgress', $course);
 
-        // Pastikan user yang diminta memang terdaftar di kursus ini
         if (!$course->enrolledUsers()->where('user_id', $user->id)->exists()) {
             abort(404, 'Peserta tidak terdaftar pada kursus ini.');
         }
 
-        // Ambil semua data yang diperlukan
         $course->load(['lessons.contents' => function ($query) {
             $query->orderBy('order');
         }]);
 
-        // Buat 'peta' dari konten yang sudah diselesaikan peserta untuk pencarian cepat
         $completedContentsMap = $user->completedContents->keyBy('id');
 
-        // Kirim semua data ke view baru
         return view('courses.participant_progress', [
             'course' => $course,
             'participant' => $user,
@@ -262,7 +274,6 @@ class CourseController extends Controller
     {
         $this->authorize('update', $course);
         $request->validate(['user_ids' => 'required|array']);
-        // Filter hanya user dengan peran instruktur
         $instructorIds = User::whereIn('id', $request->user_ids)->role('instructor')->pluck('id');
         $course->instructors()->syncWithoutDetaching($instructorIds);
         return back()->with('success', 'Instruktur berhasil ditambahkan.');
@@ -278,10 +289,8 @@ class CourseController extends Controller
 
     public function downloadProgressPdf(Course $course)
     {
-        // Otorisasi, pastikan hanya user yang berhak yang bisa mengunduh
         $this->authorize('viewProgress', $course);
 
-        // Mengambil data progres (logika yang sama dengan method showProgress)
         $course->load('lessons.contents', 'enrolledUsers.completedContents');
         $allContents = $course->lessons->flatMap(fn($l) => $l->contents);
         $totalContentCount = $allContents->count();
@@ -298,17 +307,14 @@ class CourseController extends Controller
             ];
         });
 
-        // Data yang akan dikirim ke view PDF
         $data = [
             'course' => $course,
             'participantsProgress' => $participantsProgress,
             'date' => date('d M Y')
         ];
 
-        // Membuat PDF
         $pdf = PDF::loadView('reports.progress_pdf', $data);
 
-        // Mengunduh PDF dengan nama file yang dinamis
         return $pdf->download('laporan-progres-' . Str::slug($course->title) . '.pdf');
     }
 

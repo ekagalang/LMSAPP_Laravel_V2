@@ -91,4 +91,19 @@ class EssaySubmissionController extends Controller
     {
         //
     }
+
+    public function showResult(EssaySubmission $submission)
+    {
+        // Pastikan hanya pengguna yang membuat submission yang bisa melihat hasilnya.
+        // Ini adalah langkah keamanan yang penting.
+        if (Auth::id() !== $submission->user_id) {
+            abort(403, 'UNAUTHORIZED ACTION');
+        }
+
+        // Muat relasi yang diperlukan untuk ditampilkan di view
+        $submission->load('content.lesson.course', 'user');
+
+        // Tampilkan halaman hasil
+        return view('essays.result', compact('submission'));
+    }
 }
