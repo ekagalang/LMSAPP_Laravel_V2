@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('course_user', function (Blueprint $table) {
             $table->text('feedback')->nullable()->after('user_id');
+            $table->timestamp('completed_at')->nullable()->after('feedback');
         });
     }
 
@@ -23,6 +24,7 @@ return new class extends Migration
     {
         Schema::table('course_user', function (Blueprint $table) {
             $table->dropColumn('feedback');
+            $table->dropColumn('completed_at');
         });
     }
 };

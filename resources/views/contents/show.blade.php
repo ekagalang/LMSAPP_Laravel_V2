@@ -3,18 +3,18 @@
         sidebarOpen: window.innerWidth >= 768,
         showProgress: false,
         // [LOGIKA BARU] Menentukan apakah konten ini dianggap selesai.
-        // Untuk kuis, harus lulus. Untuk esai, harus dinilai.
+        // Untuk kuis, harus lulus. Untuk esai, sudah submit (bukan harus dinilai).
         @php
             $user = Auth::user();
             $isTask = in_array($content->type, ['quiz', 'essay']);
             $isContentEffectivelyCompleted = false;
 
-            if ($content->type === 'quiz' && $content->quiz) {
+            if ($content->type === 'quiz' && $content->quiz_id) {
                 // Dianggap selesai jika ada percobaan yang lulus
                 $isContentEffectivelyCompleted = $user->quizAttempts()->where('quiz_id', $content->quiz_id)->where('passed', true)->exists();
             } elseif ($content->type === 'essay') {
-                // Dianggap selesai jika sudah ada submission yang dinilai
-                $isContentEffectivelyCompleted = $user->essaySubmissions()->where('content_id', $content->id)->whereNotNull('graded_at')->exists();
+                // ✅ PERUBAHAN: Dianggap selesai jika sudah ada submission (tidak perlu dinilai)
+                $isContentEffectivelyCompleted = $user->essaySubmissions()->where('content_id', $content->id)->exists();
             } else {
                 // Untuk konten biasa, cek di tabel pivot
                 $isContentEffectivelyCompleted = $user->completedContents->contains($content->id);
@@ -91,7 +91,26 @@
                 <!-- Progress Bar -->
                 @php
                     $totalContentsInCourse = $course->lessons->flatMap->contents->count();
-                    $completedContentsCount = Auth::user()->completedContents()->whereIn('content_id', $course->lessons->flatMap->contents->pluck('id'))->count();
+                    // ✅ PERBAIKAN: Use fresh query for completed count dengan logika essay yang baru
+                    $completedContentsCount = 0;
+                    foreach ($course->lessons as $lesson) {
+                        foreach ($lesson->contents as $contentItem) {
+                            if ($contentItem->type === 'quiz' && $contentItem->quiz_id) {
+                                if ($user->quizAttempts()->where('quiz_id', $contentItem->quiz_id)->where('passed', true)->exists()) {
+                                    $completedContentsCount++;
+                                }
+                            } elseif ($contentItem->type === 'essay') {
+                                // ✅ PERUBAHAN: Essay dianggap selesai jika sudah submit
+                                if ($user->essaySubmissions()->where('content_id', $contentItem->id)->exists()) {
+                                    $completedContentsCount++;
+                                }
+                            } else {
+                                if ($user->completedContents()->where('content_id', $contentItem->id)->exists()) {
+                                    $completedContentsCount++;
+                                }
+                            }
+                        }
+                    }
                     $progressPercentage = $totalContentsInCourse > 0 ? round(($completedContentsCount / $totalContentsInCourse) * 100) : 0;
                 @endphp
                 <div class="mt-4">
@@ -119,7 +138,24 @@
                             <h4 class="font-semibold text-gray-900 flex-1">{{ $lesson->title }}</h4>
                             @php
                                 $lessonContentsCount = $lesson->contents->count();
-                                $lessonCompletedCount = Auth::user()->completedContents()->whereIn('content_id', $lesson->contents->pluck('id'))->count();
+                                // ✅ PERBAIKAN: Calculate lesson completed count dengan logika essay yang konsisten
+                                $lessonCompletedCount = 0;
+                                foreach ($lesson->contents as $contentItem) {
+                                    if ($contentItem->type === 'quiz' && $contentItem->quiz_id) {
+                                        if ($user->quizAttempts()->where('quiz_id', $contentItem->quiz_id)->where('passed', true)->exists()) {
+                                            $lessonCompletedCount++;
+                                        }
+                                    } elseif ($contentItem->type === 'essay') {
+                                        // ✅ PERUBAHAN: Essay dianggap selesai jika sudah submit
+                                        if ($user->essaySubmissions()->where('content_id', $contentItem->id)->exists()) {
+                                            $lessonCompletedCount++;
+                                        }
+                                    } else {
+                                        if ($user->completedContents()->where('content_id', $contentItem->id)->exists()) {
+                                            $lessonCompletedCount++;
+                                        }
+                                    }
+                                }
                             @endphp
                             <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                                 {{ $lessonCompletedCount }}/{{ $lessonContentsCount }}
@@ -131,13 +167,18 @@
                             @foreach ($lesson->contents->sortBy('order') as $c)
                                 @php
                                     $cIsTask = in_array($c->type, ['quiz', 'essay']);
-                                    if ($c->type === 'quiz' && $c->quiz) {
+
+                                    // ✅ PERBAIKAN: Consistent completion check dengan logika essay baru
+                                    if ($c->type === 'quiz' && $c->quiz_id) {
                                         $isCompleted = $user->quizAttempts()->where('quiz_id', $c->quiz_id)->where('passed', true)->exists();
                                     } elseif ($c->type === 'essay') {
-                                        $isCompleted = $user->essaySubmissions()->where('content_id', $c->id)->whereNotNull('graded_at')->exists();
+                                        // ✅ PERUBAHAN: Essay dianggap selesai jika sudah submit
+                                        $isCompleted = $user->essaySubmissions()->where('content_id', $c->id)->exists();
                                     } else {
-                                        $isCompleted = $user->completedContents->contains($c->id);
+                                        // ✅ PERBAIKAN: Use fresh query instead of loaded relation
+                                        $isCompleted = $user->completedContents()->where('content_id', $c->id)->exists();
                                     }
+
                                     $isCurrent = $c->id === $content->id;
                                     $isUnlocked = $unlockedContents->contains('id', $c->id);
                                 @endphp
@@ -214,7 +255,7 @@
             </header>
 
             <!-- ✅ PERBAIKAN: Content Container dengan padding bottom yang cukup untuk bottom bar -->
-            <div class="flex-1 overflow-y-auto pb-40 lg:pb-32">
+            <div class="flex-1 overflow-y-auto pb-32">
                 <div class="max-w-4xl mx-auto p-6 lg:p-8">
                     <!-- Content Card -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
@@ -307,11 +348,109 @@
                                             {!! $content->body !!}
                                         </div>
                                     </div>
+
+                                @elseif($content->type == 'quiz' && $content->quiz)
+                                    <!-- ✅ PERBAIKAN: Tampilkan quiz content dengan benar -->
+                                    <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-8 border border-purple-100">
+                                        <div class="text-center mb-6">
+                                            <div class="w-20 h-20 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </div>
+                                            <h3 class="text-2xl font-bold text-gray-900 mb-2">{{ $content->quiz->title }}</h3>
+                                            @if($content->quiz->description)
+                                                <p class="text-gray-600 mb-4">{{ $content->quiz->description }}</p>
+                                            @endif
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                            <div class="bg-white p-4 rounded-xl text-center">
+                                                <div class="text-2xl font-bold text-purple-600">{{ $content->quiz->questions->count() }}</div>
+                                                <div class="text-sm text-gray-600">Pertanyaan</div>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl text-center">
+                                                <div class="text-2xl font-bold text-purple-600">{{ $content->quiz->total_marks }}</div>
+                                                <div class="text-sm text-gray-600">Total Poin</div>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl text-center">
+                                                <div class="text-2xl font-bold text-purple-600">
+                                                    @if($content->quiz->time_limit)
+                                                        {{ $content->quiz->time_limit }} min
+                                                    @else
+                                                        Tanpa Batas
+                                                    @endif
+                                                </div>
+                                                <div class="text-sm text-gray-600">Waktu</div>
+                                            </div>
+                                        </div>
+
+                                        @php
+                                            $userAttempts = Auth::user()->quizAttempts()->where('quiz_id', $content->quiz->id)->get();
+                                            $bestAttempt = $userAttempts->sortByDesc('score')->first();
+                                            $hasPassedAttempt = $userAttempts->where('passed', true)->isNotEmpty();
+                                        @endphp
+
+                                        @if($userAttempts->isNotEmpty())
+                                            <div class="bg-white rounded-xl p-6 mb-6">
+                                                <h4 class="font-semibold text-gray-900 mb-4">Riwayat Percobaan</h4>
+                                                <div class="space-y-3">
+                                                    @foreach($userAttempts->sortByDesc('completed_at') as $attempt)
+                                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                            <div>
+                                                                <span class="text-sm text-gray-600">
+                                                                    {{ $attempt->completed_at ? $attempt->completed_at->format('d M Y, H:i') : 'Sedang berlangsung' }}
+                                                                </span>
+                                                                @if($attempt->passed)
+                                                                    <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">LULUS</span>
+                                                                @endif
+                                                            </div>
+                                                            @if($attempt->completed_at)
+                                                                <div class="text-right">
+                                                                    <div class="font-semibold {{ $attempt->passed ? 'text-green-600' : 'text-red-600' }}">
+                                                                        {{ $attempt->score }}/{{ $content->quiz->total_marks }}
+                                                                    </div>
+                                                                    <a href="{{ route('quizzes.result', [$content->quiz, $attempt]) }}"
+                                                                       class="text-xs text-indigo-600 hover:text-indigo-800">Lihat Detail</a>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <div class="text-center">
+                                            @if($hasPassedAttempt)
+                                                <div class="mb-4 p-4 bg-green-100 text-green-800 rounded-xl">
+                                                    <svg class="w-6 h-6 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Selamat! Anda telah lulus quiz ini.
+                                                </div>
+                                                <a href="{{ route('quizzes.start', $content->quiz) }}"
+                                                   class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                    </svg>
+                                                    Coba Lagi
+                                                </a>
+                                            @else
+                                                <a href="{{ route('quizzes.start', $content->quiz) }}"
+                                                   class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.01M15 10h1.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                    Mulai Quiz
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
                                 @endif
                             </div>
 
-                            <!-- Essay/Quiz Section -->
-                            @if($content->type == 'essay' || $content->type == 'quiz')
+                            <!-- Essay/Quiz Section (untuk essay dan quiz tanpa konten utama) -->
+                            @if(($content->type == 'essay' || $content->type == 'quiz') && !$content->quiz)
                                 <div class="mt-8 pt-8 border-t border-gray-200">
                                     @include('contents.partials.essay-quiz-section')
                                 </div>
@@ -338,9 +477,12 @@
             </div>
         </main>
 
-        <!-- ✅ PERBAIKAN: Fixed Bottom Navigation dengan z-index yang lebih tinggi -->
-        <div class="fixed bottom-0 right-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300"
-             :class="{ 'lg:left-96': sidebarOpen, 'lg:left-0': !sidebarOpen }">
+        <!-- ✅ PERBAIKAN UTAMA: Bottom Navigation dengan positioning yang lebih robust -->
+        <div class="fixed bottom-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300 ease-in-out"
+             :style="{
+                'left': sidebarOpen && window.innerWidth >= 1024 ? '384px' : '0px',
+                'right': '0px'
+             }">
             @php
                 // ✅ PERBAIKAN: Mendapatkan konten dalam urutan yang benar
                 $allContents = $unlockedContents; // Gunakan data yang sudah diurutkan dari controller
@@ -351,7 +493,51 @@
                 $previousContent = $currentIndex > 0 ? $allContents->get($currentIndex - 1) : null;
                 $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents->get($currentIndex + 1) : null;
 
-                $canGoNext = $isContentEffectivelyCompleted && $nextContent;
+                // ✅ PERBAIKAN LOGIC: Untuk quiz, cek apakah sudah lulus. Untuk essay, cek apakah sudah submit.
+                if ($content->type === 'quiz' && $content->quiz_id) {
+                    $canGoNext = $user->quizAttempts()
+                        ->where('quiz_id', $content->quiz_id)
+                        ->where('passed', true)
+                        ->exists() && $nextContent;
+                } elseif ($content->type === 'essay') {
+                    // ✅ PERUBAHAN: Essay bisa lanjut setelah submit
+                    $canGoNext = $user->essaySubmissions()
+                        ->where('content_id', $content->id)
+                        ->exists() && $nextContent;
+                } else {
+                    $canGoNext = $isContentEffectivelyCompleted && $nextContent;
+                }
+
+                // ✅ FITUR BARU: Cek apakah ini konten terakhir dan semua sudah selesai
+                $isLastContent = !$nextContent && $isContentEffectivelyCompleted;
+                $allCourseContents = $course->lessons->flatMap->contents;
+                $isAllCourseCompleted = true;
+
+                if ($isLastContent) {
+                    foreach ($allCourseContents as $courseContent) {
+                        $isContentDone = false;
+
+                        if ($courseContent->type === 'quiz' && $courseContent->quiz_id) {
+                            $isContentDone = $user->quizAttempts()
+                                ->where('quiz_id', $courseContent->quiz_id)
+                                ->where('passed', true)
+                                ->exists();
+                        } elseif ($courseContent->type === 'essay') {
+                            $isContentDone = $user->essaySubmissions()
+                                ->where('content_id', $courseContent->id)
+                                ->exists();
+                        } else {
+                            $isContentDone = $user->completedContents()
+                                ->where('content_id', $courseContent->id)
+                                ->exists();
+                        }
+
+                        if (!$isContentDone) {
+                            $isAllCourseCompleted = false;
+                            break;
+                        }
+                    }
+                }
             @endphp
 
             <!-- Mobile Bottom Navigation -->
@@ -361,25 +547,84 @@
                         <span class="text-xs font-medium">Progress:</span>
                         <span class="text-xs font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
                     </div>
-                    <div class="w-full bg-white/20 rounded-full h-1.5"><div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1.5 rounded-full transition-all duration-500" style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div></div>
-                    <div class="text-center mt-1"><span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span></div>
+                    <div class="w-full bg-white/20 rounded-full h-1.5">
+                        <div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1.5 rounded-full transition-all duration-500"
+                             style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div>
+                    </div>
+                    <div class="text-center mt-1">
+                        <span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span>
+                    </div>
                 </div>
 
                 <div class="px-4 py-3">
                     <div class="flex items-center space-x-3">
                         @if ($previousContent)
-                            <a href="{{ route('contents.show', $previousContent) }}" class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
+                            <a href="{{ route('contents.show', $previousContent) }}"
+                               class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                            </a>
                         @endif
+
                         <div class="flex-1">
                             @if ($canGoNext)
-                                <a href="{{ route('contents.show', $nextContent) }}" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group"><span class="text-sm mr-2">Selanjutnya</span><svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></a>
+                                <a href="{{ route('contents.show', $nextContent) }}"
+                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group">
+                                    <span class="text-sm mr-2">Selanjutnya</span>
+                                    <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
                             @elseif(!$nextContent && $isContentEffectivelyCompleted)
-                                <a href="{{ route('courses.show', $course->id) }}" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"><span class="text-sm mr-2">Selesai 🎉</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></a>
+                                <!-- ✅ FITUR BARU: Cek apakah semua kursus sudah selesai -->
+                                @if($isAllCourseCompleted)
+                                    <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" class="w-full">
+                                        @csrf
+                                        <button type="submit"
+                                               class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
+                                            <span class="text-sm mr-2">🎉 Selesaikan Kursus</span>
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('courses.show', $course->id) }}"
+                                       class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
+                                        <span class="text-sm mr-2">Kembali ke Kursus</span>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                        </svg>
+                                    </a>
+                                @endif
                             @elseif(!$isContentEffectivelyCompleted && !$isTask)
-                                <button @click="markAsCompleted()" class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 hover:scale-105">Tandai Selesai</button>
+                                <button @click="markAsCompleted()"
+                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 hover:scale-105">
+                                    Tandai Selesai
+                                </button>
+                            @else
+                                <!-- ✅ TAMBAHAN: Pesan untuk quiz yang belum diselesaikan -->
+                                <div class="w-full text-center py-3">
+                                    <p class="text-sm text-gray-600">
+                                        @if($content->type === 'quiz')
+                                            Selesaikan quiz untuk melanjutkan
+                                        @elseif($content->type === 'essay')
+                                            Submit essay untuk melanjutkan
+                                        @else
+                                            Selesaikan materi ini untuk melanjutkan
+                                        @endif
+                                    </p>
+                                </div>
                             @endif
                         </div>
-                        <a href="{{ route('courses.show', $course->id) }}" class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></a>
+
+                        <a href="{{ route('courses.show', $course->id) }}"
+                           class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            </svg>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -390,19 +635,62 @@
                     <div class="max-w-6xl mx-auto flex items-center justify-center space-x-6">
                         <div>
                             @if ($previousContent)
-                                <a href="{{ route('contents.show', $previousContent) }}" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm hover:scale-105">
-                                    <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                                    <div class="text-left"><div class="text-xs text-gray-500">Sebelumnya</div><div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div></div>
+                                <a href="{{ route('contents.show', $previousContent) }}"
+                                   class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm hover:scale-105">
+                                    <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                    </svg>
+                                    <div class="text-left">
+                                        <div class="text-xs text-gray-500">Sebelumnya</div>
+                                        <div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div>
+                                    </div>
                                 </a>
                             @endif
                         </div>
+
                         <div>
                             @if ($canGoNext)
-                                <a href="{{ route('contents.show', $nextContent) }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">Selanjutnya</a>
+                                <a href="{{ route('contents.show', $nextContent) }}"
+                                   class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
+                                    <span class="mr-2">Selanjutnya</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
                             @elseif (!$nextContent && $isContentEffectivelyCompleted)
-                                <a href="{{ route('courses.show', $course->id) }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">Selesai Kursus 🎉</a>
+                                <!-- ✅ FITUR BARU: Cek apakah semua kursus sudah selesai -->
+                                @if($isAllCourseCompleted)
+                                    <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit"
+                                               class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
+                                            🎉 Selesaikan Kursus
+                                        </button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('courses.show', $course->id) }}"
+                                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
+                                        Kembali ke Kursus
+                                    </a>
+                                @endif
                             @elseif (!$isContentEffectivelyCompleted && !$isTask)
-                                <button @click="markAsCompleted()" class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">Tandai Selesai untuk Lanjut</button>
+                                <button @click="markAsCompleted()"
+                                        class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">
+                                    Tandai Selesai untuk Lanjut
+                                </button>
+                            @else
+                                <!-- ✅ TAMBAHAN: Pesan untuk desktop -->
+                                <div class="text-center py-3">
+                                    <p class="text-sm text-gray-600">
+                                        @if($content->type === 'quiz')
+                                            Selesaikan quiz untuk melanjutkan
+                                        @elseif($content->type === 'essay')
+                                            Submit essay untuk melanjutkan
+                                        @else
+                                            Selesaikan materi ini untuk melanjutkan
+                                        @endif
+                                    </p>
+                                </div>
                             @endif
                         </div>
                     </div>
@@ -627,6 +915,11 @@
     </style>
 
     <script>
+        // ✅ PERBAIKAN: Improved sidebar management for bottom bar
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('sidebarWidth', 384); // 24rem = 384px
+        });
+
         // ✅ PERBAIKAN: Auto-hide mobile sidebar when scrolling
         let lastScrollTop = 0;
 
@@ -689,6 +982,25 @@
                     });
                 }
             }));
+        });
+
+        // ✅ PERBAIKAN: Handle window resize for bottom bar
+        window.addEventListener('resize', function() {
+            // Force re-calculation of bottom bar position
+            if (window.innerWidth >= 1024) {
+                // Desktop view - adjust bottom bar based on sidebar state
+                const bottomBar = document.querySelector('.fixed.bottom-0');
+                if (bottomBar) {
+                    const sidebarOpen = document.querySelector('[x-data]').__x_component?.sidebarOpen;
+                    bottomBar.style.left = sidebarOpen ? '384px' : '0px';
+                }
+            } else {
+                // Mobile view - reset bottom bar
+                const bottomBar = document.querySelector('.fixed.bottom-0');
+                if (bottomBar) {
+                    bottomBar.style.left = '0px';
+                }
+            }
         });
     </script>
 </x-app-layout>

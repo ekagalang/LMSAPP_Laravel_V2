@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -20,7 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role', // Kolom role yang ditambahkan
     ];
 
     /**
@@ -46,8 +47,10 @@ class User extends Authenticatable
         ];
     }
 
+    // ✅ RELASI UNTUK KURSUS
+
     /**
-     * Relasi ke Course (kursus yang diajar oleh user ini sebagai instruktur)
+     * Kursus yang diajar oleh user ini (untuk instruktur)
      */
     public function instructedCourses()
     {
@@ -55,39 +58,49 @@ class User extends Authenticatable
     }
 
     /**
-     * Relasi ke Course (kursus yang diikuti oleh user ini sebagai peserta)
+     * Kursus yang diikuti oleh user ini (untuk peserta)
+     * ✅ TAMBAHAN: Dengan pivot data completed_at dan feedback
      */
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_user')->withPivot('feedback')->withTimestamps();
+        return $this->belongsToMany(Course::class, 'course_user')
+            ->withPivot('feedback', 'completed_at')
+            ->withTimestamps();
     }
 
     /**
-     * Relasi ke Content yang sudah diselesaikan
+     * ✅ BARU: Kursus yang sudah diselesaikan oleh user
      */
-    public function completedContents()
+    public function completedCourses()
     {
-        return $this->belongsToMany(Content::class, 'content_user')->withPivot('completed', 'completed_at')->withTimestamps();
+        return $this->belongsToMany(Course::class, 'course_user')
+            ->withPivot('feedback', 'completed_at')
+            ->whereNotNull('course_user.completed_at')
+            ->withTimestamps();
     }
 
+    // ✅ RELASI UNTUK KONTEN DAN PEMBELAJARAN
+
     /**
-     * Relasi ke Lesson yang sudah diselesaikan
+     * Pelajaran yang sudah diselesaikan oleh user
      */
     public function completedLessons()
     {
-        return $this->belongsToMany(Lesson::class, 'lesson_user')->withPivot('completed', 'completed_at')->withTimestamps();
+        return $this->belongsToMany(Lesson::class, 'lesson_user')->withPivot('completed', 'completed_at');
     }
 
     /**
-     * Relasi ke Quiz yang dibuat (untuk instruktur)
+     * Konten yang sudah diselesaikan oleh user
      */
-    public function createdQuizzes()
+    public function completedContents()
     {
-        return $this->hasMany(Quiz::class);
+        return $this->belongsToMany(Content::class, 'content_user')->withPivot('completed', 'completed_at');
     }
 
+    // ✅ RELASI UNTUK QUIZ DAN ESSAY
+
     /**
-     * Relasi ke QuizAttempt (percobaan kuis yang dilakukan user)
+     * Quiz attempts oleh user
      */
     public function quizAttempts()
     {
@@ -95,7 +108,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Relasi ke EssaySubmission (pengumpulan esai)
+     * Essay submissions oleh user
      */
     public function essaySubmissions()
     {
@@ -103,39 +116,17 @@ class User extends Authenticatable
     }
 
     /**
-     * Relasi ke Discussion (diskusi yang dibuat user)
+     * Feedback yang diterima user
      */
-    public function discussions()
+    public function feedback()
     {
-        return $this->hasMany(Discussion::class);
+        return $this->hasMany(Feedback::class);
     }
 
-    /**
-     * Relasi ke DiscussionReply (balasan diskusi yang dibuat user)
-     */
-    public function discussionReplies()
-    {
-        return $this->hasMany(DiscussionReply::class);
-    }
+    // ✅ HELPER METHODS
 
     /**
-     * Relasi ke Feedback yang diterima user
-     */
-    public function receivedFeedback()
-    {
-        return $this->hasMany(Feedback::class, 'user_id');
-    }
-
-    /**
-     * Relasi ke Feedback yang diberikan user (sebagai instruktur)
-     */
-    public function givenFeedback()
-    {
-        return $this->hasMany(Feedback::class, 'instructor_id');
-    }
-
-    /**
-     * Check if user is enrolled in a specific course
+     * Cek apakah user sudah enroll di kursus tertentu
      */
     public function isEnrolled(Course $course): bool
     {
@@ -143,159 +134,111 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is instructor for a specific course
+     * ✅ BARU: Cek apakah user sudah menyelesaikan kursus tertentu
+     */
+    public function hasCourseCompleted(Course $course): bool
+    {
+        return $this->courses()
+            ->where('course_id', $course->id)
+            ->whereNotNull('course_user.completed_at')
+            ->exists();
+    }
+
+    /**
+     * ✅ BARU: Mendapatkan tanggal completion kursus
+     */
+    public function getCourseCompletedAt(Course $course)
+    {
+        $pivot = $this->courses()
+            ->where('course_id', $course->id)
+            ->first();
+
+        return $pivot ? $pivot->pivot->completed_at : null;
+    }
+
+    /**
+     * ✅ BARU: Mendapatkan progress percentage untuk kursus tertentu
+     */
+    public function getCourseProgress(Course $course): array
+    {
+        // Ambil semua konten dalam kursus
+        $allContents = $course->lessons()->with('contents')->get()->pluck('contents')->flatten();
+        $totalContents = $allContents->count();
+
+        if ($totalContents === 0) {
+            return ['percentage' => 100, 'completed' => 0, 'total' => 0];
+        }
+
+        $completedCount = 0;
+
+        foreach ($allContents as $content) {
+            $isCompleted = false;
+
+            if ($content->type === 'quiz' && $content->quiz_id) {
+                $isCompleted = $this->quizAttempts()
+                    ->where('quiz_id', $content->quiz_id)
+                    ->where('passed', true)
+                    ->exists();
+            } elseif ($content->type === 'essay') {
+                $isCompleted = $this->essaySubmissions()
+                    ->where('content_id', $content->id)
+                    ->exists();
+            } else {
+                $isCompleted = $this->completedContents()
+                    ->where('content_id', $content->id)
+                    ->exists();
+            }
+
+            if ($isCompleted) {
+                $completedCount++;
+            }
+        }
+
+        $percentage = round(($completedCount / $totalContents) * 100);
+
+        return [
+            'percentage' => $percentage,
+            'completed' => $completedCount,
+            'total' => $totalContents
+        ];
+    }
+
+    /**
+     * Cek apakah user adalah instruktur untuk kursus tertentu
      */
     public function isInstructorFor(Course $course): bool
     {
-        return $course->instructors()->where('user_id', $this->id)->exists();
+        return $course->instructors->contains($this);
     }
 
     /**
-     * Get user's role display name
+     * ✅ BARU: Mendapatkan semua kursus yang sudah diselesaikan dengan detail
      */
-    public function getRoleDisplayName(): string
+    public function getCompletedCoursesWithDetails()
     {
-        $roleNames = $this->getRoleNames();
-        if ($roleNames->isEmpty()) {
-            return 'Participant';
-        }
-
-        $role = $roleNames->first();
-        return match ($role) {
-            'super-admin' => 'Super Admin',
-            'instructor' => 'Instruktur',
-            'participant' => 'Peserta',
-            'event-organizer' => 'Event Organizer',
-            default => ucfirst($role),
-        };
+        return $this->completedCourses()->get()->map(function ($course) {
+            $progress = $this->getCourseProgress($course);
+            return [
+                'course' => $course,
+                'completed_at' => $course->pivot->completed_at,
+                'progress' => $progress,
+                'feedback' => $course->pivot->feedback
+            ];
+        });
     }
 
     /**
-     * Check if user is admin (super-admin)
+     * ✅ BARU: Mendapatkan kursus yang sedang dalam progress
      */
-    public function isAdmin(): bool
+    public function getInProgressCourses()
     {
-        return $this->hasRole('super-admin');
-    }
-
-    /**
-     * Check if user is instructor
-     */
-    public function isInstructor(): bool
-    {
-        return $this->hasRole('instructor');
-    }
-
-    /**
-     * Check if user is participant
-     */
-    public function isParticipant(): bool
-    {
-        return $this->hasRole('participant');
-    }
-
-    /**
-     * Check if user is event organizer
-     */
-    public function isEventOrganizer(): bool
-    {
-        return $this->hasRole('event-organizer');
-    }
-
-    /**
-     * Get completion rate for a specific course
-     */
-    public function getCourseCompletionRate(Course $course): float
-    {
-        $totalContents = $course->lessons()
-            ->with('contents')
-            ->get()
-            ->pluck('contents')
-            ->flatten()
-            ->count();
-
-        if ($totalContents === 0) {
-            return 0;
-        }
-
-        $completedContents = $this->completedContents()
-            ->whereHas('lesson', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
-            })
-            ->count();
-
-        return round(($completedContents / $totalContents) * 100, 2);
-    }
-
-    /**
-     * Get user's recent activity
-     */
-    public function getRecentActivity($limit = 10)
-    {
-        $activities = collect();
-
-        // Recent course enrollments
-        $recentEnrollments = $this->courses()
-            ->wherePivot('created_at', '>=', now()->subDays(30))
-            ->get()
-            ->map(function ($course) {
-                return [
-                    'type' => 'enrollment',
-                    'description' => "Terdaftar di kursus: {$course->title}",
-                    'created_at' => $course->pivot->created_at,
-                ];
-            });
-
-        // Recent quiz attempts
-        $recentQuizzes = $this->quizAttempts()
-            ->with('quiz')
-            ->where('created_at', '>=', now()->subDays(30))
-            ->get()
-            ->map(function ($attempt) {
-                return [
-                    'type' => 'quiz',
-                    'description' => "Mengerjakan kuis: {$attempt->quiz->title}",
-                    'created_at' => $attempt->created_at,
-                ];
-            });
-
-        // Recent discussions
-        $recentDiscussions = $this->discussions()
-            ->where('created_at', '>=', now()->subDays(30))
-            ->get()
-            ->map(function ($discussion) {
-                return [
-                    'type' => 'discussion',
-                    'description' => "Memulai diskusi: {$discussion->title}",
-                    'created_at' => $discussion->created_at,
-                ];
-            });
-
-        return $activities
-            ->merge($recentEnrollments)
-            ->merge($recentQuizzes)
-            ->merge($recentDiscussions)
-            ->sortByDesc('created_at')
-            ->take($limit);
-    }
-
-    public function feedback()
-    {
-        return $this->hasMany(Feedback::class, 'user_id');
-    }
-
-    public function taughtCourses()
-    {
-        return $this->belongsToMany(Course::class, 'course_instructor');
-    }
-
-    public function eventOrganizedCourses()
-    {
-        return $this->belongsToMany(Course::class, 'course_event_organizer');
-    }
-
-    public function enrolledCourses()
-    {
-        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
+        return $this->courses()->whereNull('course_user.completed_at')->get()->map(function ($course) {
+            $progress = $this->getCourseProgress($course);
+            return [
+                'course' => $course,
+                'progress' => $progress,
+                'feedback' => $course->pivot->feedback
+            ];
+        });
     }
 }
