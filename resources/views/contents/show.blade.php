@@ -1,6 +1,6 @@
 <x-app-layout>
-    <div x-data="{ 
-        sidebarOpen: window.innerWidth >= 768, 
+    <div x-data="{
+        sidebarOpen: window.innerWidth >= 768,
         showProgress: false,
         // [LOGIKA BARU] Menentukan apakah konten ini dianggap selesai.
         // Untuk kuis, harus lulus. Untuk esai, harus dinilai.
@@ -23,15 +23,15 @@
         contentCompleted: {{ $isContentEffectivelyCompleted ? 'true' : 'false' }},
 
         toggleSidebar() { this.sidebarOpen = !this.sidebarOpen },
-        
+
         // Fungsi ini akan men-submit form untuk menandai selesai
-        markAsCompleted() { 
+        markAsCompleted() {
             // Hanya submit jika bukan tugas (kuis/esai)
             @if(!$isTask)
                 document.getElementById('complete-form').submit();
             @endif
         }
-    }" 
+    }"
     class="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
 
         <!-- [BARU] Form tersembunyi untuk menandai selesai (hanya untuk konten non-tugas) -->
@@ -41,9 +41,8 @@
         </form>
         @endif
 
-
         <!-- Mobile Header -->
-        <div class="lg:hidden bg-white shadow-sm border-b p-4 flex items-center justify-between sticky top-0 z-30">
+        <div class="lg:hidden bg-white shadow-sm border-b p-4 flex items-center justify-between sticky top-0 z-40">
             <button @click="toggleSidebar()" class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -65,16 +64,16 @@
         </div>
 
         <!-- Sidebar Navigation -->
-        <aside 
-            x-show="sidebarOpen" 
+        <aside
+            x-show="sidebarOpen"
             x-transition:enter="transition ease-out duration-300 transform"
             x-transition:enter-start="-translate-x-full"
             x-transition:enter-end="translate-x-0"
             x-transition:leave="transition ease-in duration-300 transform"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
-            class="fixed lg:static inset-y-0 left-0 w-full sm:w-96 bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-40 lg:z-20 flex flex-col">
-            
+            class="fixed lg:static inset-y-0 left-0 w-full sm:w-96 bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-50 lg:z-20 flex flex-col">
+
             <!-- Sidebar Header -->
             <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
                 <div class="flex items-center justify-between">
@@ -88,7 +87,7 @@
                         </svg>
                     </button>
                 </div>
-                
+
                 <!-- Progress Bar -->
                 @php
                     $totalContentsInCourse = $course->lessons->flatMap->contents->count();
@@ -101,13 +100,13 @@
                         <span class="font-semibold">{{ $progressPercentage }}%</span>
                     </div>
                     <div class="w-full bg-white/20 rounded-full h-2">
-                        <div class="bg-gradient-to-r from-yellow-400 to-green-400 h-2 rounded-full transition-all duration-500" 
+                        <div class="bg-gradient-to-r from-yellow-400 to-green-400 h-2 rounded-full transition-all duration-500"
                              style="width: {{ $progressPercentage }}%"></div>
                     </div>
                     <p class="text-xs text-indigo-100 mt-1">{{ $completedContentsCount }}/{{ $totalContentsInCourse }} konten selesai</p>
                 </div>
             </div>
-            
+
             <!-- Course Navigation -->
             <nav class="flex-1 overflow-y-auto p-6">
                 @foreach ($course->lessons->sortBy('order') as $lesson)
@@ -126,7 +125,7 @@
                                 {{ $lessonCompletedCount }}/{{ $lessonContentsCount }}
                             </span>
                         </div>
-                        
+
                         <!-- Content List -->
                         <ul class="space-y-2">
                             @foreach ($lesson->contents->sortBy('order') as $c)
@@ -146,12 +145,12 @@
                                     @if($isUnlocked)
                                         <a href="{{ route('contents.show', $c) }}"
                                            class="group block p-3 rounded-xl transition-all duration-200 hover:shadow-md
-                                                  {{ $isCurrent 
-                                                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' 
-                                                      : ($isCompleted 
-                                                          ? 'bg-green-50 hover:bg-green-100 text-green-800' 
+                                                  {{ $isCurrent
+                                                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                                                      : ($isCompleted
+                                                          ? 'bg-green-50 hover:bg-green-100 text-green-800'
                                                           : 'bg-gray-50 hover:bg-gray-100 text-gray-700') }}">
-                                            
+
                                             <div class="flex items-center">
                                                 <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0
                                                             {{ $isCurrent ? 'bg-white/20 text-white' : ($isCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600') }}">
@@ -184,7 +183,7 @@
                     </div>
                 @endforeach
             </nav>
-            
+
             <div class="p-6 border-t border-gray-200 bg-gray-50">
                 <a href="{{ route('dashboard') }}" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -214,8 +213,8 @@
                 </div>
             </header>
 
-            <!-- Content Container -->
-            <div class="flex-1 overflow-y-auto pb-36 lg:pb-40">
+            <!-- ✅ PERBAIKAN: Content Container dengan padding bottom yang cukup untuk bottom bar -->
+            <div class="flex-1 overflow-y-auto pb-40 lg:pb-32">
                 <div class="max-w-4xl mx-auto p-6 lg:p-8">
                     <!-- Content Card -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
@@ -272,17 +271,17 @@
                                             </div>
                                         </a>
                                     </div>
-                                    
+
                                 @elseif($content->type == 'image' && $content->file_path)
                                     <div class="text-center">
                                         <div class="inline-block rounded-2xl overflow-hidden shadow-2xl">
-                                            <img src="{{ Storage::url($content->file_path) }}" 
-                                                 alt="{{ $content->title }}" 
+                                            <img src="{{ Storage::url($content->file_path) }}"
+                                                 alt="{{ $content->title }}"
                                                  class="max-w-full h-auto max-h-96 object-contain">
                                         </div>
                                         <p class="text-sm text-gray-500 mt-4">{{ $content->title }}</p>
                                     </div>
-                                    
+
                                 @elseif($content->type == 'document' && $content->file_path)
                                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 text-center border border-blue-100">
                                         <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -292,8 +291,8 @@
                                         </div>
                                         <h3 class="text-xl font-semibold text-gray-900 mb-2">Dokumen Pembelajaran</h3>
                                         <p class="text-gray-600 mb-6">{{ basename($content->file_path) }}</p>
-                                        <a href="{{ Storage::url($content->file_path) }}" 
-                                           target="_blank" 
+                                        <a href="{{ Storage::url($content->file_path) }}"
+                                           target="_blank"
                                            class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -301,7 +300,7 @@
                                             Download Dokumen
                                         </a>
                                     </div>
-                                    
+
                                 @elseif(in_array($content->type, ['text', 'essay']))
                                     <div class="prose prose-lg max-w-none">
                                         <div class="content-text text-gray-800 leading-relaxed">
@@ -339,56 +338,59 @@
             </div>
         </main>
 
-        <!-- Compact Bottom Navigation -->
-        <div class="fixed bottom-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-xl z-30 transition-all duration-300"
+        <!-- ✅ PERBAIKAN: Fixed Bottom Navigation dengan z-index yang lebih tinggi -->
+        <div class="fixed bottom-0 right-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300"
              :class="{ 'lg:left-96': sidebarOpen, 'lg:left-0': !sidebarOpen }">
             @php
-                $allContents = $course->lessons->sortBy('order')->flatMap->contents->sortBy('order')->values();
-                $currentIndex = $allContents->search(fn($item) => $item->id === $content->id);
-                
+                // ✅ PERBAIKAN: Mendapatkan konten dalam urutan yang benar
+                $allContents = $unlockedContents; // Gunakan data yang sudah diurutkan dari controller
+                $currentIndex = $allContents->search(function($item) use ($content) {
+                    return $item->id === $content->id;
+                });
+
                 $previousContent = $currentIndex > 0 ? $allContents->get($currentIndex - 1) : null;
                 $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents->get($currentIndex + 1) : null;
 
                 $canGoNext = $isContentEffectivelyCompleted && $nextContent;
             @endphp
-            
+
             <!-- Mobile Bottom Navigation -->
             <div class="lg:hidden">
-                <div class="px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <div class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
                     <div class="flex items-center justify-between mb-1">
                         <span class="text-xs font-medium">Progress:</span>
                         <span class="text-xs font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
                     </div>
-                    <div class="w-full bg-white/20 rounded-full h-1"><div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1 rounded-full transition-all duration-500" style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div></div>
+                    <div class="w-full bg-white/20 rounded-full h-1.5"><div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1.5 rounded-full transition-all duration-500" style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div></div>
                     <div class="text-center mt-1"><span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span></div>
                 </div>
-                
-                <div class="px-4 py-2">
+
+                <div class="px-4 py-3">
                     <div class="flex items-center space-x-3">
-                        @if ($previousContent && $unlockedContents->contains('id', $previousContent->id))
-                            <a href="{{ route('contents.show', $previousContent) }}" class="flex-shrink-0 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
+                        @if ($previousContent)
+                            <a href="{{ route('contents.show', $previousContent) }}" class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
                         @endif
                         <div class="flex-1">
                             @if ($canGoNext)
-                                <a href="{{ route('contents.show', $nextContent) }}" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group"><span class="text-sm mr-2">Selanjutnya</span><svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></a>
+                                <a href="{{ route('contents.show', $nextContent) }}" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group"><span class="text-sm mr-2">Selanjutnya</span><svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></a>
                             @elseif(!$nextContent && $isContentEffectivelyCompleted)
-                                <a href="{{ route('courses.show', $course->id) }}" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"><span class="text-sm mr-2">Selesai 🎉</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></a>
+                                <a href="{{ route('courses.show', $course->id) }}" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"><span class="text-sm mr-2">Selesai 🎉</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></a>
                             @elseif(!$isContentEffectivelyCompleted && !$isTask)
-                                <button @click="markAsCompleted()" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md">Tandai Selesai</button>
+                                <button @click="markAsCompleted()" class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 hover:scale-105">Tandai Selesai</button>
                             @endif
                         </div>
-                        <a href="{{ route('courses.show', $course->id) }}" class="flex-shrink-0 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></a>
+                        <a href="{{ route('courses.show', $course->id) }}" class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></a>
                     </div>
                 </div>
             </div>
 
             <!-- Desktop Bottom Navigation -->
             <div class="hidden lg:block">
-                <div class="px-6 py-1.5">
-                    <div class="max-w-6xl mx-auto flex items-center justify-center space-x-4">
+                <div class="px-6 py-3">
+                    <div class="max-w-6xl mx-auto flex items-center justify-center space-x-6">
                         <div>
-                            @if ($previousContent && $unlockedContents->contains('id', $previousContent->id))
-                                <a href="{{ route('contents.show', $previousContent) }}" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm">
+                            @if ($previousContent)
+                                <a href="{{ route('contents.show', $previousContent) }}" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm hover:scale-105">
                                     <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                                     <div class="text-left"><div class="text-xs text-gray-500">Sebelumnya</div><div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div></div>
                                 </a>
@@ -396,11 +398,11 @@
                         </div>
                         <div>
                             @if ($canGoNext)
-                                <a href="{{ route('contents.show', $nextContent) }}" class="inline-flex items-center px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md">Selanjutnya</a>
+                                <a href="{{ route('contents.show', $nextContent) }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">Selanjutnya</a>
                             @elseif (!$nextContent && $isContentEffectivelyCompleted)
-                                <a href="{{ route('courses.show', $course->id) }}" class="inline-flex items-center px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md">Selesai Kursus 🎉</a>
+                                <a href="{{ route('courses.show', $course->id) }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">Selesai Kursus 🎉</a>
                             @elseif (!$isContentEffectivelyCompleted && !$isTask)
-                                <button @click="markAsCompleted()" class="inline-flex items-center px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md">Tandai Selesai untuk Lanjut</button>
+                                <button @click="markAsCompleted()" class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">Tandai Selesai untuk Lanjut</button>
                             @endif
                         </div>
                     </div>
@@ -409,14 +411,14 @@
         </div>
 
         <!-- Enhanced Mobile Progress Modal -->
-        <div x-show="showProgress" 
+        <div x-show="showProgress"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 scale-100"
              x-transition:leave-end="opacity-0 scale-95"
-             class="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             class="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
              @click="showProgress = false">
             <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" @click.stop>
                 <div class="text-center mb-6">
@@ -426,16 +428,16 @@
                     <h3 class="text-xl font-bold text-gray-900 mb-2">Progress Pembelajaran</h3>
                     <p class="text-gray-600 text-sm">{{ $course->title }}</p>
                 </div>
-                
+
                 <div class="space-y-4">
                     <div class="flex justify-between items-center">
                         <span class="text-sm font-medium text-gray-700">Total Progress</span>
                         <span class="text-lg font-bold text-indigo-600">{{ $progressPercentage }}%</span>
                     </div>
-                    
+
                     <div class="relative">
                         <div class="w-full bg-gray-200 rounded-full h-4">
-                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-1000 relative overflow-hidden" 
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-1000 relative overflow-hidden"
                                  style="width: {{ $progressPercentage }}%">
                                 <div class="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
                             </div>
@@ -444,31 +446,28 @@
                             <span class="text-xs font-semibold text-white drop-shadow-lg">{{ $progressPercentage }}%</span>
                         </div>
                     </div>
-                    
+
                     <div class="flex justify-between items-center text-sm">
                         <div class="text-center">
-                            {{-- [PERBAIKAN] Menggunakan $completedContentsCount --}}
                             <div class="font-semibold text-green-600">{{ $completedContentsCount }}</div>
                             <div class="text-gray-500">Selesai</div>
                         </div>
                         <div class="text-center">
-                            {{-- [PERBAIKAN] Menggunakan variabel yang benar --}}
                             <div class="font-semibold text-indigo-600">{{ $totalContentsInCourse - $completedContentsCount }}</div>
                             <div class="text-gray-500">Tersisa</div>
                         </div>
                         <div class="text-center">
-                            {{-- [PERBAIKAN] Menggunakan $totalContentsInCourse --}}
                             <div class="font-semibold text-gray-700">{{ $totalContentsInCourse }}</div>
                             <div class="text-gray-500">Total</div>
                         </div>
                     </div>
-                    
+
                     <!-- Completion Action -->
                     <div class="pt-4 border-t border-gray-100">
                         <div x-show="!contentCompleted" class="space-y-3">
                             <p class="text-sm text-gray-600 text-center">Tandai konten ini sebagai selesai?</p>
-                            <button @click="markAsCompleted(); showProgress = false" 
-                                    class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200">
+                            <button @click="markAsCompleted(); showProgress = false"
+                                    class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 hover:scale-105">
                                 <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
@@ -485,8 +484,8 @@
                         </div>
                     </div>
                 </div>
-                
-                <button @click="showProgress = false" 
+
+                <button @click="showProgress = false"
                         class="w-full mt-6 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors">
                     Tutup
                 </button>
@@ -497,40 +496,40 @@
         .prose {
             color: #374151;
         }
-        
+
         .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
             color: #111827;
             font-weight: 600;
         }
-        
+
         .prose p {
             margin-bottom: 1.25rem;
             line-height: 1.75;
         }
-        
+
         .prose ul, .prose ol {
             margin: 1.25rem 0;
             padding-left: 1.625rem;
         }
-        
+
         .prose li {
             margin: 0.5rem 0;
         }
-        
+
         .prose blockquote {
             border-left: 4px solid #e5e7eb;
             padding-left: 1rem;
             font-style: italic;
             color: #6b7280;
         }
-        
+
         .prose code {
             background-color: #f3f4f6;
             padding: 0.25rem 0.5rem;
             border-radius: 0.375rem;
             font-size: 0.875rem;
         }
-        
+
         .prose pre {
             background-color: #1f2937;
             color: #f9fafb;
@@ -538,104 +537,119 @@
             border-radius: 0.5rem;
             overflow-x: auto;
         }
-        
+
         .prose a {
             color: #3b82f6;
             text-decoration: underline;
         }
-        
+
         .prose a:hover {
             color: #1d4ed8;
         }
-        
+
         .prose img {
             border-radius: 0.5rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-        
+
         .prose table {
             width: 100%;
             border-collapse: collapse;
             margin: 1.25rem 0;
         }
-        
+
         .prose th, .prose td {
             border: 1px solid #e5e7eb;
             padding: 0.75rem;
             text-align: left;
         }
-        
+
         .prose th {
             background-color: #f9fafb;
             font-weight: 600;
         }
-        
-        /* Custom scrollbar */
+
+        /* ✅ PERBAIKAN: Custom scrollbar */
         .overflow-y-auto::-webkit-scrollbar {
             width: 6px;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar-track {
             background: #f1f5f9;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 3px;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        
-        /* Compact Bottom Navigation Enhancements */
+
+        /* ✅ PERBAIKAN: Enhanced button animations */
+        .group:hover {
+            transform: translateY(-0.5px);
+        }
+
+        /* ✅ PERBAIKAN: Ensure bottom navigation never gets covered */
         .fixed {
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
-        
-        /* Enhanced button animations */
-        .group:hover {
-            transform: translateY(-0.5px);
-        }
-        
-        /* Responsive Typography */
+
+        /* ✅ PERBAIKAN: Responsive Typography */
         @media (max-width: 640px) {
             .max-w-48 {
                 max-width: 180px;
             }
         }
-        
-        /* Backdrop blur support */
+
+        /* ✅ PERBAIKAN: Enhanced backdrop blur support */
         .backdrop-blur-md {
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
-        
+
         .backdrop-blur-sm {
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
         }
+
+        /* ✅ PERBAIKAN: Ensure no overlapping elements */
+        .z-\[9999\] {
+            z-index: 9999;
+        }
+
+        .z-\[10000\] {
+            z-index: 10000;
+        }
     </style>
 
     <script>
-        // Auto-hide mobile sidebar when scrolling
+        // ✅ PERBAIKAN: Auto-hide mobile sidebar when scrolling
         let lastScrollTop = 0;
-        
+
         window.addEventListener('scroll', function() {
             if (window.innerWidth < 1024) {
                 let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 if (scrollTop > lastScrollTop && scrollTop > 100) {
-                    if (window.Alpine) {
-                        Alpine.store('sidebarOpen', false);
+                    // Check if Alpine.js is available before using it
+                    if (window.Alpine && window.Alpine.store) {
+                        window.Alpine.store('sidebarOpen', false);
                     }
                 }
                 lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
             }
         }, false);
-        
-        // Simple keyboard shortcuts
+
+        // ✅ PERBAIKAN: Enhanced keyboard shortcuts
         document.addEventListener('keydown', function(e) {
+            // Prevent conflicts with form inputs
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
             // Arrow key navigation (with Ctrl)
             if (e.ctrlKey) {
                 if (e.key === 'ArrowLeft') {
@@ -649,14 +663,32 @@
                     if (nextLink) nextLink.click();
                 }
             }
-            
+
             // Escape to toggle sidebar
             if (e.key === 'Escape') {
                 e.preventDefault();
-                if (window.Alpine) {
-                    Alpine.store('sidebarOpen', !Alpine.store('sidebarOpen'));
+                // Use Alpine.js data if available
+                const component = document.querySelector('[x-data]').__x_component;
+                if (component) {
+                    component.sidebarOpen = !component.sidebarOpen;
                 }
             }
+        });
+
+        // ✅ PERBAIKAN: Prevent page scroll when modal is open
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('contentData', () => ({
+                showProgress: false,
+                init() {
+                    this.$watch('showProgress', value => {
+                        if (value) {
+                            document.body.style.overflow = 'hidden';
+                        } else {
+                            document.body.style.overflow = '';
+                        }
+                    });
+                }
+            }));
         });
     </script>
 </x-app-layout>

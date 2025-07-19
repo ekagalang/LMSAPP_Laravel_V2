@@ -25,22 +25,22 @@ class ContentController extends Controller
         // Otorisasi dasar: pastikan pengguna terdaftar di kursus
         $this->authorize('view', $course);
 
-        // Ambil semua konten dalam urutan yang benar
+        // ✅ PERBAIKAN: Ambil semua konten dalam urutan yang benar dengan method yang diperbaiki
         $orderedContents = $this->getOrderedContents($course);
-        
+
         // Cek apakah konten yang diminta sudah terbuka (unlocked)
         $unlockedContents = $this->getUnlockedContents($user, $orderedContents);
 
-        if (!$unlockedContents->contains('id', $content->id) && !$user->hasRole('super-admin|instructor')) {
+        if (!$unlockedContents->contains('id', $content->id) && !$user->hasRole(['super-admin', 'instructor'])) {
             // Jika konten terkunci (dan pengguna bukan admin/instruktur), kembalikan dengan pesan error.
             return redirect()->back()->with('error', 'Anda harus menyelesaikan materi sebelumnya terlebih dahulu.');
         }
 
         // Jika lolos, kirim data yang diperlukan ke view
         $content->load('lesson.course', 'discussions.user', 'discussions.replies.user');
-        
+
         // Untuk admin/instruktur, semua konten dianggap terbuka
-        if ($user->hasRole('super-admin|instructor')) {
+        if ($user->hasRole(['super-admin', 'instructor'])) {
             $unlockedContents = $orderedContents;
         }
 
@@ -55,10 +55,12 @@ class ContentController extends Controller
         // Tandai konten saat ini sebagai selesai
         $user->completedContents()->syncWithoutDetaching($content->id);
 
-        // Cari konten berikutnya dalam urutan
+        // ✅ PERBAIKAN: Cari konten berikutnya dengan logic yang diperbaiki
         $orderedContents = $this->getOrderedContents($course);
-        $currentIndex = $orderedContents->search(fn($item) => $item->id === $content->id);
-        
+        $currentIndex = $orderedContents->search(function($item) use ($content) {
+            return $item->id === $content->id;
+        });
+
         $nextContent = null;
         if ($currentIndex !== false && ($currentIndex + 1) < $orderedContents->count()) {
             $nextContent = $orderedContents[$currentIndex + 1];
@@ -73,35 +75,70 @@ class ContentController extends Controller
         return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan semua materi di kursus ini.');
     }
 
+    // ✅ PERBAIKAN UTAMA: Method untuk mendapatkan konten dalam urutan yang benar
     private function getOrderedContents(Course $course)
     {
-        return $course->lessons()->orderBy('order')->with(['contents' => function ($query) {
-            $query->orderBy('order');
-        }])->get()->flatMap->contents;
+        // Ambil semua lessons dengan contents dalam urutan yang benar
+        $lessons = $course->lessons()
+            ->orderBy('order', 'asc')
+            ->with(['contents' => function ($query) {
+                $query->orderBy('order', 'asc');
+            }])
+            ->get();
+
+        // Gabungkan semua contents dari semua lessons dengan mempertahankan urutan
+        $orderedContents = collect();
+
+        foreach ($lessons as $lesson) {
+            foreach ($lesson->contents as $content) {
+                // Tambahkan informasi lesson order untuk debugging jika diperlukan
+                $content->lesson_order = $lesson->order;
+                $orderedContents->push($content);
+            }
+        }
+
+        return $orderedContents;
     }
 
+    // ✅ PERBAIKAN: Method untuk mendapatkan konten yang sudah terbuka
     private function getUnlockedContents(User $user, $orderedContents)
     {
-        $completedMap = $user->completedContents->keyBy('id');
+        // Jika user adalah admin/instruktur, semua konten terbuka
+        if ($user->hasRole(['super-admin', 'instructor'])) {
+            return $orderedContents;
+        }
+
+        $completedContentIds = $user->completedContents()->pluck('content_id')->toArray();
         $unlocked = collect();
-        $previousCompleted = true; // Materi pertama selalu dianggap terbuka
+        $shouldUnlock = true; // Konten pertama selalu terbuka
 
         foreach ($orderedContents as $content) {
-            if ($previousCompleted) {
+            if ($shouldUnlock) {
                 $unlocked->push($content);
-                // Untuk kuis/esai, anggap selesai jika sudah ada attempt/submission
-                if ($content->type === 'quiz' && $content->quiz) {
-                    $previousCompleted = $user->quizAttempts()->where('quiz_id', $content->quiz_id)->where('passed', true)->exists();
+
+                // Cek apakah konten ini sudah diselesaikan untuk menentukan apakah konten berikutnya terbuka
+                if ($content->type === 'quiz' && $content->quiz_id) {
+                    // Untuk kuis, cek apakah sudah lulus
+                    $shouldUnlock = $user->quizAttempts()
+                        ->where('quiz_id', $content->quiz_id)
+                        ->where('passed', true)
+                        ->exists();
                 } elseif ($content->type === 'essay') {
-                    $previousCompleted = $user->essaySubmissions()->where('content_id', $content->id)->whereNotNull('graded_at')->exists();
+                    // Untuk esai, cek apakah sudah dinilai
+                    $shouldUnlock = $user->essaySubmissions()
+                        ->where('content_id', $content->id)
+                        ->whereNotNull('graded_at')
+                        ->exists();
                 } else {
-                    $previousCompleted = isset($completedMap[$content->id]);
+                    // Untuk konten biasa, cek di tabel completed_contents
+                    $shouldUnlock = in_array($content->id, $completedContentIds);
                 }
             } else {
-                // Begitu menemukan satu materi yang belum selesai, hentikan perulangan.
+                // Begitu ada satu konten yang belum diselesaikan, hentikan
                 break;
             }
         }
+
         return $unlocked;
     }
 
@@ -109,7 +146,7 @@ class ContentController extends Controller
     {
         $this->authorize('update', $lesson->course);
         $content = new Content(['type' => 'text', 'lesson_id' => $lesson->id]);
-        $content->quiz = null; 
+        $content->quiz = null;
         return view('contents.edit', compact('lesson', 'content'));
     }
 
@@ -134,7 +171,6 @@ class ContentController extends Controller
 
     private function save(Request $request, Lesson $lesson, Content $content)
     {
-        // ✅ PERUBAHAN UTAMA: Validasi & Logika Penyimpanan
         $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -182,12 +218,14 @@ class ContentController extends Controller
                 $content->file_path = $request->file('file_upload')->store('content_files', 'public');
             }
 
+            // ✅ PERBAIKAN: Set order dengan lebih hati-hati
             if (!$content->exists) {
+                // Untuk content baru, ambil order terakhir dalam lesson ini
                 $lastOrder = $lesson->contents()->max('order') ?? 0;
                 $content->order = $lastOrder + 1;
             } else {
-                // Jika konten sudah ada, gunakan urutan dari request atau yang sudah ada
-                $content->order = $request->input('order', $content->order);
+                // Untuk content yang sudah ada, gunakan order dari request atau yang sudah ada
+                $content->order = $request->input('order', $content->order ?? 1);
             }
 
             if ($validated['type'] === 'quiz' && $request->has('quiz')) {
@@ -199,7 +237,7 @@ class ContentController extends Controller
                 if ($content->quiz) $content->quiz->delete();
                 $content->quiz_id = null;
             }
-            
+
             $content->save();
             DB::commit();
 
@@ -211,7 +249,6 @@ class ContentController extends Controller
         return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil disimpan.');
     }
 
-    // Fungsi saveQuiz tidak perlu diubah, biarkan seperti yang sudah ada
     private function saveQuiz(array $quizData, Lesson $lesson, ?int $quizId): Quiz
     {
         $quiz = Quiz::updateOrCreate(
@@ -220,7 +257,8 @@ class ContentController extends Controller
                 'lesson_id' => $lesson->id, 'user_id' => Auth::id(), 'title' => $quizData['title'],
                 'description' => $quizData['description'] ?? null, 'total_marks' => $quizData['total_marks'] ?? 0,
                 'pass_marks' => $quizData['pass_marks'] ?? 0, 'time_limit' => $quizData['time_limit'] ?? null,
-                'status' => $quizData['status'] ?? 'draft', 'show_answers_after_attempt' => filter_var($quizData['show_answers_after_attempt'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'status' => $quizData['status'] ?? 'draft',
+                'show_answers_after_attempt' => filter_var($quizData['show_answers_after_attempt'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ]
         );
 
@@ -228,7 +266,7 @@ class ContentController extends Controller
         if (!empty($quizData['questions'])) {
             foreach ($quizData['questions'] as $qData) {
                 if (empty($qData['question_text'])) continue;
-                
+
                 $question = Question::updateOrCreate(
                     ['id' => $qData['id'] ?? null, 'quiz_id' => $quiz->id],
                     ['question_text' => $qData['question_text'], 'type' => $qData['type'], 'marks' => $qData['marks']]
@@ -236,7 +274,6 @@ class ContentController extends Controller
                 $questionIdsToKeep[] = $question->id;
 
                 $optionIdsToKeep = [];
-                // Logika untuk Pilihan Ganda
                 if ($qData['type'] === 'multiple_choice' && !empty($qData['options'])) {
                     foreach ($qData['options'] as $oData) {
                         if (empty($oData['option_text'])) continue;
@@ -249,20 +286,21 @@ class ContentController extends Controller
                         );
                         $optionIdsToKeep[] = $option->id;
                     }
-                } 
-                // Logika untuk Benar/Salah
-                elseif ($qData['type'] === 'true_false') {
-                    // Hapus opsi lama dan buat yang baru untuk memastikan konsistensi
+                } elseif ($qData['type'] === 'true_false') {
                     $question->options()->delete();
-                    $optionTrue = $question->options()->create(['option_text' => 'True', 'is_correct' => ($qData['correct_answer_tf'] === 'true')]);
-                    $optionFalse = $question->options()->create(['option_text' => 'False', 'is_correct' => ($qData['correct_answer_tf'] === 'false')]);
+                    $optionTrue = $question->options()->create([
+                        'option_text' => 'True',
+                        'is_correct' => ($qData['correct_answer_tf'] === 'true')
+                    ]);
+                    $optionFalse = $question->options()->create([
+                        'option_text' => 'False',
+                        'is_correct' => ($qData['correct_answer_tf'] === 'false')
+                    ]);
                     $optionIdsToKeep = [$optionTrue->id, $optionFalse->id];
                 }
-                // Hapus opsi yang tidak lagi digunakan untuk pertanyaan ini
                 $question->options()->whereNotIn('id', $optionIdsToKeep)->delete();
             }
         }
-        // Hapus pertanyaan yang tidak lagi digunakan untuk kuis ini
         $quiz->questions()->whereNotIn('id', $questionIdsToKeep)->delete();
 
         return $quiz;
@@ -284,7 +322,6 @@ class ContentController extends Controller
             'contents.*' => 'integer|exists:contents,id',
         ]);
 
-        // Ambil konten pertama untuk otorisasi, pastikan user berhak mengelola kursus ini
         $firstContent = Content::find($request->contents[0]);
         if ($firstContent) {
             $this->authorize('update', $firstContent->lesson->course);
