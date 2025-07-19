@@ -13,12 +13,20 @@ return new class extends Migration
     {
         Schema::create('announcements', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Siapa yang membuat
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('title');
-            $table->text('content');
-            $table->enum('level', ['info', 'success', 'warning', 'danger'])->default('info'); // Level pengumuman
-            $table->timestamp('published_at')->nullable(); // Kapan pengumuman mulai tampil
+            $table->longText('content');
+            $table->enum('level', ['info', 'success', 'warning', 'danger'])->default('info');
+            $table->boolean('is_active')->default(true);
+            $table->json('target_roles')->nullable(); // ['participant', 'instructor', etc]
+            $table->timestamp('published_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
+
+            // Indexes for better performance
+            $table->index(['is_active', 'published_at']);
+            $table->index('level');
+            $table->index('created_at');
         });
     }
 

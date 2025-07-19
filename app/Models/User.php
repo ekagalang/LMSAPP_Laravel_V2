@@ -21,7 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role', // Kolom role yang ditambahkan
+        'role', // Keep for backward compatibility
     ];
 
     /**
@@ -47,60 +47,63 @@ class User extends Authenticatable
         ];
     }
 
-    // ✅ RELASI UNTUK KURSUS
-
     /**
-     * Kursus yang diajar oleh user ini (untuk instruktur)
-     */
-    public function instructedCourses()
-    {
-        return $this->belongsToMany(Course::class, 'course_instructor');
-    }
-
-    /**
-     * Kursus yang diikuti oleh user ini (untuk peserta)
-     * ✅ TAMBAHAN: Dengan pivot data completed_at dan feedback
+     * Relasi ke kursus yang diikuti user (sebagai peserta)
      */
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_user')
-            ->withPivot('feedback', 'completed_at')
-            ->withTimestamps();
+        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
     }
 
     /**
-     * ✅ BARU: Kursus yang sudah diselesaikan oleh user
+     * Alias untuk courses() - untuk konsistensi penamaan
      */
-    public function completedCourses()
+    public function enrolledCourses()
     {
-        return $this->belongsToMany(Course::class, 'course_user')
-            ->withPivot('feedback', 'completed_at')
-            ->whereNotNull('course_user.completed_at')
-            ->withTimestamps();
+        return $this->courses();
     }
 
-    // ✅ RELASI UNTUK KONTEN DAN PEMBELAJARAN
-
     /**
-     * Pelajaran yang sudah diselesaikan oleh user
+     * Relasi ke kursus yang diajar user (sebagai instruktur)
      */
-    public function completedLessons()
+    public function taughtCourses()
     {
-        return $this->belongsToMany(Lesson::class, 'lesson_user')->withPivot('completed', 'completed_at');
+        return $this->belongsToMany(Course::class, 'course_instructor')->withTimestamps();
     }
 
     /**
-     * Konten yang sudah diselesaikan oleh user
+     * Relasi ke kursus yang diorganisir user (sebagai event organizer)
+     * Note: Ini adalah contoh - implementasi aktual mungkin berbeda tergantung business logic
+     */
+    public function eventOrganizedCourses()
+    {
+        // Jika EO mengelola semua kursus, gunakan hasManyThrough atau query lain
+        // Untuk contoh ini, kita anggap EO bisa assigned ke kursus tertentu via pivot table
+        return $this->belongsToMany(Course::class, 'course_event_organizer')->withTimestamps();
+    }
+
+    /**
+     * Relasi ke konten yang sudah diselesaikan
      */
     public function completedContents()
     {
-        return $this->belongsToMany(Content::class, 'content_user')->withPivot('completed', 'completed_at');
+        return $this->belongsToMany(Content::class, 'content_user')
+            ->withPivot('completed', 'completed_at')
+            ->withTimestamps();
     }
 
-    // ✅ RELASI UNTUK QUIZ DAN ESSAY
+    /**
+     * Relasi ke lesson yang sudah diselesaikan
+     */
+    public function completedLessons()
+    {
+        return $this->belongsToMany(Lesson::class, 'lesson_user')
+            ->withPivot('completed', 'completed_at')
+            ->withTimestamps();
+    }
 
     /**
-     * Quiz attempts oleh user
+     * Relasi ke quiz attempts
      */
     public function quizAttempts()
     {
@@ -108,7 +111,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Essay submissions oleh user
+     * Relasi ke essay submissions
      */
     public function essaySubmissions()
     {
@@ -116,17 +119,47 @@ class User extends Authenticatable
     }
 
     /**
-     * Feedback yang diterima user
+     * Relasi ke diskusi yang dimulai user
      */
-    public function feedback()
+    public function discussions()
     {
-        return $this->hasMany(Feedback::class);
+        return $this->hasMany(Discussion::class);
     }
 
-    // ✅ HELPER METHODS
+    /**
+     * Relasi ke balasan diskusi
+     */
+    public function discussionReplies()
+    {
+        return $this->hasMany(DiscussionReply::class);
+    }
 
     /**
-     * Cek apakah user sudah enroll di kursus tertentu
+     * Relasi ke feedback yang diberikan (sebagai instruktur)
+     */
+    public function givenFeedback()
+    {
+        return $this->hasMany(Feedback::class, 'instructor_id');
+    }
+
+    /**
+     * Relasi ke feedback yang diterima (sebagai peserta)
+     */
+    public function receivedFeedback()
+    {
+        return $this->hasMany(Feedback::class, 'user_id');
+    }
+
+    /**
+     * Relasi ke announcements yang dibuat
+     */
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class);
+    }
+
+    /**
+     * Check if user is enrolled in a specific course
      */
     public function isEnrolled(Course $course): bool
     {
@@ -134,111 +167,178 @@ class User extends Authenticatable
     }
 
     /**
-     * ✅ BARU: Cek apakah user sudah menyelesaikan kursus tertentu
+     * Check if user is instructor for a specific course
      */
-    public function hasCourseCompleted(Course $course): bool
+    public function isInstructorFor(Course $course): bool
     {
-        return $this->courses()
-            ->where('course_id', $course->id)
-            ->whereNotNull('course_user.completed_at')
-            ->exists();
+        return $course->instructors()->where('user_id', $this->id)->exists();
     }
 
     /**
-     * ✅ BARU: Mendapatkan tanggal completion kursus
+     * Check if user is event organizer for a specific course
      */
-    public function getCourseCompletedAt(Course $course)
+    public function isEventOrganizerFor(Course $course): bool
     {
-        $pivot = $this->courses()
-            ->where('course_id', $course->id)
-            ->first();
-
-        return $pivot ? $pivot->pivot->completed_at : null;
+        // Implementasi bisa disesuaikan dengan business logic
+        return $this->hasRole('event-organizer');
     }
 
     /**
-     * ✅ BARU: Mendapatkan progress percentage untuk kursus tertentu
+     * Get user's primary role for display
      */
-    public function getCourseProgress(Course $course): array
+    public function getPrimaryRoleAttribute(): string
     {
-        // Ambil semua konten dalam kursus
-        $allContents = $course->lessons()->with('contents')->get()->pluck('contents')->flatten();
-        $totalContents = $allContents->count();
+        $roles = $this->getRoleNames();
+
+        if ($roles->contains('super-admin')) return 'Super Admin';
+        if ($roles->contains('event-organizer')) return 'Event Organizer';
+        if ($roles->contains('instructor')) return 'Instruktur';
+        if ($roles->contains('participant')) return 'Peserta';
+
+        return 'Pengguna';
+    }
+
+    /**
+     * Get courses that user can manage (instructor + event organizer)
+     */
+    public function managedCourses()
+    {
+        if ($this->hasRole('super-admin')) {
+            return Course::query();
+        }
+
+        if ($this->hasRole('event-organizer')) {
+            // EO can manage all published courses or specific assigned courses
+            return $this->eventOrganizedCourses();
+        }
+
+        if ($this->hasRole('instructor')) {
+            return $this->taughtCourses();
+        }
+
+        return Course::whereRaw('1 = 0'); // Empty query
+    }
+
+    /**
+     * Get learning progress for a specific course
+     */
+    public function getProgressForCourse(Course $course): array
+    {
+        $totalContents = $course->lessons()
+            ->with('contents')
+            ->get()
+            ->sum(function ($lesson) {
+                return $lesson->contents->count();
+            });
 
         if ($totalContents === 0) {
-            return ['percentage' => 100, 'completed' => 0, 'total' => 0];
+            return [
+                'total_contents' => 0,
+                'completed_contents' => 0,
+                'progress_percentage' => 0,
+            ];
         }
 
-        $completedCount = 0;
+        $completedContents = $this->completedContents()
+            ->whereHas('lesson', function ($query) use ($course) {
+                $query->where('course_id', $course->id);
+            })
+            ->count();
 
-        foreach ($allContents as $content) {
-            $isCompleted = false;
+        // Add quiz completions
+        $completedQuizzes = $this->quizAttempts()
+            ->whereHas('quiz.lesson', function ($query) use ($course) {
+                $query->where('course_id', $course->id);
+            })
+            ->where('passed', true)
+            ->count();
 
-            if ($content->type === 'quiz' && $content->quiz_id) {
-                $isCompleted = $this->quizAttempts()
-                    ->where('quiz_id', $content->quiz_id)
-                    ->where('passed', true)
-                    ->exists();
-            } elseif ($content->type === 'essay') {
-                $isCompleted = $this->essaySubmissions()
-                    ->where('content_id', $content->id)
-                    ->exists();
-            } else {
-                $isCompleted = $this->completedContents()
-                    ->where('content_id', $content->id)
-                    ->exists();
-            }
+        // Add essay submissions
+        $submittedEssays = $this->essaySubmissions()
+            ->whereHas('content.lesson', function ($query) use ($course) {
+                $query->where('course_id', $course->id);
+            })
+            ->count();
 
-            if ($isCompleted) {
-                $completedCount++;
-            }
-        }
-
-        $percentage = round(($completedCount / $totalContents) * 100);
+        $totalCompleted = $completedContents + $completedQuizzes + $submittedEssays;
+        $progressPercentage = round(($totalCompleted / $totalContents) * 100, 1);
 
         return [
-            'percentage' => $percentage,
-            'completed' => $completedCount,
-            'total' => $totalContents
+            'total_contents' => $totalContents,
+            'completed_contents' => $totalCompleted,
+            'progress_percentage' => min(100, $progressPercentage), // Cap at 100%
         ];
     }
 
     /**
-     * Cek apakah user adalah instruktur untuk kursus tertentu
+     * Scope for filtering users by role
      */
-    public function isInstructorFor(Course $course): bool
+    public function scopeWithRole($query, string $role)
     {
-        return $course->instructors->contains($this);
+        return $query->role($role);
     }
 
     /**
-     * ✅ BARU: Mendapatkan semua kursus yang sudah diselesaikan dengan detail
+     * Scope for active users (you can define what "active" means)
      */
-    public function getCompletedCoursesWithDetails()
+    public function scopeActive($query)
     {
-        return $this->completedCourses()->get()->map(function ($course) {
-            $progress = $this->getCourseProgress($course);
-            return [
-                'course' => $course,
-                'completed_at' => $course->pivot->completed_at,
-                'progress' => $progress,
-                'feedback' => $course->pivot->feedback
-            ];
-        });
+        return $query->whereNotNull('email_verified_at');
     }
 
     /**
-     * ✅ BARU: Mendapatkan kursus yang sedang dalam progress
+     * Get user's full name with role
      */
-    public function getInProgressCourses()
+    public function getFullDisplayNameAttribute(): string
     {
-        return $this->courses()->whereNull('course_user.completed_at')->get()->map(function ($course) {
-            $progress = $this->getCourseProgress($course);
-            return [
-                'course' => $course,
-                'progress' => $progress,
-                'feedback' => $course->pivot->feedback
-            ];
-        });
+        return $this->name . ' (' . $this->primary_role . ')';
+    }
+
+    /**
+     * Check if user has completed a specific content
+     */
+    public function hasCompletedContent(Content $content): bool
+    {
+        if ($content->type === 'quiz' && $content->quiz_id) {
+            return $this->quizAttempts()
+                ->where('quiz_id', $content->quiz_id)
+                ->where('passed', true)
+                ->exists();
+        }
+
+        if ($content->type === 'essay') {
+            return $this->essaySubmissions()
+                ->where('content_id', $content->id)
+                ->exists();
+        }
+
+        return $this->completedContents()
+            ->where('content_id', $content->id)
+            ->exists();
+    }
+
+    /**
+     * Get upcoming deadlines for user
+     */
+    public function getUpcomingDeadlines()
+    {
+        // This would need to be implemented based on your deadline system
+        // For now, return empty collection
+        return collect();
+    }
+
+    /**
+     * Get user's notification preferences
+     */
+    public function getNotificationPreferences(): array
+    {
+        // This could be stored in user preferences table
+        // For now, return default preferences
+        return [
+            'email_notifications' => true,
+            'in_app_notifications' => true,
+            'assignment_reminders' => true,
+            'course_updates' => true,
+        ];
     }
 }

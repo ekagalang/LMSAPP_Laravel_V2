@@ -4,8 +4,107 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Dashboard Peserta') }}
             </h2>
-            <div class="text-sm text-gray-500">
-                {{ now()->format('l, d F Y') }}
+            <div class="flex items-center space-x-4">
+                <!-- Notification Component -->
+                <div class="relative notification-container">
+                    <!-- Notification Bell Icon -->
+                    <button
+                        type="button"
+                        class="notification-bell relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200 ease-in-out transform hover:scale-105"
+                        onclick="toggleNotifications()"
+                        id="notificationButton"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
+                        </svg>
+
+                        <!-- Notification Badge -->
+                        <span
+                            class="notification-badge absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full animate-pulse"
+                            id="notificationBadge"
+                        >
+                            <span id="notificationCount">2</span>
+                        </span>
+
+                        <!-- Pulse Animation for New Notifications -->
+                        <span class="notification-pulse absolute top-0 right-0 block w-3 h-3 bg-red-400 rounded-full animate-ping" id="notificationPulse"></span>
+                    </button>
+
+                    <!-- Notification Dropdown -->
+                    <div
+                        class="notification-dropdown absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden transform opacity-0 scale-95 transition-all duration-200 ease-in-out"
+                        id="notificationDropdown"
+                        style="display: none;"
+                    >
+                        <!-- Header -->
+                        <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-teal-50">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-gray-900">Notifikasi Peserta</h3>
+                                <button
+                                    onclick="markAllAsRead()"
+                                    class="text-xs text-green-600 hover:text-green-800 font-medium transition-colors"
+                                >
+                                    Tandai Semua Dibaca
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Notifications List -->
+                        <div class="notification-list max-h-80 overflow-y-auto" id="notificationList">
+                            <!-- Sample notifications for participant -->
+                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer unread">
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-800">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                        </span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900 truncate">Kursus Baru Tersedia</p>
+                                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Kursus "Advanced JavaScript" telah tersedia untuk diikuti.</p>
+                                        <p class="text-xs text-gray-400 mt-2">5 menit yang lalu</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer unread">
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 text-yellow-800">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                            </svg>
+                                        </span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900 truncate">Deadline Assignment</p>
+                                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Jangan lupa submit essay sebelum midnight hari ini.</p>
+                                        <p class="text-xs text-gray-400 mt-2">1 jam yang lalu</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
+                            <a href="#" class="text-sm text-green-600 hover:text-green-800 font-medium transition-colors">
+                                Lihat Semua Notifikasi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-sm text-gray-500">
+                    {{ now()->format('l, d F Y') }}
+                </div>
             </div>
         </div>
     </x-slot>
@@ -15,10 +114,68 @@
             <!-- Welcome Section -->
             <div class="bg-gradient-to-r from-green-600 to-teal-600 overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6 text-white">
-                    <h3 class="text-2xl font-bold mb-2">Selamat datang, {{ auth()->user()->name }}! 🎓</h3>
-                    <p class="text-green-100">Lanjutkan perjalanan pembelajaran Anda dan raih tujuan yang telah ditetapkan.</p>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-2xl font-bold mb-2">Selamat datang, {{ auth()->user()->name }}! 🎓</h3>
+                            <p class="text-green-100">Lanjutkan perjalanan pembelajaran Anda dan raih tujuan yang telah ditetapkan.</p>
+                        </div>
+                        @if($stats['courses']['overall_progress'] > 0)
+                        <div class="hidden md:block">
+                            <div class="text-center">
+                                <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center mb-2">
+                                    <span class="text-2xl font-bold">{{ $stats['courses']['overall_progress'] }}%</span>
+                                </div>
+                                <p class="text-xs text-green-100">Progress Total</p>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
                 </div>
             </div>
+
+            <!-- Announcement Section -->
+            @if($announcements && $announcements->count() > 0)
+            <div class="mb-6">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-blue-500">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path>
+                            </svg>
+                            <h3 class="text-lg font-medium text-gray-900">Pengumuman Terbaru</h3>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-4">
+                            @foreach($announcements->take(2) as $announcement)
+                            <div class="p-4 rounded-lg border border-{{ $announcement->level_color }}-200 bg-{{ $announcement->level_color }}-50">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="w-5 h-5 text-{{ $announcement->level_color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            @if($announcement->level === 'info')
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            @elseif($announcement->level === 'success')
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            @elseif($announcement->level === 'warning')
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                            @else
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            @endif
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h4 class="text-sm font-medium text-{{ $announcement->level_color }}-800">{{ $announcement->title }}</h4>
+                                        <p class="text-sm text-{{ $announcement->level_color }}-700 mt-1">{{ Str::limit($announcement->content, 120) }}</p>
+                                        <p class="text-xs text-{{ $announcement->level_color }}-600 mt-2">{{ $announcement->created_at->diffForHumans() }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -71,7 +228,7 @@
                         </div>
                         <div class="mt-4">
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-gradient-to-r from-blue-500 to-teal-500 h-2 rounded-full transition-all duration-300" style="width: {{ $stats['courses']['overall_progress'] }}%"></div>
+                                <div class="bg-gradient-to-r from-blue-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: {{ $stats['courses']['overall_progress'] }}%"></div>
                             </div>
                         </div>
                     </div>
@@ -168,10 +325,10 @@
                                         <div class="mb-3">
                                             <div class="flex justify-between text-sm font-medium text-gray-700 mb-1">
                                                 <span>Progress: {{ $course['progress'] }}%</span>
-                                                <span>{{ $course['completed_lessons'] }}/{{ $course['total_lessons'] }} pelajaran</span>
+                                                <span>{{ $course['completed_lessons'] }}/{{ $course['total_lessons'] }} pelajaran • {{ $course['completed_contents'] }}/{{ $course['total_contents'] }} konten</span>
                                             </div>
                                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                                <div class="bg-gradient-to-r from-green-500 to-teal-500 h-2 rounded-full transition-all duration-300" style="width: {{ $course['progress'] }}%"></div>
+                                                <div class="bg-gradient-to-r from-green-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: {{ $course['progress'] }}%"></div>
                                             </div>
                                         </div>
                                         <div class="flex justify-end">
@@ -338,6 +495,9 @@
         </div>
     </div>
 
+    <!-- Notification Toast Container -->
+    <div id="notificationToasts" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
     @push('styles')
     <style>
         .dashboard-card {
@@ -360,6 +520,108 @@
             overflow: hidden;
         }
 
+        /* Notification Styles */
+        .notification-bell {
+            position: relative;
+            overflow: visible;
+        }
+
+        .notification-bell:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(20, 184, 166, 0.1));
+        }
+
+        .notification-badge {
+            animation: bounce 2s infinite;
+        }
+
+        .notification-dropdown {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(10px);
+        }
+
+        .notification-dropdown.show {
+            display: block !important;
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .notification-item {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .notification-item:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(20, 184, 166, 0.05));
+            transform: translateX(2px);
+        }
+
+        .notification-item.unread {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(20, 184, 166, 0.05));
+            border-left: 3px solid #22c55e;
+        }
+
+        .notification-toast {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .notification-toast.removing {
+            animation: slideOutRight 0.3s ease-in;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0, -15px, 0);
+            }
+            70% {
+                transform: translate3d(0, -7px, 0);
+            }
+            90% {
+                transform: translate3d(0, -2px, 0);
+            }
+        }
+
+        /* Custom scrollbar for notification list */
+        .notification-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .notification-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .notification-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        .notification-list::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
         /* Smooth animations for progress bars */
         .transition-all {
             transition: all 0.5s ease-in-out;
@@ -369,49 +631,164 @@
 
     @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Auto-refresh notification
+        // Notification System JavaScript
+        let notificationDropdownVisible = false;
+        let notifications = [];
+        let unreadCount = 2; // Initialize with current count
+
+        // Toggle notification dropdown
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notificationDropdown');
+            const button = document.getElementById('notificationButton');
+
+            if (!notificationDropdownVisible) {
+                dropdown.style.display = 'block';
+                setTimeout(() => {
+                    dropdown.classList.add('show');
+                }, 10);
+                notificationDropdownVisible = true;
+            } else {
+                dropdown.classList.remove('show');
+                setTimeout(() => {
+                    dropdown.style.display = 'none';
+                }, 200);
+                notificationDropdownVisible = false;
+            }
+        }
+
+        // Mark notification as read
+        function markAsRead(notificationId) {
+            // Find and update notification items
+            const notificationItems = document.querySelectorAll('.notification-item.unread');
+            notificationItems.forEach(item => {
+                item.classList.remove('unread');
+            });
+
+            unreadCount = Math.max(0, unreadCount - 1);
+            updateBadge();
+        }
+
+        // Mark all notifications as read
+        function markAllAsRead() {
+            const notificationItems = document.querySelectorAll('.notification-item.unread');
+            notificationItems.forEach(item => {
+                item.classList.remove('unread');
+            });
+
+            unreadCount = 0;
+            updateBadge();
+
+            // Send to server
+            // fetch('/notifications/mark-all-read', { method: 'POST' });
+        }
+
+        // Update notification badge
+        function updateBadge() {
+            const badge = document.getElementById('notificationBadge');
+            const count = document.getElementById('notificationCount');
+            const pulse = document.getElementById('notificationPulse');
+
+            if (unreadCount > 0) {
+                badge.style.display = 'inline-flex';
+                pulse.style.display = 'block';
+                count.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            } else {
+                badge.style.display = 'none';
+                pulse.style.display = 'none';
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('notificationToasts');
+            const toast = document.createElement('div');
+
+            const typeStyles = {
+                info: 'bg-blue-600 text-white',
+                success: 'bg-green-600 text-white',
+                warning: 'bg-yellow-600 text-white',
+                error: 'bg-red-600 text-white'
+            };
+
+            toast.className = `notification-toast max-w-sm w-full ${typeStyles[type]} shadow-lg rounded-lg pointer-events-auto overflow-hidden`;
+            toast.innerHTML = `
+                <div class="p-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3 w-0 flex-1">
+                            <p class="text-sm font-medium">${message}</p>
+                        </div>
+                        <div class="ml-4 flex-shrink-0 flex">
+                            <button class="inline-flex text-white focus:outline-none" onclick="this.closest('.notification-toast').remove()">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto remove after duration
             setTimeout(() => {
-                const notification = document.createElement('div');
-                notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm transform translate-x-full transition-transform duration-300';
-                notification.innerHTML = '🎓 Dashboard peserta berhasil dimuat';
-                document.body.appendChild(notification);
-
-                // Show notification
+                toast.classList.add('removing');
                 setTimeout(() => {
-                    notification.classList.remove('translate-x-full');
-                }, 100);
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
+        }
 
-                // Hide notification
-                setTimeout(() => {
-                    notification.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        document.body.removeChild(notification);
-                    }, 300);
-                }, 3000);
-            }, 500);
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.notification-container');
+            if (!container.contains(event.target) && notificationDropdownVisible) {
+                toggleNotifications();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Welcome notification
+            setTimeout(() => {
+                showToast('🎓 Dashboard peserta berhasil dimuat! Progress terbaru telah disinkronkan.', 'success');
+            }, 1000);
 
             // Animate progress bars on load
             const progressBars = document.querySelectorAll('[style*="width:"]');
-            progressBars.forEach(bar => {
+            progressBars.forEach((bar, index) => {
                 const width = bar.style.width;
                 bar.style.width = '0%';
                 setTimeout(() => {
                     bar.style.width = width;
-                }, 300);
+                }, 300 + (index * 100));
             });
 
             // Add smooth scroll to course cards
             const courseCards = document.querySelectorAll('.hover-lift');
             courseCards.forEach(card => {
                 card.addEventListener('click', function(e) {
-                    // Add loading state
-                    if (e.target.tagName === 'A') return; // Don't interfere with actual links
-
+                    if (e.target.tagName === 'A') return;
                     this.style.opacity = '0.7';
                     setTimeout(() => {
                         this.style.opacity = '1';
                     }, 200);
+                });
+            });
+
+            // Add click handlers to notification items
+            const notificationItems = document.querySelectorAll('.notification-item');
+            notificationItems.forEach((item, index) => {
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('unread')) {
+                        markAsRead(index);
+                    }
                 });
             });
         });
