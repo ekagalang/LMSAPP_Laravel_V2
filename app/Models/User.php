@@ -151,12 +151,16 @@ class User extends Authenticatable
     }
 
     /**
-     * Relasi ke announcements yang dibuat
+     * Many-to-many relationship dengan announcements yang sudah dibaca
      */
-    public function announcements()
+    public function readAnnouncements(): BelongsToMany
     {
-        return $this->hasMany(Announcement::class);
+        return $this->belongsToMany(Announcement::class, 'announcement_reads')
+            ->withPivot('read_at')
+            ->withTimestamps();
     }
+
+
 
     /**
      * Check if user is enrolled in a specific course
@@ -217,6 +221,55 @@ class User extends Authenticatable
         }
 
         return Course::whereRaw('1 = 0'); // Empty query
+    }
+
+    /**
+     * Get announcements yang belum dibaca untuk user ini
+     */
+    public function getUnreadAnnouncementsAttribute()
+    {
+        return Announcement::unreadForUser($this)
+            ->latest()
+            ->take(10)
+            ->get();
+    }
+
+    /**
+     * Get jumlah announcements yang belum dibaca
+     */
+    public function getUnreadAnnouncementsCountAttribute(): int
+    {
+        return Announcement::unreadForUser($this)->count();
+    }
+
+
+    /**
+     * Mark announcement sebagai read
+     */
+    public function markAnnouncementAsRead(Announcement $announcement): AnnouncementRead
+    {
+        return $announcement->markAsReadBy($this);
+    }
+
+    /**
+     * Cek apakah announcement sudah dibaca
+     */
+    public function hasReadAnnouncement(Announcement $announcement): bool
+    {
+        return $this->announcementReads()
+            ->where('announcement_id', $announcement->id)
+            ->exists();
+    }
+
+
+    // 🚨 BARU: Helper method untuk mendapatkan recent announcement reads
+    public function getRecentAnnouncementReadsAttribute()
+    {
+        return $this->announcementReads()
+            ->with('announcement')
+            ->latest('read_at')
+            ->take(5)
+            ->get();
     }
 
     /**

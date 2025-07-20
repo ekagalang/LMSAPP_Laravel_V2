@@ -40,6 +40,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/ajax/quizzes/get-full-quiz-form-partial', fn() => view('quizzes.partials.full-quiz-form')->render())->name('quiz-full-form-partial');
     Route::get('/ajax/quizzes/get-question-form-partial', fn(Illuminate\Http\Request $request) => view('quizzes.partials.question-form-fields', ['question_loop_index' => $request->query('index'), 'question' => null])->render())->name('quiz-question-partial');
 
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [AnnouncementController::class, 'indexForUser'])->name('index');
+        Route::get('/api/for-user', [AnnouncementController::class, 'getForUser'])->name('api.for-user');
+        Route::post('/mark-as-read/{announcement}', [AnnouncementController::class, 'markAsRead'])->name('mark-as-read');
+        Route::post('/mark-all-as-read', [AnnouncementController::class, 'markAllAsRead'])->name('mark-all-as-read');
+        Route::get('/unread-count', [AnnouncementController::class, 'getUnreadCount'])->name('unread-count');
+    });
 
     // Kursus, Pelajaran, dan Konten
     Route::resource('courses', CourseController::class);
@@ -93,8 +100,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('announcements', AnnouncementController::class);
         Route::patch('announcements/{announcement}/toggle-status', [AnnouncementController::class, 'toggleStatus'])
             ->name('announcements.toggle-status');
-        Route::get('announcements-api/for-user', [AnnouncementController::class, 'getForUser'])
-            ->name('announcements.for-user');
 
         // [PERBAIKAN] Mendefinisikan rute pengguna secara eksplisit
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
