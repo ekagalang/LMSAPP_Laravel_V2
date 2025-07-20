@@ -12,7 +12,6 @@ use App\Models\QuizAttempt;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
 use App\Models\Announcement;
-use App\Models\AnnouncementRead;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,7 +24,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // ✅ PERBAIKAN: Get announcements for all users with better error handling
+        // Get announcements for all users with error handling
         $announcements = $this->getAnnouncementsForUser($user);
 
         try {
@@ -52,6 +51,7 @@ class DashboardController extends Controller
 
             // Fallback dengan stats kosong
             $stats = $this->getEmptyStats();
+            $announcements = collect(); // Empty collection sebagai fallback
 
             if ($user->hasRole('super-admin')) {
                 return view('dashboard.admin', compact('stats', 'announcements'));
@@ -66,124 +66,35 @@ class DashboardController extends Controller
     }
 
     /**
-     * ✅ PERBAIKAN: Get announcements for user with better error handling
+     * Get announcements for user with error handling
+     * 🚨 PERBAIKAN: Gunakan paginate() jika ingin menggunakan .total() di view
      */
     private function getAnnouncementsForUser($user)
     {
         try {
-            // Check if announcements table exists
+            // Check if announcements table exists and has required columns
             if (!DB::getSchemaBuilder()->hasTable('announcements')) {
-                Log::info('Announcements table does not exist');
-                return collect(); // Return empty collection
+                return collect()->paginate(5); // Return paginated empty collection
             }
 
-            // Check if Announcement model exists and is accessible
-            if (!class_exists('App\Models\Announcement')) {
-                Log::info('Announcement model does not exist');
-                return collect();
+            $columns = DB::getSchemaBuilder()->getColumnListing('announcements');
+
+            // If we don't have the required columns, return empty collection
+            if (!in_array('is_active', $columns)) {
+                Log::warning('Announcements table missing is_active column');
+                return collect()->paginate(5); // Return paginated empty collection
             }
 
-            // Try to get announcements with basic query first
-            $announcements = Announcement::where('is_active', true)
-                ->where(function ($query) {
-                    $query->where('published_at', '<=', now())
-                        ->orWhereNull('published_at');
-                })
-                ->where(function ($query) {
-                    $query->where('expires_at', '>', now())
-                        ->orWhereNull('expires_at');
-                })
-                ->with('user:id,name')
+            // 🚨 PERBAIKAN: Gunakan paginate() untuk mendukung .total() di view
+            return Announcement::forUser($user)
                 ->latest()
-                ->take(10)
-                ->get();
-
-            // Filter announcements for current user based on target roles
-            $userRoles = $user->getRoleNames()->toArray();
-            $filteredAnnouncements = $announcements->filter(function ($announcement) use ($userRoles) {
-                // If no target roles specified, show to all users
-                if (empty($announcement->target_roles)) {
-                    return true;
-                }
-
-                // Check if user has any of the target roles
-                foreach ($userRoles as $role) {
-                    if (in_array($role, $announcement->target_roles)) {
-                        return true;
-                    }
-                }
-
-                return false;
-            });
-
-            // Add read status and other metadata
-            $filteredAnnouncements->transform(function ($announcement) use ($user) {
-                try {
-                    $announcement->is_read_by_user = $announcement->isReadByUser($user);
-                } catch (\Exception $e) {
-                    $announcement->is_read_by_user = false;
-                }
-                return $announcement;
-            });
-
-            Log::info('Successfully loaded ' . $filteredAnnouncements->count() . ' announcements for user ' . $user->id);
-            return $filteredAnnouncements;
+                ->paginate(5); // Ganti dari take(5)->get() ke paginate(5)
         } catch (\Exception $e) {
             Log::error('Error fetching announcements: ' . $e->getMessage());
-            return collect(); // Return empty collection as fallback
+            return collect()->paginate(5); // Return paginated empty collection
         }
     }
 
-    /**
-     * ✅ PERBAIKAN: Get announcement statistics with better error handling
-     */
-    private function getAnnouncementStats()
-    {
-        try {
-            // Check if table exists
-            if (!DB::getSchemaBuilder()->hasTable('announcements')) {
-                return [
-                    'total' => 0,
-                    'active' => 0,
-                    'recent' => 0,
-                    'unread' => 0,
-                ];
-            }
-
-            $total = DB::table('announcements')->count();
-            $active = DB::table('announcements')->where('is_active', true)->count();
-            $recent = DB::table('announcements')
-                ->where('created_at', '>=', now()->subWeek())
-                ->count();
-
-            // Get unread count for current user
-            $unread = 0;
-            if (Auth::check()) {
-                try {
-                    $unread = Announcement::unreadForUser(Auth::user())->count();
-                } catch (\Exception $e) {
-                    $unread = 0;
-                }
-            }
-
-            return [
-                'total' => $total,
-                'active' => $active,
-                'recent' => $recent,
-                'unread' => $unread,
-            ];
-        } catch (\Exception $e) {
-            Log::error('Error in getAnnouncementStats: ' . $e->getMessage());
-            return [
-                'total' => 0,
-                'active' => 0,
-                'recent' => 0,
-                'unread' => 0,
-            ];
-        }
-    }
-
-    // Rest of the methods remain the same...
     private function getEmptyStats()
     {
         return [
@@ -235,7 +146,6 @@ class DashboardController extends Controller
                 'total' => 0,
                 'active' => 0,
                 'recent' => 0,
-                'unread' => 0,
             ],
             'students' => [
                 'total' => 0,
@@ -295,7 +205,7 @@ class DashboardController extends Controller
             $essaySubmissions = EssaySubmission::count();
             $gradedEssays = EssaySubmission::whereNotNull('graded_at')->count();
 
-            // Announcement statistics
+            // Announcement statistics with error handling
             $announcementStats = $this->getAnnouncementStats();
 
             // Recent activities
@@ -304,16 +214,27 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get();
 
-            $recentUsers = User::with(['roles' => function ($query) {
-                $query->select('name');
-            }])
+            $recentUsers = User::latest()
+                ->take(5)
+                ->get();
+
+            $recentDiscussionsList = Discussion::with(['user', 'content.lesson.course'])
                 ->latest()
                 ->take(5)
-                ->get()
-                ->map(function ($user) {
-                    $user->primary_role = $user->roles->first()?->name ?? 'participant';
-                    return $user;
-                });
+                ->get();
+
+            // Monthly enrollment trend (last 12 months)
+            $monthlyEnrollments = DB::table('course_user')
+                ->select(
+                    DB::raw('YEAR(created_at) as year'),
+                    DB::raw('MONTH(created_at) as month'),
+                    DB::raw('COUNT(*) as count')
+                )
+                ->where('created_at', '>=', now()->subMonths(12))
+                ->groupBy('year', 'month')
+                ->orderBy('year', 'desc')
+                ->orderBy('month', 'desc')
+                ->get();
 
             return [
                 'users' => [
@@ -345,10 +266,292 @@ class DashboardController extends Controller
                 'recent_activities' => [
                     'courses' => $recentCourses,
                     'users' => $recentUsers,
+                    'discussions' => $recentDiscussionsList,
+                ],
+                'trends' => [
+                    'monthly_enrollments' => $monthlyEnrollments,
                 ],
             ];
         } catch (\Exception $e) {
             Log::error('Error in getAdminStats: ' . $e->getMessage());
+            return $this->getEmptyStats();
+        }
+    }
+
+    /**
+     * Get announcement statistics with error handling
+     */
+    private function getAnnouncementStats()
+    {
+        try {
+            // Check if table exists and has required columns
+            if (!DB::getSchemaBuilder()->hasTable('announcements')) {
+                return [
+                    'total' => 0,
+                    'active' => 0,
+                    'recent' => 0,
+                ];
+            }
+
+            $columns = DB::getSchemaBuilder()->getColumnListing('announcements');
+
+            $total = Announcement::count();
+            $recent = Announcement::where('created_at', '>=', now()->subWeek())->count();
+
+            // Only check is_active if column exists
+            $active = 0;
+            if (in_array('is_active', $columns)) {
+                $active = Announcement::where('is_active', true)->count();
+            } else {
+                // Fallback: assume all announcements are active
+                $active = $total;
+            }
+
+            return [
+                'total' => $total,
+                'active' => $active,
+                'recent' => $recent,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getAnnouncementStats: ' . $e->getMessage());
+            return [
+                'total' => 0,
+                'active' => 0,
+                'recent' => 0,
+            ];
+        }
+    }
+
+    // Rest of the methods remain the same but with added error handling...
+    private function getParticipantStats($user)
+    {
+        try {
+            // Get enrolled courses - using the correct relationship
+            $enrolledCourses = $user->courses()->with(['lessons.contents', 'instructors'])->get();
+            $courseIds = $enrolledCourses->pluck('id');
+
+            // Course statistics
+            $totalCourses = $enrolledCourses->count();
+            $completedCourses = 0;
+            $inProgressCourses = 0;
+
+            // Content and progress statistics
+            $totalContents = 0;
+            $completedContents = 0;
+            $totalLessons = 0;
+            $completedLessons = 0;
+
+            // Calculate progress for each course
+            $courseProgress = $enrolledCourses->map(function ($course) use ($user, &$totalContents, &$completedContents, &$totalLessons, &$completedLessons, &$completedCourses, &$inProgressCourses) {
+                // Improved progress calculation
+                $courseTotalContents = 0;
+                $courseCompletedContents = 0;
+
+                foreach ($course->lessons as $lesson) {
+                    foreach ($lesson->contents as $content) {
+                        $courseTotalContents++;
+
+                        // Check completion based on content type
+                        $isCompleted = false;
+                        if ($content->type === 'quiz' && $content->quiz_id) {
+                            // For quiz content, check if passed
+                            $isCompleted = $user->quizAttempts()
+                                ->where('quiz_id', $content->quiz_id)
+                                ->where('passed', true)
+                                ->exists();
+                        } elseif ($content->type === 'essay') {
+                            // For essay content, check if submitted
+                            $isCompleted = $user->essaySubmissions()
+                                ->where('content_id', $content->id)
+                                ->exists();
+                        } else {
+                            // For regular content, check completion table
+                            $isCompleted = $user->completedContents()
+                                ->where('content_id', $content->id)
+                                ->exists();
+                        }
+
+                        if ($isCompleted) {
+                            $courseCompletedContents++;
+                        }
+                    }
+                }
+
+                $courseTotalLessons = $course->lessons->count();
+
+                // Lesson completion calculation
+                $courseCompletedLessons = 0;
+                foreach ($course->lessons as $lesson) {
+                    $lessonTotalContents = $lesson->contents->count();
+                    $lessonCompletedContents = 0;
+
+                    foreach ($lesson->contents as $content) {
+                        $isCompleted = false;
+                        if ($content->type === 'quiz' && $content->quiz_id) {
+                            $isCompleted = $user->quizAttempts()
+                                ->where('quiz_id', $content->quiz_id)
+                                ->where('passed', true)
+                                ->exists();
+                        } elseif ($content->type === 'essay') {
+                            $isCompleted = $user->essaySubmissions()
+                                ->where('content_id', $content->id)
+                                ->exists();
+                        } else {
+                            $isCompleted = $user->completedContents()
+                                ->where('content_id', $content->id)
+                                ->exists();
+                        }
+
+                        if ($isCompleted) {
+                            $lessonCompletedContents++;
+                        }
+                    }
+
+                    // Lesson is completed if all its contents are completed
+                    if ($lessonTotalContents > 0 && $lessonCompletedContents >= $lessonTotalContents) {
+                        $courseCompletedLessons++;
+                    }
+                }
+
+                $progress = $courseTotalContents > 0 ? round(($courseCompletedContents / $courseTotalContents) * 100, 1) : 0;
+
+                // Update totals
+                $totalContents += $courseTotalContents;
+                $completedContents += $courseCompletedContents;
+                $totalLessons += $courseTotalLessons;
+                $completedLessons += $courseCompletedLessons;
+
+                // Determine course status
+                if ($progress >= 100) {
+                    $completedCourses++;
+                    $status = 'completed';
+                } elseif ($progress > 0) {
+                    $inProgressCourses++;
+                    $status = 'in_progress';
+                } else {
+                    $status = 'not_started';
+                }
+
+                return [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'description' => $course->description,
+                    'thumbnail' => $course->thumbnail,
+                    'progress' => $progress,
+                    'status' => $status,
+                    'total_lessons' => $courseTotalLessons,
+                    'completed_lessons' => $courseCompletedLessons,
+                    'total_contents' => $courseTotalContents,
+                    'completed_contents' => $courseCompletedContents,
+                    'instructors' => $course->instructors,
+                    'created_at' => $course->created_at,
+                ];
+            })->sortByDesc('progress');
+
+            // Quiz statistics
+            $quizAttempts = QuizAttempt::where('user_id', $user->id)->count();
+            $completedQuizzes = QuizAttempt::where('user_id', $user->id)
+                ->whereNotNull('completed_at')
+                ->count();
+            $passedQuizzes = QuizAttempt::where('user_id', $user->id)
+                ->where('passed', true)
+                ->count();
+
+            // Essay submissions
+            $essaySubmissions = EssaySubmission::where('user_id', $user->id)->count();
+            $gradedEssays = EssaySubmission::where('user_id', $user->id)
+                ->whereNotNull('graded_at')
+                ->count();
+
+            // Recent activity
+            $recentCompletions = collect();
+            if ($courseIds->isNotEmpty()) {
+                $recentCompletions = DB::table('content_user')
+                    ->join('contents', 'content_user.content_id', '=', 'contents.id')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->where('content_user.user_id', $user->id)
+                    ->where('content_user.completed', true)
+                    ->where('content_user.created_at', '>=', now()->subDays(7))
+                    ->whereIn('courses.id', $courseIds)
+                    ->select('contents.title as content_title', 'lessons.title as lesson_title', 'courses.title as course_title', 'content_user.created_at')
+                    ->orderBy('content_user.created_at', 'desc')
+                    ->limit(5)
+                    ->get();
+            }
+
+            // Upcoming or recommended content
+            $nextContents = collect();
+            foreach ($enrolledCourses as $course) {
+                $nextContent = $course->lessons()
+                    ->with('contents')
+                    ->get()
+                    ->flatMap(function ($lesson) use ($user) {
+                        return $lesson->contents->filter(function ($content) use ($user) {
+                            // Check if not completed based on content type
+                            if ($content->type === 'quiz' && $content->quiz_id) {
+                                return !$user->quizAttempts()
+                                    ->where('quiz_id', $content->quiz_id)
+                                    ->where('passed', true)
+                                    ->exists();
+                            } elseif ($content->type === 'essay') {
+                                return !$user->essaySubmissions()
+                                    ->where('content_id', $content->id)
+                                    ->exists();
+                            } else {
+                                return !$user->completedContents()
+                                    ->where('content_id', $content->id)
+                                    ->exists();
+                            }
+                        });
+                    })
+                    ->take(3);
+
+                $nextContents = $nextContents->merge($nextContent);
+            }
+
+            // Discussion activity
+            $userDiscussions = Discussion::where('user_id', $user->id)->count();
+            $userReplies = DB::table('discussion_replies')->where('user_id', $user->id)->count();
+
+            // Calculate overall progress
+            $overallProgress = $totalContents > 0 ? round(($completedContents / $totalContents) * 100, 1) : 0;
+
+            return [
+                'courses' => [
+                    'total' => $totalCourses,
+                    'completed' => $completedCourses,
+                    'in_progress' => $inProgressCourses,
+                    'not_started' => $totalCourses - $completedCourses - $inProgressCourses,
+                    'progress' => $courseProgress,
+                    'overall_progress' => $overallProgress,
+                ],
+                'content' => [
+                    'total_contents' => $totalContents,
+                    'completed_contents' => $completedContents,
+                    'total_lessons' => $totalLessons,
+                    'completed_lessons' => $completedLessons,
+                ],
+                'quizzes' => [
+                    'attempts' => $quizAttempts,
+                    'completed' => $completedQuizzes,
+                    'passed' => $passedQuizzes,
+                ],
+                'essays' => [
+                    'submissions' => $essaySubmissions,
+                    'graded' => $gradedEssays,
+                ],
+                'discussions' => [
+                    'started' => $userDiscussions,
+                    'replies' => $userReplies,
+                ],
+                'recent_activities' => [
+                    'completions' => $recentCompletions,
+                    'next_contents' => $nextContents->take(5),
+                ],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getParticipantStats: ' . $e->getMessage());
             return $this->getEmptyStats();
         }
     }
@@ -369,21 +572,26 @@ class DashboardController extends Controller
             $draftCourses = $instructorCourses->where('status', 'draft')->count();
 
             // Student statistics
-            $totalStudents = 0;
-            if ($courseIds->isNotEmpty()) {
-                $totalStudents = DB::table('course_user')
-                    ->whereIn('course_id', $courseIds)
-                    ->distinct('user_id')
-                    ->count();
-            }
+            $totalStudents = DB::table('course_user')
+                ->whereIn('course_id', $courseIds)
+                ->distinct('user_id')
+                ->count();
 
-            $recentEnrollments = 0;
-            if ($courseIds->isNotEmpty()) {
-                $recentEnrollments = DB::table('course_user')
-                    ->whereIn('course_id', $courseIds)
-                    ->where('created_at', '>=', now()->subDays(30))
-                    ->count();
-            }
+            $recentEnrollments = DB::table('course_user')
+                ->whereIn('course_id', $courseIds)
+                ->where('created_at', '>=', now()->subDays(30))
+                ->count();
+
+            // Content statistics
+            $totalLessons = $instructorCourses->sum(function ($course) {
+                return $course->lessons->count();
+            });
+
+            $totalContents = $instructorCourses->sum(function ($course) {
+                return $course->lessons->sum(function ($lesson) {
+                    return $lesson->contents->count();
+                });
+            });
 
             // Quiz statistics
             $totalQuizzes = Quiz::whereHas('lesson.course.instructors', function ($query) use ($user) {
@@ -415,6 +623,17 @@ class DashboardController extends Controller
             $totalEssaySubmissions = EssaySubmission::whereHas('content.lesson.course.instructors', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->count();
+
+            // Recent activities
+            $recentCourses = $instructorCourses->sortByDesc('created_at')->take(3);
+
+            $recentStudents = User::whereHas('courses', function ($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            })->with('courses')->latest()->take(5)->get();
+
+            $recentDiscussionsList = Discussion::whereHas('content.lesson.course.instructors', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })->with(['user', 'content.lesson.course'])->latest()->take(5)->get();
 
             // Course performance data
             $coursePerformance = $instructorCourses->map(function ($course) {
@@ -457,6 +676,10 @@ class DashboardController extends Controller
                     'total' => $totalStudents,
                     'recent_enrollments' => $recentEnrollments,
                 ],
+                'content' => [
+                    'lessons' => $totalLessons,
+                    'contents' => $totalContents,
+                ],
                 'quizzes' => [
                     'total' => $totalQuizzes,
                     'attempts' => $quizAttempts,
@@ -470,6 +693,11 @@ class DashboardController extends Controller
                     'pending' => $pendingEssays,
                     'total' => $totalEssaySubmissions,
                 ],
+                'recent_activities' => [
+                    'courses' => $recentCourses,
+                    'students' => $recentStudents,
+                    'discussions' => $recentDiscussionsList,
+                ],
             ];
         } catch (\Exception $e) {
             Log::error('Error in getInstructorStats: ' . $e->getMessage());
@@ -477,210 +705,35 @@ class DashboardController extends Controller
         }
     }
 
-    private function getParticipantStats($user)
-    {
-        try {
-            // Get enrolled courses
-            $enrolledCourses = $user->courses()->with(['lessons.contents', 'instructors'])->get();
-
-            // Course statistics
-            $totalCourses = $enrolledCourses->count();
-
-            // Quiz statistics
-            $quizAttempts = QuizAttempt::where('user_id', $user->id)->count();
-            $completedQuizzes = QuizAttempt::where('user_id', $user->id)
-                ->whereNotNull('completed_at')
-                ->count();
-            $passedQuizzes = QuizAttempt::where('user_id', $user->id)
-                ->where('passed', true)
-                ->count();
-
-            // Essay submissions
-            $essaySubmissions = EssaySubmission::where('user_id', $user->id)->count();
-            $gradedEssays = EssaySubmission::where('user_id', $user->id)
-                ->whereNotNull('graded_at')
-                ->count();
-
-            // Discussion activity
-            $userDiscussions = Discussion::where('user_id', $user->id)->count();
-
-            // Calculate progress and completion statistics
-            $completedCourses = 0;
-            $inProgressCourses = 0;
-            $totalContents = 0;
-            $completedContents = 0;
-            $totalLessons = 0;
-            $completedLessons = 0;
-
-            // Calculate progress for each course
-            $courseProgress = $enrolledCourses->map(function ($course) use ($user, &$totalContents, &$completedContents, &$totalLessons, &$completedLessons, &$completedCourses, &$inProgressCourses) {
-                $courseTotalContents = 0;
-                $courseCompletedContents = 0;
-
-                foreach ($course->lessons as $lesson) {
-                    foreach ($lesson->contents as $content) {
-                        $courseTotalContents++;
-                        $isCompleted = $user->completedContents()
-                            ->where('content_id', $content->id)
-                            ->exists();
-
-                        if ($isCompleted) {
-                            $courseCompletedContents++;
-                        }
-                    }
-                }
-
-                $courseTotalLessons = $course->lessons->count();
-                $courseCompletedLessons = 0;
-
-                foreach ($course->lessons as $lesson) {
-                    $lessonTotalContents = $lesson->contents->count();
-                    $lessonCompletedContents = 0;
-
-                    foreach ($lesson->contents as $content) {
-                        $isCompleted = $user->completedContents()
-                            ->where('content_id', $content->id)
-                            ->exists();
-
-                        if ($isCompleted) {
-                            $lessonCompletedContents++;
-                        }
-                    }
-
-                    if ($lessonTotalContents > 0 && $lessonCompletedContents >= $lessonTotalContents) {
-                        $courseCompletedLessons++;
-                    }
-                }
-
-                $progress = $courseTotalContents > 0 ? round(($courseCompletedContents / $courseTotalContents) * 100, 1) : 0;
-
-                // Update totals
-                $totalContents += $courseTotalContents;
-                $completedContents += $courseCompletedContents;
-                $totalLessons += $courseTotalLessons;
-                $completedLessons += $courseCompletedLessons;
-
-                // Determine course status
-                if ($progress >= 100) {
-                    $completedCourses++;
-                    $status = 'completed';
-                } elseif ($progress > 0) {
-                    $inProgressCourses++;
-                    $status = 'in_progress';
-                } else {
-                    $status = 'not_started';
-                }
-
-                return [
-                    'id' => $course->id,
-                    'title' => $course->title,
-                    'description' => $course->description,
-                    'thumbnail' => $course->thumbnail,
-                    'progress' => $progress,
-                    'status' => $status,
-                    'total_lessons' => $courseTotalLessons,
-                    'completed_lessons' => $courseCompletedLessons,
-                    'total_contents' => $courseTotalContents,
-                    'completed_contents' => $courseCompletedContents,
-                    'instructors' => $course->instructors,
-                    'created_at' => $course->created_at,
-                ];
-            })->sortByDesc('progress');
-
-            // Recent completions
-            $recentCompletions = collect();
-            if ($enrolledCourses->isNotEmpty()) {
-                $courseIds = $enrolledCourses->pluck('id');
-                $recentCompletions = DB::table('content_user')
-                    ->join('contents', 'content_user.content_id', '=', 'contents.id')
-                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                    ->where('content_user.user_id', $user->id)
-                    ->where('content_user.completed', true)
-                    ->where('content_user.created_at', '>=', now()->subDays(7))
-                    ->whereIn('courses.id', $courseIds)
-                    ->select('contents.title as content_title', 'lessons.title as lesson_title', 'courses.title as course_title', 'content_user.created_at')
-                    ->orderBy('content_user.created_at', 'desc')
-                    ->limit(5)
-                    ->get();
-            }
-
-            // Calculate overall progress
-            $overallProgress = $totalContents > 0 ? round(($completedContents / $totalContents) * 100, 1) : 0;
-
-            return [
-                'courses' => [
-                    'total' => $totalCourses,
-                    'completed' => $completedCourses,
-                    'in_progress' => $inProgressCourses,
-                    'not_started' => $totalCourses - $completedCourses - $inProgressCourses,
-                    'progress' => $courseProgress,
-                    'overall_progress' => $overallProgress,
-                ],
-                'content' => [
-                    'total_contents' => $totalContents,
-                    'completed_contents' => $completedContents,
-                    'total_lessons' => $totalLessons,
-                    'completed_lessons' => $completedLessons,
-                ],
-                'quizzes' => [
-                    'attempts' => $quizAttempts,
-                    'completed' => $completedQuizzes,
-                    'passed' => $passedQuizzes,
-                ],
-                'essays' => [
-                    'submissions' => $essaySubmissions,
-                    'graded' => $gradedEssays,
-                ],
-                'discussions' => [
-                    'started' => $userDiscussions,
-                ],
-                'recent_activities' => [
-                    'completions' => $recentCompletions,
-                    'next_contents' => collect(),
-                ],
-            ];
-        } catch (\Exception $e) {
-            Log::error('Error in getParticipantStats: ' . $e->getMessage());
-            return $this->getEmptyStats();
-        }
-    }
-
     private function getEoStats(User $user): array
     {
         try {
-            $managedCourses = Course::whereHas('instructors', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })->with(['enrolledUsers', 'lessons.contents'])->get();
-
+            // 1. Ambil semua kursus yang dikelola oleh EO ini
+            $managedCourses = $user->eventOrganizedCourses()->with(['enrolledUsers', 'lessons.contents'])->get();
             $courseIds = $managedCourses->pluck('id');
 
+            // 2. Statistik Kursus
             $totalCourses = $managedCourses->count();
             $publishedCourses = $managedCourses->where('status', 'published')->count();
             $draftCourses = $managedCourses->where('status', 'draft')->count();
 
-            $totalParticipants = 0;
-            $recentEnrollments = 0;
+            // 3. Statistik Peserta
+            $totalParticipants = DB::table('course_user')
+                ->whereIn('course_id', $courseIds)
+                ->distinct('user_id')
+                ->count();
 
-            if ($courseIds->isNotEmpty()) {
-                $totalParticipants = DB::table('course_user')
-                    ->whereIn('course_id', $courseIds)
-                    ->distinct('user_id')
-                    ->count();
+            $recentEnrollments = DB::table('course_user')
+                ->whereIn('course_id', $courseIds)
+                ->where('created_at', '>=', now()->subDays(30))
+                ->count();
 
-                $recentEnrollments = DB::table('course_user')
-                    ->whereIn('course_id', $courseIds)
-                    ->where('created_at', '>=', now()->subDays(30))
-                    ->count();
-            }
+            // 4. Statistik Aktivitas
+            $totalDiscussions = Discussion::whereHas('content.lesson.course', function ($query) use ($courseIds) {
+                $query->whereIn('id', $courseIds);
+            })->count();
 
-            $totalDiscussions = 0;
-            if ($courseIds->isNotEmpty()) {
-                $totalDiscussions = Discussion::whereHas('content.lesson.course', function ($query) use ($courseIds) {
-                    $query->whereIn('id', $courseIds);
-                })->count();
-            }
-
+            // 5. Performa Kursus (Ringkasan per kursus)
             $coursePerformance = $managedCourses->map(function ($course) {
                 $participantCount = $course->enrolledUsers->count();
                 $totalContents = $course->lessons->sum(fn($lesson) => $lesson->contents->count());
@@ -704,13 +757,12 @@ class DashboardController extends Controller
                 ];
             });
 
-            $recentUsers = collect();
-            if ($courseIds->isNotEmpty()) {
-                $recentUsers = User::whereHas('courses', function ($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                })->where('created_at', '>=', now()->subDays(7))->latest()->take(5)->get();
-            }
+            // 6. Aktivitas Terbaru
+            $recentUsers = User::whereHas('enrolledCourses', function ($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            })->where('created_at', '>=', now()->subDays(7))->latest()->take(5)->get();
 
+            // 7. Susun data untuk dikirim ke view
             return [
                 'overview' => [
                     ['label' => 'Kursus Dikelola', 'value' => $totalCourses, 'icon' => 'briefcase'],
