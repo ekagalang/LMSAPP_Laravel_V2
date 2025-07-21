@@ -138,6 +138,10 @@
                                         </div>
                                         <div class="flex items-center space-x-4 flex-shrink-0">
                                             @can('update', $course)
+                                                <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi pelajaran ini?');">
+                                                    @csrf
+                                                    <button type="submit" class="text-green-600 hover:text-green-900 text-sm font-medium">Duplikat</button>
+                                                </form>
                                                 <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="text-purple-600 hover:text-purple-900 text-sm">Edit</a>
                                                 <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
                                                     @csrf @method('DELETE')
@@ -187,6 +191,10 @@
                                                         {{-- Aksi untuk konten (Edit & Hapus) --}}
                                                         @can('update', $course)
                                                         <div class="flex items-center space-x-2">
+                                                            <form :action="`/lessons/${lesson.id}/contents/${content.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi konten ini?');">
+                                                                @csrf
+                                                                <button type="submit" class="text-xs text-green-600 hover:text-green-900">Duplikat</button>
+                                                            </form>
                                                             <a :href="`/lessons/${lesson.id}/contents/${content.id}/edit`" class="text-xs text-purple-600 hover:text-purple-900">Edit</a>
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
                                                                 @csrf

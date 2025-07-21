@@ -490,4 +490,21 @@ class ContentController extends Controller
 
         return response()->json($debug);
     }
+
+    public function duplicate(Lesson $lesson, Content $content)
+    {
+        $this->authorize('update', $lesson->course);
+
+        try {
+            $newContent = $content->duplicate();
+            // The trait handles the duplication, we just ensure it's linked to the correct lesson.
+            $newContent->lesson_id = $lesson->id;
+            $newContent->save();
+            
+            return redirect()->route('courses.show', $lesson->course)->with('success', 'Content duplicated successfully.');
+        } catch (\Exception $e) {
+            // Optional: Log the exception
+            return redirect()->route('courses.show', $lesson->course)->with('error', 'Failed to duplicate content: ' . $e->getMessage());
+        }
+    }
 }

@@ -33,12 +33,10 @@ class CoursePolicy
      */
     public function view(User $user, Course $course): bool
     {
-        // Jika user adalah instruktur atau admin, izinkan.
         if ($user->can('manage own courses') || $user->can('manage all courses')) {
             return true;
         }
 
-        // Jika kursus sudah publish DAN user terdaftar di kursus tersebut, izinkan.
         if ($course->status === 'published' && $course->enrolledUsers->contains($user)) {
             return true;
         }
@@ -51,7 +49,6 @@ class CoursePolicy
      */
     public function viewProgress(User $user, Course $course): bool
     {
-        // Izinkan jika user adalah instruktur ATAU punya izin lihat laporan
         return $course->instructors->contains($user) || $user->can('view progress reports');
     }
 
@@ -64,11 +61,24 @@ class CoursePolicy
     }
 
     /**
+     * =================================================================
+     * PENYESUAIAN: Tambahkan policy baru untuk duplikasi
+     * =================================================================
+     *
+     * Menentukan siapa yang boleh MENDUPLIKASI kursus.
+     * Hanya pengguna dengan izin 'manage all courses' (seperti EO) yang bisa.
+     * Ini akan menyembunyikan tombol dari instruktur biasa.
+     */
+    public function duplicate(User $user): bool
+    {
+        return $user->can('manage own courses');
+    }
+
+    /**
      * Menentukan siapa yang boleh MENGUBAH kursus.
      */
     public function update(User $user, Course $course): bool
     {
-        // Izinkan jika user terdaftar sebagai salah satu instruktur di kursus ini
         return $user->can('manage own courses') && $course->instructors->contains($user);
     }
 
@@ -77,7 +87,6 @@ class CoursePolicy
      */
     public function delete(User $user, Course $course): bool
     {
-        // Logikanya sama dengan update
         return $user->can('manage own courses') && $course->instructors->contains($user);
     }
 
@@ -86,18 +95,14 @@ class CoursePolicy
      */
     public function viewGradebook(User $user, Course $course): bool
     {
-        // Pengguna bisa melihat gradebook jika punya izin 'grade quizzes'
-        // DAN merupakan instruktur untuk kursus ini.
         return $user->can('grade quizzes') && $course->instructors->contains($user);
     }
 
     /**
      * [BARU] Menentukan siapa yang boleh menilai (grade) kursus.
-     * Ini akan dipanggil oleh GradebookController.
      */
     public function grade(User $user, Course $course): bool
     {
-        // Izinkan jika pengguna adalah salah satu instruktur yang ditugaskan ke kursus ini.
         return $course->instructors->contains($user);
     }
 }

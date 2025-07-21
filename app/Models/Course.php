@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Quiz;
+use App\Models\Traits\Duplicateable; // Import Trait
 
 class Course extends Model
 {
-    use HasFactory;
+    use HasFactory, Duplicateable; // Gunakan Trait
 
     protected $fillable = [
         'user_id',
@@ -18,6 +18,21 @@ class Course extends Model
         'thumbnail',
         'status',
     ];
+
+    /**
+     * Define which relations to duplicate.
+     * We duplicate lessons, instructors, and event organizers.
+     * We DO NOT duplicate participants/enrolledUsers.
+     * @var array
+     */
+    protected $duplicateRelations = ['lessons', 'instructors', 'eventOrganizers'];
+    
+    /**
+     * Define which attribute contains a file to be duplicated.
+     * @var string
+     */
+    protected $replicateFile = 'thumbnail';
+
 
     // Relasi ke User (instruktur yang membuat kursus)
     public function instructors()

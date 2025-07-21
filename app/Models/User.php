@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -73,12 +74,9 @@ class User extends Authenticatable
 
     /**
      * Relasi ke kursus yang diorganisir user (sebagai event organizer)
-     * Note: Ini adalah contoh - implementasi aktual mungkin berbeda tergantung business logic
      */
     public function eventOrganizedCourses()
     {
-        // Jika EO mengelola semua kursus, gunakan hasManyThrough atau query lain
-        // Untuk contoh ini, kita anggap EO bisa assigned ke kursus tertentu via pivot table
         return $this->belongsToMany(Course::class, 'course_event_organizer')->withTimestamps();
     }
 
@@ -151,6 +149,20 @@ class User extends Authenticatable
     }
 
     /**
+     * =================================================================
+     * PENYESUAIAN UNTUK MEMPERBAIKI ERROR GRADEBOOK
+     * =================================================================
+     *
+     * Menambahkan relasi 'feedback' yang merujuk ke 'receivedFeedback'.
+     * Ini akan memperbaiki error "Call to undefined relationship [feedback]"
+     * yang kemungkinan terjadi di GradebookController.
+     */
+    public function feedback()
+    {
+        return $this->receivedFeedback();
+    }
+
+    /**
      * Many-to-many relationship dengan announcements yang sudah dibaca
      */
     public function readAnnouncements(): BelongsToMany
@@ -183,7 +195,6 @@ class User extends Authenticatable
      */
     public function isEventOrganizerFor(Course $course): bool
     {
-        // Implementasi bisa disesuaikan dengan business logic
         return $this->hasRole('event-organizer');
     }
 
@@ -212,7 +223,6 @@ class User extends Authenticatable
         }
 
         if ($this->hasRole('event-organizer')) {
-            // EO can manage all published courses or specific assigned courses
             return $this->eventOrganizedCourses();
         }
 
@@ -246,7 +256,7 @@ class User extends Authenticatable
     /**
      * Mark announcement sebagai read
      */
-    public function markAnnouncementAsRead(Announcement $announcement): AnnouncementRead
+    public function markAnnouncementAsRead(Announcement $announcement)
     {
         return $announcement->markAsReadBy($this);
     }
@@ -256,7 +266,7 @@ class User extends Authenticatable
      */
     public function hasReadAnnouncement(Announcement $announcement): bool
     {
-        return $this->announcementReads()
+        return $this->readAnnouncements()
             ->where('announcement_id', $announcement->id)
             ->exists();
     }
@@ -265,7 +275,7 @@ class User extends Authenticatable
     // 🚨 BARU: Helper method untuk mendapatkan recent announcement reads
     public function getRecentAnnouncementReadsAttribute()
     {
-        return $this->announcementReads()
+        return $this->readAnnouncements()
             ->with('announcement')
             ->latest('read_at')
             ->take(5)
@@ -277,12 +287,8 @@ class User extends Authenticatable
      */
     public function getProgressForCourse(Course $course): array
     {
-        $totalContents = $course->lessons()
-            ->with('contents')
-            ->get()
-            ->sum(function ($lesson) {
-                return $lesson->contents->count();
-            });
+        // 1. Dapatkan total konten dalam kursus dengan cara yang lebih efisien
+        $totalContents = $course->lessons()->withCount('contents')->get()->sum('contents_count');
 
         if ($totalContents === 0) {
             return [
@@ -292,34 +298,44 @@ class User extends Authenticatable
             ];
         }
 
-        $completedContents = $this->completedContents()
+        // 2. Hitung konten biasa (non-tugas) yang selesai
+        $completedRegularContents = $this->completedContents()
             ->whereHas('lesson', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
             })
+            // Pastikan hanya menghitung tipe selain kuis dan esai
+            ->whereNotIn('type', ['quiz', 'essay'])
             ->count();
 
-        // Add quiz completions
-        $completedQuizzes = $this->quizAttempts()
+        // 3. Hitung kuis yang telah LULUS (setiap kuis dihitung sekali)
+        $passedQuizzes = $this->quizAttempts()
+            ->where('passed', true)
             ->whereHas('quiz.lesson', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
             })
-            ->where('passed', true)
+            ->select('quiz_id')
+            ->distinct()
+            ->get()
             ->count();
 
-        // Add essay submissions
+        // 4. Hitung esai yang telah DIKUMPULKAN (setiap esai dihitung sekali)
         $submittedEssays = $this->essaySubmissions()
             ->whereHas('content.lesson', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
             })
+            ->select('content_id')
+            ->distinct()
+            ->get()
             ->count();
 
-        $totalCompleted = $completedContents + $completedQuizzes + $submittedEssays;
-        $progressPercentage = round(($totalCompleted / $totalContents) * 100, 1);
+        // 5. Jumlahkan semua item yang selesai
+        $totalCompleted = $completedRegularContents + $passedQuizzes + $submittedEssays;
+        $progressPercentage = round(($totalCompleted / $totalContents) * 100);
 
         return [
             'total_contents' => $totalContents,
             'completed_contents' => $totalCompleted,
-            'progress_percentage' => min(100, $progressPercentage), // Cap at 100%
+            'progress_percentage' => min(100, $progressPercentage), // Batasi maksimal 100%
         ];
     }
 

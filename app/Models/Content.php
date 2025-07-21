@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\Duplicateable; // Import Trait
 
 class Content extends Model
 {
-    use HasFactory;
+    use HasFactory, Duplicateable; // Gunakan Trait
 
     /**
      * The attributes that are mass assignable.
@@ -17,7 +18,7 @@ class Content extends Model
     protected $fillable = [
         'lesson_id',
         'title',
-        'description', // Kolom baru ditambahkan
+        'description',
         'type',
         'body',
         'file_path',
@@ -25,6 +26,19 @@ class Content extends Model
         'quiz_id',
     ];
 
+    /**
+     * Define which relations to duplicate.
+     * If content has a quiz, the quiz itself should be duplicated.
+     * @var array
+     */
+    protected $duplicateRelations = ['quiz'];
+    
+    /**
+     * Define which attribute contains a file to be duplicated.
+     * @var string
+     */
+    protected $replicateFile = 'file_path';
+    
     /**
      * Relasi ke Lesson
      */

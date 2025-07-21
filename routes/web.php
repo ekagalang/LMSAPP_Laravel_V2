@@ -36,6 +36,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // DUPLICATION ROUTES
+    Route::post('/courses/{course}/duplicate', [CourseController::class, 'duplicate'])->name('courses.duplicate');
+    Route::post('/courses/{course}/lessons/{lesson}/duplicate', [LessonController::class, 'duplicate'])->name('lessons.duplicate');
+    Route::post('/lessons/{lesson}/contents/{content}/duplicate', [ContentController::class, 'duplicate'])->name('contents.duplicate');
+
     // ✅ PERBAIKAN: Mengubah URL rute AJAX agar tidak konflik
     Route::get('/ajax/quizzes/get-full-quiz-form-partial', fn() => view('quizzes.partials.full-quiz-form')->render())->name('quiz-full-form-partial');
     Route::get('/ajax/quizzes/get-question-form-partial', fn(Illuminate\Http\Request $request) => view('quizzes.partials.question-form-fields', ['question_loop_index' => $request->query('index'), 'question' => null])->render())->name('quiz-question-partial');

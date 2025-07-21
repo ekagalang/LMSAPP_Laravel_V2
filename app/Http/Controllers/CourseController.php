@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use PDF;
 use Illuminate\Support\Str;
 
@@ -198,9 +199,8 @@ class CourseController extends Controller
         $this->authorize('viewProgress', $course);
         $user = Auth::user();
 
-        // LOGIKA BARU: Ambil semua kursus yang diajar instruktur ini untuk dropdown
         $instructorCourses = Course::query()
-            ->whereHas('instructors', function ($q) use ($user) { // Menggunakan whereHas untuk relasi
+            ->whereHas('instructors', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->orderBy('title')
@@ -216,29 +216,33 @@ class CourseController extends Controller
             });
         }
 
-        $enrolledUsers = $enrolledUsersQuery->with('completedContents.lesson')->get();
+        $enrolledUsers = $enrolledUsersQuery->get();
 
-        $course->load('lessons.contents');
-        $allContents = $course->lessons->flatMap(fn($l) => $l->contents);
-        $totalContentCount = $allContents->count();
-        $allContentIds = $allContents->pluck('id');
+        // ✅ PERBAIKAN: Gunakan method getProgressForCourse dari model User untuk setiap peserta
+        $participantsProgress = $enrolledUsers->map(function ($participant) use ($course) {
+            // Panggil fungsi yang sudah kita perbaiki di model User
+            $progressData = $participant->getProgressForCourse($course);
 
-        $participantsProgress = $enrolledUsers->map(function ($participant) use ($allContentIds, $totalContentCount) {
-            $completedContents = $participant->completedContents->whereIn('id', $allContentIds);
-            $completedCount = $completedContents->count();
-            $progressPercentage = $totalContentCount > 0 ? round(($completedCount / $totalContentCount) * 100) : 0;
-            $lastCompletedContent = $completedContents->sortByDesc('pivot.created_at')->first();
+            // Logika untuk 'last_position' masih sama, namun ini mungkin tidak 100% akurat
+            // karena hanya memeriksa konten biasa. Untuk saat ini kita biarkan.
+            $lastCompletedContent = $participant->completedContents
+                ->where('lesson.course_id', $course->id)
+                ->sortByDesc('pivot.completed_at')
+                ->first();
+            
             $lastPosition = $lastCompletedContent ? $lastCompletedContent->lesson->title : 'Belum Memulai';
 
             return [
                 'id' => $participant->id,
                 'name' => $participant->name,
                 'email' => $participant->email,
-                'completed_count' => $completedCount,
-                'progress_percentage' => $progressPercentage,
+                'completed_count' => $progressData['completed_contents'],
+                'progress_percentage' => $progressData['progress_percentage'],
                 'last_position' => $lastPosition,
             ];
         });
+        
+        $totalContentCount = $course->lessons()->withCount('contents')->get()->sum('contents_count');
 
         return view('courses.progress', [
             'course' => $course,
@@ -260,7 +264,17 @@ class CourseController extends Controller
             $query->orderBy('order');
         }]);
 
-        $completedContentsMap = $user->completedContents->keyBy('id');
+        // ✅ PERBAIKAN: Buat peta penyelesaian yang akurat untuk SEMUA jenis konten.
+        // Kita akan iterasi semua konten dan menggunakan method hasCompletedContent dari model User.
+        $completedContentsMap = collect();
+        foreach ($course->lessons as $lesson) {
+            foreach ($lesson->contents as $content) {
+                // Gunakan method 'hasCompletedContent' dari model User yang sudah ada
+                if ($user->hasCompletedContent($content)) {
+                    $completedContentsMap->put($content->id, true);
+                }
+            }
+        }
 
         return view('courses.participant_progress', [
             'course' => $course,
@@ -333,5 +347,18 @@ class CourseController extends Controller
         $request->validate(['user_ids' => 'required|array']);
         $course->eventOrganizers()->detach($request->user_ids);
         return back()->with('success', 'Event Organizer berhasil dihapus.');
+    }
+
+    public function duplicate(Course $course)
+    {
+        // ✅ PERBAIKAN: Ganti otorisasi dari 'create' menjadi 'duplicate'
+        $this->authorize('duplicate', Course::class);
+
+        try {
+            $newCourse = $course->duplicate();
+            return redirect()->route('courses.index')->with('success', 'Course "' . $course->title . '" has been duplicated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('courses.index')->with('error', 'Failed to duplicate course. Please try again.');
+        }
     }
 }

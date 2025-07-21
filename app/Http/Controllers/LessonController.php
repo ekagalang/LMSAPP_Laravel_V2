@@ -107,4 +107,21 @@ class LessonController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'Urutan pelajaran berhasil diperbarui.']);
     }
+
+    public function duplicate(Course $course, Lesson $lesson)
+    {
+        $this->authorize('update', $course);
+
+        try {
+            $newLesson = $lesson->duplicate();
+            // The trait already handles replicating, we just need to save it to the same course.
+            $newLesson->course_id = $course->id;
+            $newLesson->save();
+            
+            return redirect()->route('courses.show', $course)->with('success', 'Lesson duplicated successfully.');
+        } catch (\Exception $e) {
+            // Optional: Log the exception
+            return redirect()->route('courses.show', $course)->with('error', 'Failed to duplicate lesson.');
+        }
+    }
 }

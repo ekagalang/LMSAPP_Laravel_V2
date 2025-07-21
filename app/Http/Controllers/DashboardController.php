@@ -709,7 +709,7 @@ class DashboardController extends Controller
     {
         try {
             // 1. Ambil semua kursus yang dikelola oleh EO ini
-            $managedCourses = $user->eventOrganizedCourses()->with(['enrolledUsers', 'lessons.contents'])->get();
+            $managedCourses = $user->eventOrganizedCourses()->with(['enrolledUsers'])->get();
             $courseIds = $managedCourses->pluck('id');
 
             // 2. Statistik Kursus
@@ -733,20 +733,18 @@ class DashboardController extends Controller
                 $query->whereIn('id', $courseIds);
             })->count();
 
-            // 5. Performa Kursus (Ringkasan per kursus)
+            // 5. ✅ PERBAIKAN: Performa Kursus (Ringkasan per kursus)
             $coursePerformance = $managedCourses->map(function ($course) {
                 $participantCount = $course->enrolledUsers->count();
-                $totalContents = $course->lessons->sum(fn($lesson) => $lesson->contents->count());
-
                 $averageProgress = 0;
-                if ($participantCount > 0 && $totalContents > 0) {
-                    $completedContentsCount = DB::table('content_user')
-                        ->join('contents', 'content_user.content_id', '=', 'contents.id')
-                        ->whereIn('contents.lesson_id', $course->lessons->pluck('id'))
-                        ->where('content_user.completed', true)
-                        ->count();
 
-                    $averageProgress = round(($completedContentsCount / ($participantCount * $totalContents)) * 100, 1);
+                if ($participantCount > 0) {
+                    // Panggil fungsi getProgressForCourse yang sudah benar untuk setiap peserta
+                    $totalProgressSum = $course->enrolledUsers->sum(function ($participant) use ($course) {
+                        return $participant->getProgressForCourse($course)['progress_percentage'];
+                    });
+                    // Hitung rata-ratanya
+                    $averageProgress = round($totalProgressSum / $participantCount);
                 }
 
                 return [

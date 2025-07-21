@@ -60,6 +60,12 @@
                                                     Edit
                                                 </a>
                                             @endcan
+                                            @can('duplicate', App\Models\Course::class)
+                                                <form action="{{ route('courses.duplicate', $course) }}" method="POST" class="inline-block ml-4" onsubmit="return confirm('Anda yakin ingin menduplikasi kursus ini?');">
+                                                    @csrf
+                                                    <button type="submit" class="text-green-600 hover:text-green-900">Duplikat</button>
+                                                </form>
+                                            @endcan
                                             @can('delete', $course)
                                                 <form action="{{ route('courses.destroy', $course) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus kursus ini?');">
                                                     @csrf

@@ -4,17 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\Duplicateable; // Import Trait
 
 class Lesson extends Model
 {
-    use HasFactory;
+    use HasFactory, Duplicateable; // Gunakan Trait
 
     protected $fillable = [
         'course_id',
         'title',
         'description',
         'order',
+        'prerequisite_id' // Pastikan ini ada di $fillable
     ];
+    
+    /**
+     * Define which relations to duplicate.
+     * When a lesson is duplicated, its contents are also duplicated.
+     * @var array
+     */
+    protected $duplicateRelations = ['contents'];
 
     // Relasi ke Course
     public function course()
