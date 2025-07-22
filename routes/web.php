@@ -9,7 +9,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
-use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\GradebookController;
 use App\Http\Controllers\DiscussionController;
@@ -45,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/ajax/quizzes/get-full-quiz-form-partial', fn() => view('quizzes.partials.full-quiz-form')->render())->name('quiz-full-form-partial');
     Route::get('/ajax/quizzes/get-question-form-partial', fn(Illuminate\Http\Request $request) => view('quizzes.partials.question-form-fields', ['question_loop_index' => $request->query('index'), 'question' => null])->render())->name('quiz-question-partial');
 
+    // Pengumuman
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [AnnouncementController::class, 'indexForUser'])->name('index');
         Route::get('/api/for-user', [AnnouncementController::class, 'getForUser'])->name('api.for-user');
@@ -52,6 +54,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/mark-all-as-read', [AnnouncementController::class, 'markAllAsRead'])->name('mark-all-as-read');
         Route::get('/unread-count', [AnnouncementController::class, 'getUnreadCount'])->name('unread-count');
     });
+
+    // Rute untuk Riwayat Pengumuman
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])->name('announcements.show');
 
     // Kursus, Pelajaran, dan Konten
     Route::resource('courses', CourseController::class);
@@ -118,6 +124,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/import', [UserImportController::class, 'show'])->name('users.import.show');
         Route::post('/users/import', [UserImportController::class, 'store'])->name('users.import.store');
         Route::get('/users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
+
+        // Pengumuman
+        Route::resource('announcements', AdminAnnouncementController::class);
+        Route::patch('announcements/{announcement}/toggle-status', [AdminAnnouncementController::class, 'toggleStatus'])
+            ->name('announcements.toggle-status');
     });
 
     // Route untuk Gradebook

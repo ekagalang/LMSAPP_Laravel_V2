@@ -309,4 +309,24 @@ class AnnouncementController extends Controller
             ]);
         }
     }
+
+    private function save(Request $request, Announcement $announcement)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'level' => ['required', Rule::in(['info', 'success', 'warning', 'danger'])],
+            'is_active' => 'boolean',
+            'target_roles' => 'nullable|array', // <-- Tambahkan ini
+        ]);
+
+        // Jika 'all' dipilih, simpan sebagai null untuk menargetkan semua.
+        if (in_array('all', $request->input('target_roles', []))) {
+            $validated['target_roles'] = null;
+        } else {
+            $validated['target_roles'] = $request->input('target_roles');
+        }
+
+        $announcement->fill($validated)->save();
+    }
 }

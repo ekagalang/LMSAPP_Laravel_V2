@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\Duplicateable;
 
 class Quiz extends Model
 {
-    use HasFactory;
+    use HasFactory, Duplicateable;
 
     protected $fillable = [
         'lesson_id', // Pertahankan ini untuk saat ini

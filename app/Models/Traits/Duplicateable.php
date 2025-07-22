@@ -2,65 +2,64 @@
 
 namespace App\Models\Traits;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 trait Duplicateable
 {
     /**
-     * Duplicate the model and its specified relationships.
+     * Duplicate the model and its specified relationships recursively.
      *
      * @return \Illuminate\Database\Eloquent\Model
      */
-    public function duplicate()
+    public function duplicate(): Model
     {
         return DB::transaction(function () {
-            // 1. Replicate the main model instance (shallow copy)
-            $newModel = $this->replicate($this->getDoNotDuplicate());
+            // Replicate the model instance without its relations
+            $newModel = $this->replicate();
 
-            // Add '(Copy)' to the title or name if it exists
+            // Append "(Copy)" to the title if it exists
             if (isset($newModel->title)) {
-                $newModel->title = $this->title . ' (Copy)';
-            } elseif (isset($newModel->name)) {
-                $newModel->name = $this->name . ' (Copy)';
-            }
-            
-            // Handle file duplication if applicable
-            if (isset($this->replicateFile) && $this->replicateFile && !empty($this->{$this->replicateFile})) {
-                $originalPath = $this->{$this->replicateFile};
-                if (Storage::disk('public')->exists($originalPath)) {
-                    $newPath = 'thumbnails/' . uniqid() . '-' . basename($originalPath);
-                    Storage::disk('public')->copy($originalPath, $newPath);
-                    $newModel->{$this->replicateFile} = $newPath;
-                }
+                $newModel->title .= ' (Copy)';
             }
 
-            $newModel->push(); // Save the replicated model to get a new ID
+            // Save the replicated model to get a new ID
+            $newModel->push();
 
-            // 2. Load and duplicate the relationships
+            // Load the relations we want to duplicate
             $this->load($this->getRelationsToDuplicate());
 
-            foreach ($this->getRelations() as $relationName => $relatedItems) {
+            foreach ($this->getRelations() as $relationName => $relation) {
+                // Skip if the relation is not in our duplicate list
                 if (!in_array($relationName, $this->getRelationsToDuplicate())) {
                     continue;
                 }
+                
+                $relationType = get_class($this->{$relationName}());
 
-                if ($relatedItems instanceof \Illuminate\Database\Eloquent\Collection) {
-                    foreach ($relatedItems as $relatedItem) {
-                        $newChild = $relatedItem->duplicate();
+                // ✅ BARU: Handle BelongsToMany relations (e.g., Course -> Instructors)
+                if ($relationType === 'Illuminate\Database\Eloquent\Relations\BelongsToMany') {
+                    // We don't duplicate the related models (Users), just the relationship.
+                    $pivotData = $this->{$relationName}()->get()->pluck('id');
+                    $newModel->{$relationName}()->sync($pivotData);
+                    continue; // Continue to next relation
+                }
+
+                // For HasMany relations (e.g., a Course has many Lessons)
+                if ($relation instanceof \Illuminate\Database\Eloquent\Collection) {
+                    foreach ($relation as $relatedModel) {
+                        $newChild = $relatedModel->duplicate(); // Recursive call
                         $newModel->{$relationName}()->save($newChild);
                     }
-                } elseif ($relatedItems instanceof \Illuminate\Database\Eloquent\Model) {
-                     $newChild = $relatedItems->duplicate();
-                     $newModel->{$relationName}()->save($newChild);
                 }
-            }
-
-            // 3. Sync BelongsToMany relationships
-            foreach ($this->getRelationsToDuplicate() as $relationName) {
-                $relation = $this->{$relationName}();
-                if ($relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsToMany) {
-                    $newModel->{$relationName}()->sync($this->{$relationName}()->pluck('id')->toArray());
+                // For BelongsTo or HasOne relations (e.g., a Content has one Quiz)
+                elseif ($relation instanceof Model) {
+                    $newRelatedModel = $relation->duplicate(); // Recursive call
+                    
+                    $foreignKeyName = $this->{$relationName}()->getForeignKeyName();
+                    
+                    $newModel->{$foreignKeyName} = $newRelatedModel->id;
+                    $newModel->save();
                 }
             }
 
@@ -70,22 +69,9 @@ trait Duplicateable
 
     /**
      * Get the relationships that should be duplicated.
-     * This should be defined in the model using the trait.
-     *
-     * @return array
      */
     protected function getRelationsToDuplicate(): array
     {
         return $this->duplicateRelations ?? [];
-    }
-
-    /**
-     * Get the attributes that should not be duplicated.
-     *
-     * @return array
-     */
-    protected function getDoNotDuplicate(): array
-    {
-        return $this->doNotDuplicate ?? [];
     }
 }

@@ -275,7 +275,7 @@ class ContentController extends Controller
         $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay'])],
+            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay', 'zoom'])],
             'order' => 'nullable|integer',
             'file_upload' => 'nullable|file|max:10240',
         ];
@@ -300,6 +300,12 @@ class ContentController extends Controller
             $rules['time_limit'] = 'nullable|integer|min:0';
         }
 
+        if ($request->input('type') === 'zoom') {
+            $rules['zoom_link'] = 'required|url';
+            $rules['zoom_meeting_id'] = 'required|string|max:255';
+            $rules['zoom_password'] = 'nullable|string|max:255';
+        }
+
         $validated = $request->validate($rules);
 
         DB::beginTransaction();
@@ -310,6 +316,12 @@ class ContentController extends Controller
             // Secara eksplisit atur kolom 'body' dari sumber yang benar
             if ($bodySource) {
                 $content->body = $request->input($bodySource);
+            } elseif ($validated['type'] === 'zoom') {
+                $content->body = json_encode([
+                    'link' => $validated['zoom_link'],
+                    'meeting_id' => $validated['zoom_meeting_id'],
+                    'password' => $validated['zoom_password'] ?? '',
+                ]);
             } else {
                 $content->body = null;
             }

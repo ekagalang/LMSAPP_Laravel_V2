@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\Duplicateable;
 
 class Option extends Model
 {
-    use HasFactory;
+    use HasFactory, Duplicateable;
 
     protected $fillable = [
         'question_id',

@@ -40,6 +40,13 @@
         </div>
     </x-slot>
 
+    <style>
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        .shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+        .form-input-error { border-color: #ef4444 !important; }
+        .form-input-error:focus { border-color: #ef4444 !important; ring-color: #fee2e2 !important; }
+    </style>
+
     <div class="py-8">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             @if ($errors->any())
@@ -117,9 +124,12 @@
                                    name="title"
                                    id="title"
                                    x-model="content.title"
+                                   {{-- ✅ TAMBAHKAN :class untuk error --}}
+                                   :class="{ 'form-input-error': errors.title }"
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 text-lg"
-                                   placeholder="Masukkan judul konten yang menarik..."
-                                   required>
+                                   placeholder="Masukkan judul konten yang menarik...">
+                            {{-- ✅ TAMBAHKAN pesan error --}}
+                            <p x-show="errors.title" x-text="errors.title" class="text-sm text-red-600 mt-1"></p>
                         </div>
 
                         <div class="group">
@@ -192,6 +202,15 @@
                                         <div class="text-xs font-medium">Esai</div>
                                     </div>
                                 </label>
+
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="type" value="zoom" x-model="content.type" class="sr-only">
+                                    <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
+                                         :class="content.type === 'zoom' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'">
+                                        <div class="text-2xl mb-2">💻</div>
+                                        <div class="text-xs font-medium">Zoom</div>
+                                    </div>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -245,7 +264,7 @@
                                     📁 <span x-text="isType('image') ? 'Unggah Gambar' : 'Unggah Dokumen'"></span>
                                 </label>
 
-                                <div x-show="content.file_path" class="mb-4 p-4 bg-white rounded-lg border border-green-200">
+                                <div x-show="content.file_path && !uploadedFileName" class="mb-4 p-4 bg-white rounded-lg border border-green-200">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center">
                                             <div class="w-10 h-10 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mr-3">
@@ -265,11 +284,32 @@
                                     </div>
                                 </div>
 
+                                <div x-show="uploadedFileName" class="mb-4 p-4 bg-white rounded-lg border border-indigo-200">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900">File dipilih:</p>
+                                                <span class="text-indigo-600 text-sm" x-text="uploadedFileName"></span>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs">Baru</span>
+                                    </div>
+                                    {{-- Preview untuk gambar --}}
+                                    <div x-show="isType('image') && uploadedImagePreviewUrl" class="mt-4">
+                                        <img :src="uploadedImagePreviewUrl" class="max-h-48 rounded-lg mx-auto">
+                                    </div>
+                                </div>
+
                                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 transition-colors duration-300">
                                     <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                     </svg>
-                                    <input type="file" name="file_upload" id="file_upload" class="hidden">
+                                    <input type="file" name="file_upload" id="file_upload" class="hidden"
+                                        @change="handleFileUpload($event)"
+                                        :accept="isType('image') ? 'image/*' : ''">
                                     <label for="file_upload" class="cursor-pointer">
                                         <span class="text-green-600 font-medium hover:text-green-500">
                                             <span x-text="content.file_path ? 'Ganti file' : 'Pilih file'"></span>
@@ -312,6 +352,31 @@
                         </div>
                     </div>
 
+                    <div x-show="isType('zoom')" x-cloak class="animate-fadeIn">
+                        <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100 space-y-4">
+                            <div>
+                                <label for="zoom_link" class="block text-sm font-semibold text-gray-700 mb-2">🔗 Link Rapat Zoom</label>
+                                <input type="url" name="zoom_link" id="zoom_link" x-model="content.zoom_link"
+                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                                       :class="{ 'form-input-error': errors.zoom_link }"
+                                       placeholder="https://zoom.us/j/...">
+                                <p x-show="errors.zoom_link" x-text="errors.zoom_link" class="text-sm text-red-600 mt-1"></p>
+                            </div>
+                            <div>
+                                <label for="zoom_meeting_id" class="block text-sm font-semibold text-gray-700 mb-2">🆔 Meeting ID</label>
+                                <input type="text" name="zoom_meeting_id" id="zoom_meeting_id" x-model="content.zoom_meeting_id"
+                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                                       :class="{ 'form-input-error': errors.zoom_meeting_id }">
+                                <p x-show="errors.zoom_meeting_id" x-text="errors.zoom_meeting_id" class="text-sm text-red-600 mt-1"></p>
+                                </div>
+                            <div>
+                                <label for="zoom_password" class="block text-sm font-semibold text-gray-700 mb-2">🔑 Password (Opsional)</label>
+                                <input type="text" name="zoom_password" id="zoom_password" x-model="content.zoom_password"
+                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-gray-200 space-y-4 sm:space-y-0">
                         <div class="flex items-center space-x-4">
                             <a href="{{ route('courses.show', $lesson->course) }}"
@@ -336,6 +401,8 @@
 
                         <button type="button"
                                 @click="submitForm()"
+                                {{-- ✅ TAMBAHKAN :class untuk animasi goyang --}}
+                                :class="{ 'shake': formHasErrors }"
                                 class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -376,9 +443,26 @@
             return {
                 content: data.content,
                 formAction: data.content.id ? data.updateUrl : data.createUrl,
+                errors: {},
+                formHasErrors: false,
+                uploadedFileName: '',
+                uploadedImagePreviewUrl: null,
 
                 initForm() {
                     this.$watch('content.type', (newType) => this.handleTypeChange(newType));
+
+                    if (this.content.type === 'zoom' && this.content.body) {
+                        try {
+                            const zoomDetails = JSON.parse(this.content.body);
+                            this.content.zoom_link = zoomDetails.link || '';
+                            this.content.zoom_meeting_id = zoomDetails.meeting_id || '';
+                            this.content.zoom_password = zoomDetails.password || '';
+                        } catch (e) {}
+                    } else {
+                        this.content.zoom_link = '';
+                        this.content.zoom_meeting_id = '';
+                        this.content.zoom_password = '';
+                    }
 
                     // Fix quiz data conversion
                     if (this.content.quiz) {
@@ -460,10 +544,57 @@
                 },
 
                 submitForm() {
-                    if (tinymce.get('body_editor')) {
-                        tinymce.triggerSave();
+                    if (this.validate()) {
+                        if (tinymce.get('body_editor')) {
+                            tinymce.triggerSave();
+                        }
+                        document.getElementById('contentForm').submit();
+                    } else {
+                        this.formHasErrors = true;
+                        setTimeout(() => { this.formHasErrors = false; }, 820);
                     }
-                    document.getElementById('contentForm').submit();
+                },
+
+                validate() {
+                    this.errors = {};
+                    // Cek judul di Informasi Dasar
+                    if (!this.content.title || !this.content.title.trim()) {
+                        this.errors.title = 'Judul konten tidak boleh kosong.';
+                    }
+                    // Cek field lain berdasarkan tipe
+                    if (this.isType('video') && (!this.content.body || !this.content.body.trim())) {
+                        this.errors.body_video = 'URL Video tidak boleh kosong.';
+                    }
+                    if (this.isType('zoom')) {
+                        if (!this.content.zoom_link || !this.content.zoom_link.trim()) {
+                            this.errors.zoom_link = 'Link rapat tidak boleh kosong.';
+                        }
+                        if (!this.content.zoom_meeting_id || !this.content.zoom_meeting_id.trim()) {
+                            this.errors.zoom_meeting_id = 'Meeting ID tidak boleh kosong.';
+                        }
+                    }
+                    return Object.keys(this.errors).length === 0;
+                },
+
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        this.uploadedFileName = '';
+                        this.uploadedImagePreviewUrl = null;
+                        return;
+                    }
+
+                    this.uploadedFileName = file.name;
+
+                    if (this.isType('image')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.uploadedImagePreviewUrl = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        this.uploadedImagePreviewUrl = null;
+                    }
                 },
 
                 // Quiz management methods

@@ -136,21 +136,32 @@
                                                 <h4 class="text-lg font-semibold text-gray-800" x-text="lesson.title"></h4>
                                             </div>
                                         </div>
-                                        <div class="flex items-center space-x-4 flex-shrink-0">
+                                        <div class="flex items-center space-x-1 flex-shrink-0">
                                             @can('update', $course)
+                                                <!-- Tombol Duplikat -->
                                                 <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi pelajaran ini?');">
                                                     @csrf
-                                                    <button type="submit" class="text-green-600 hover:text-green-900 text-sm font-medium">Duplikat</button>
+                                                    <button type="submit" class="inline-flex items-center px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600">Duplikat</button>
                                                 </form>
-                                                <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="text-purple-600 hover:text-purple-900 text-sm">Edit</a>
+
+                                                <!-- Tombol Edit -->
+                                                <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="inline-flex items-center px-3 py-1 bg-purple-500 text-white text-xs font-semibold rounded-md hover:bg-purple-600">Edit</a>
+
+                                                <!-- Tombol Hapus -->
                                                 <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
                                                     @csrf @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Hapus</button>
+                                                    <button type="submit" class="inline-flex items-center px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600">Hapus</button>
                                                 </form>
+
+                                                <!-- Tombol Tambah Konten -->
                                                 <a :href="`/lessons/${lesson.id}/contents/create`" class="inline-flex items-center px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600">Tambah Konten</a>
                                             @endcan
+
+                                            <!-- Tombol Dropdown (panah bawah) -->
                                             <button @click="activeAccordion = (activeAccordion === lesson.id) ? null : lesson.id" class="p-1 rounded-full hover:bg-gray-200">
-                                                <svg class="w-6 h-6 text-gray-600 transition-transform" :class="{'rotate-180': activeAccordion === lesson.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                <svg class="w-6 h-6 text-gray-600 transition-transform" :class="{'rotate-180': activeAccordion === lesson.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
                                             </button>
                                         </div>
                                     </div>
@@ -191,15 +202,26 @@
                                                         {{-- Aksi untuk konten (Edit & Hapus) --}}
                                                         @can('update', $course)
                                                         <div class="flex items-center space-x-2">
+                                                            <!-- Tombol Duplikat -->
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi konten ini?');">
                                                                 @csrf
-                                                                <button type="submit" class="text-xs text-green-600 hover:text-green-900">Duplikat</button>
+                                                                <button type="submit" class="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-md hover:bg-green-200 transition ease-in-out duration-150">
+                                                                    Duplikat
+                                                                </button>
                                                             </form>
-                                                            <a :href="`/lessons/${lesson.id}/contents/${content.id}/edit`" class="text-xs text-purple-600 hover:text-purple-900">Edit</a>
+
+                                                            <!-- Tombol Edit -->
+                                                            <a :href="`/lessons/${lesson.id}/contents/${content.id}/edit`" class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-md hover:bg-purple-200 transition ease-in-out duration-150">
+                                                                Edit
+                                                            </a>
+
+                                                            <!-- Tombol Hapus -->
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
                                                                 @csrf
                                                                 @method('DELETE')
-                                                                <button type="submit" class="text-xs text-red-600 hover:text-red-900">Hapus</button>
+                                                                <button type="submit" class="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-md hover:bg-red-200 transition ease-in-out duration-150">
+                                                                    Hapus
+                                                                </button>
                                                             </form>
                                                         </div>
                                                         @endcan

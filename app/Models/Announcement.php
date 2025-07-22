@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class Announcement extends Model
 {
@@ -24,6 +25,7 @@ class Announcement extends Model
         'published_at',
         'expires_at',
         'is_active',
+        'target_roles',
     ];
 
     protected $casts = [
@@ -31,6 +33,7 @@ class Announcement extends Model
         'expires_at' => 'datetime',
         'target_roles' => 'array',
         'is_active' => 'boolean',
+        'target_roles' => 'array',
     ];
 
     /**
@@ -103,16 +106,13 @@ class Announcement extends Model
     /**
      * Scope untuk pengumuman yang visible untuk user tertentu
      */
-    public function scopeForUser(Builder $query, $user): Builder
+    public function scopeForUser($query, User $user)
     {
-        $userRoles = $user->getRoleNames()->toArray();
-
-        return $query->active()
-            ->where(function ($q) use ($userRoles) {
-                $q->whereNull('target_roles');
-                foreach ($userRoles as $role) {
-                    $q->orWhereJsonContains('target_roles', $role);
-                }
+        return $query->where('is_active', true)
+            ->where('created_at', '>=', $user->created_at)
+            ->where(function ($q) use ($user) {
+                $q->whereNull('target_roles')
+                  ->orWhereJsonContains('target_roles', $user->getRoleNames());
             });
     }
 
@@ -209,12 +209,12 @@ class Announcement extends Model
      */
     public function getLevelColorAttribute(): string
     {
-        return match ($this->level) {
+        return [
+            'info' => 'blue',
             'success' => 'green',
             'warning' => 'yellow',
             'danger' => 'red',
-            default => 'blue',
-        };
+        ][$this->level] ?? 'gray';
     }
 
     /**
@@ -279,5 +279,20 @@ class Announcement extends Model
             ->join(', ');
 
         return $formatted;
+    }
+
+    public function getIsReadByUserAttribute(): bool
+    {
+        if (!Auth::check()) {
+            return true; // Anggap sudah dibaca jika tidak login
+        }
+
+        // Cek relasi readAnnouncements pada model User
+        return Auth::user()->readAnnouncements->contains($this->id);
+    }
+
+    public function readers()
+    {
+        return $this->belongsToMany(User::class, 'announcement_reads');
     }
 }

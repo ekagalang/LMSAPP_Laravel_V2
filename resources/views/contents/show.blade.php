@@ -446,6 +446,44 @@
                                             @endif
                                         </div>
                                     </div>
+                                    
+                                @elseif($content->type == 'zoom')
+                                    @php
+                                        $zoomDetails = json_decode($content->body, true);
+                                    @endphp
+                                    <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-8 border border-blue-100">
+                                        <div class="text-center mb-6">
+                                            <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 011.45.89V16.11a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                            </div>
+                                            <h3 class="text-2xl font-bold text-gray-900 mb-2">Rapat Online via Zoom</h3>
+                                            <p class="text-gray-600 mb-4">Gunakan detail di bawah ini untuk bergabung ke dalam rapat.</p>
+                                        </div>
+
+                                        <div class="bg-white rounded-xl p-6 mb-6 divide-y divide-gray-200">
+                                            <div class="flex items-center py-3">
+                                                <span class="font-semibold w-32 text-gray-600">Link Rapat</span>
+                                                <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" class="text-blue-600 hover:underline break-all">{{ $zoomDetails['link'] ?? 'Tidak tersedia' }}</a>
+                                            </div>
+                                            <div class="flex items-center py-3">
+                                                <span class="font-semibold w-32 text-gray-600">Meeting ID</span>
+                                                <span class="text-gray-800 font-medium">{{ $zoomDetails['meeting_id'] ?? 'Tidak tersedia' }}</span>
+                                            </div>
+                                            @if(!empty($zoomDetails['password']))
+                                            <div class="flex items-center py-3">
+                                                <span class="font-semibold w-32 text-gray-600">Password</span>
+                                                <span class="text-gray-800 font-medium">{{ $zoomDetails['password'] }}</span>
+                                            </div>
+                                            @endif
+                                        </div>
+
+                                        <div class="text-center">
+                                            <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                                Gabung Sekarang
+                                            </a>
+                                        </div>
+                                    </div>
                                 @endif
                             </div>
 

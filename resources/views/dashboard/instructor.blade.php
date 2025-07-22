@@ -5,130 +5,18 @@
                 {{ __('Dashboard Instruktur') }}
             </h2>
             <div class="flex items-center space-x-4">
-                <!-- Notification Component -->
-                <div class="relative notification-container">
-                    <!-- Notification Bell Icon -->
-                    <button
-                        type="button"
-                        class="notification-bell relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200 ease-in-out transform hover:scale-105"
-                        onclick="toggleNotifications()"
-                        id="notificationButton"
-                    >
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
-                        </svg>
-
-                        <!-- Notification Badge -->
-                        <span
-                            class="notification-badge absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full animate-pulse"
-                            id="notificationBadge"
-                        >
-                            <span id="notificationCount">{{ $stats['essays']['pending'] + 2 }}</span>
+                <!-- ✅ PERBAIKAN: Komponen Notifikasi Fungsional -->
+                <a href="{{ route('announcements.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
+                    </svg>
+                    {{-- ✅ PERBAIKAN: Panggil sebagai properti, bukan metode --}}
+                    @if(Auth::user()->unread_announcements_count > 0)
+                        <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+                            {{ Auth::user()->unread_announcements_count }}
                         </span>
-
-                        <!-- Pulse Animation for New Notifications -->
-                        <span class="notification-pulse absolute top-0 right-0 block w-3 h-3 bg-red-400 rounded-full animate-ping" id="notificationPulse"></span>
-                    </button>
-
-                    <!-- Notification Dropdown -->
-                    <div
-                        class="notification-dropdown absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden transform opacity-0 scale-95 transition-all duration-200 ease-in-out"
-                        id="notificationDropdown"
-                        style="display: none;"
-                    >
-                        <!-- Header -->
-                        <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-gray-900">Notifikasi Instruktur</h3>
-                                <button
-                                    onclick="markAllAsRead()"
-                                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
-                                >
-                                    Tandai Semua Dibaca
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Notifications List -->
-                        <div class="notification-list max-h-80 overflow-y-auto" id="notificationList">
-                            <!-- Pending Essays Notification -->
-                            @if($stats['essays']['pending'] > 0)
-                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer unread">
-                                <div class="flex items-start space-x-3">
-                                    <div class="flex-shrink-0">
-                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
-                                        </span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between">
-                                            <p class="text-sm font-medium text-gray-900 truncate">Esai Menunggu Penilaian</p>
-                                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                        </div>
-                                        <p class="text-sm text-gray-600 mt-1">{{ $stats['essays']['pending'] }} esai dari peserta menunggu penilaian Anda.</p>
-                                        <p class="text-xs text-gray-400 mt-2">Baru saja</p>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-
-                            <!-- New Discussions Notification -->
-                            @if($stats['discussions']['recent'] > 0)
-                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer unread">
-                                <div class="flex items-start space-x-3">
-                                    <div class="flex-shrink-0">
-                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                                            </svg>
-                                        </span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between">
-                                            <p class="text-sm font-medium text-gray-900 truncate">Diskusi Baru</p>
-                                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                        </div>
-                                        <p class="text-sm text-gray-600 mt-1">{{ $stats['discussions']['recent'] }} diskusi baru dimulai peserta minggu ini.</p>
-                                        <p class="text-xs text-gray-400 mt-2">2 jam yang lalu</p>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-
-                            <!-- New Students Notification -->
-                            @if($stats['students']['recent_enrollments'] > 0)
-                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer">
-                                <div class="flex items-start space-x-3">
-                                    <div class="flex-shrink-0">
-                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                                            </svg>
-                                        </span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between">
-                                            <p class="text-sm font-medium text-gray-900 truncate">Peserta Baru</p>
-                                        </div>
-                                        <p class="text-sm text-gray-600 mt-1">{{ $stats['students']['recent_enrollments'] }} peserta baru mendaftar di kursus Anda bulan ini.</p>
-                                        <p class="text-xs text-gray-400 mt-2">1 hari yang lalu</p>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-                        </div>
-
-                        <!-- Footer -->
-                        <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
-                            <a href="#" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
-                                Lihat Semua Notifikasi
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
+                    @endif
+                </a>
                 <div class="text-sm text-gray-500">
                     {{ now()->format('l, d F Y') }}
                 </div>
@@ -409,7 +297,7 @@
     </div>
 
     <!-- Notification Toast Container -->
-    <div id="notificationToasts" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="notificationToasts" class="fixed top-4 right-4 z-50 space-y-2 w-full max-w-sm"></div>
 
     @push('styles')
     <style>

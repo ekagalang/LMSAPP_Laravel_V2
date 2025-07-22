@@ -5,102 +5,18 @@
                 {{ __('Dashboard Peserta') }}
             </h2>
             <div class="flex items-center space-x-4">
-                <!-- Notification Component -->
-                <div class="relative notification-container">
-                    <!-- Notification Bell Icon -->
-                    <button
-                        type="button"
-                        class="notification-bell relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200 ease-in-out transform hover:scale-105"
-                        onclick="toggleNotifications()"
-                        id="notificationButton"
-                    >
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
-                        </svg>
-
-                        <!-- Notification Badge -->
-                        <span
-                            class="notification-badge absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full animate-pulse"
-                            id="notificationBadge"
-                        >
-                            <span id="notificationCount">2</span>
+                <!-- ✅ PERBAIKAN: Komponen Notifikasi Fungsional -->
+                <a href="{{ route('announcements.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
+                    </svg>
+                    {{-- ✅ PERBAIKAN: Panggil sebagai properti, bukan metode --}}
+                    @if(Auth::user()->unread_announcements_count > 0)
+                        <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+                            {{ Auth::user()->unread_announcements_count }}
                         </span>
-
-                        <!-- Pulse Animation for New Notifications -->
-                        <span class="notification-pulse absolute top-0 right-0 block w-3 h-3 bg-red-400 rounded-full animate-ping" id="notificationPulse"></span>
-                    </button>
-
-                    <!-- Notification Dropdown -->
-                    <div
-                        class="notification-dropdown absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden transform opacity-0 scale-95 transition-all duration-200 ease-in-out"
-                        id="notificationDropdown"
-                        style="display: none;"
-                    >
-                        <!-- Header -->
-                        <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-teal-50">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-gray-900">Notifikasi Peserta</h3>
-                                <button
-                                    onclick="markAllAsRead()"
-                                    class="text-xs text-green-600 hover:text-green-800 font-medium transition-colors"
-                                >
-                                    Tandai Semua Dibaca
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Notifications List -->
-                        <div class="notification-list max-h-80 overflow-y-auto" id="notificationList">
-                            <!-- Sample notifications for participant -->
-                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer unread">
-                                <div class="flex items-start space-x-3">
-                                    <div class="flex-shrink-0">
-                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                        </span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between">
-                                            <p class="text-sm font-medium text-gray-900 truncate">Kursus Baru Tersedia</p>
-                                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                        </div>
-                                        <p class="text-sm text-gray-600 mt-1">Kursus "Advanced JavaScript" telah tersedia untuk diikuti.</p>
-                                        <p class="text-xs text-gray-400 mt-2">5 menit yang lalu</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="notification-item p-4 border-b border-gray-100 cursor-pointer unread">
-                                <div class="flex items-start space-x-3">
-                                    <div class="flex-shrink-0">
-                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 text-yellow-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                            </svg>
-                                        </span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between">
-                                            <p class="text-sm font-medium text-gray-900 truncate">Deadline Assignment</p>
-                                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                        </div>
-                                        <p class="text-sm text-gray-600 mt-1">Jangan lupa submit essay sebelum midnight hari ini.</p>
-                                        <p class="text-xs text-gray-400 mt-2">1 jam yang lalu</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Footer -->
-                        <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
-                            <a href="#" class="text-sm text-green-600 hover:text-green-800 font-medium transition-colors">
-                                Lihat Semua Notifikasi
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                    @endif
+                </a>
 
                 <div class="text-sm text-gray-500">
                     {{ now()->format('l, d F Y') }}
@@ -496,7 +412,7 @@
     </div>
 
     <!-- Notification Toast Container -->
-    <div id="notificationToasts" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="notificationToasts" class="fixed top-4 right-4 z-50 space-y-2 w-full max-w-sm"></div>
 
     @push('styles')
     <style>

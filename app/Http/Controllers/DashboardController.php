@@ -25,7 +25,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Get announcements for all users with error handling
-        $announcements = $this->getAnnouncementsForUser($user);
+        $announcements = $this->getDashboardAnnouncements($user);
 
         try {
             if ($user->hasRole('super-admin')) {
@@ -69,29 +69,17 @@ class DashboardController extends Controller
      * Get announcements for user with error handling
      * 🚨 PERBAIKAN: Gunakan paginate() jika ingin menggunakan .total() di view
      */
-    private function getAnnouncementsForUser($user)
+    private function getDashboardAnnouncements($user)
     {
         try {
-            // Check if announcements table exists and has required columns
-            if (!DB::getSchemaBuilder()->hasTable('announcements')) {
-                return collect()->paginate(5); // Return paginated empty collection
-            }
-
-            $columns = DB::getSchemaBuilder()->getColumnListing('announcements');
-
-            // If we don't have the required columns, return empty collection
-            if (!in_array('is_active', $columns)) {
-                Log::warning('Announcements table missing is_active column');
-                return collect()->paginate(5); // Return paginated empty collection
-            }
-
-            // 🚨 PERBAIKAN: Gunakan paginate() untuk mendukung .total() di view
+            // Gunakan scope forUser yang sudah kita perbaiki
             return Announcement::forUser($user)
                 ->latest()
-                ->paginate(5); // Ganti dari take(5)->get() ke paginate(5)
+                ->take(1) // <-- Ambil hanya satu
+                ->get();
         } catch (\Exception $e) {
-            Log::error('Error fetching announcements: ' . $e->getMessage());
-            return collect()->paginate(5); // Return paginated empty collection
+            Log::error('Error fetching announcements for dashboard: ' . $e->getMessage());
+            return collect(); // Kembalikan koleksi kosong jika error
         }
     }
 
@@ -562,7 +550,7 @@ class DashboardController extends Controller
             // Get courses taught by this instructor
             $instructorCourses = Course::whereHas('instructors', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
-            })->with(['lessons.contents', 'enrolledUsers', 'lessons.quizzes'])->get();
+            })->with(['enrolledUsers'])->get();
 
             $courseIds = $instructorCourses->pluck('id');
 
@@ -638,21 +626,15 @@ class DashboardController extends Controller
             // Course performance data
             $coursePerformance = $instructorCourses->map(function ($course) {
                 $totalStudents = $course->enrolledUsers->count();
-                $totalContents = $course->lessons->sum(function ($lesson) {
-                    return $lesson->contents->count();
-                });
+                $averageProgress = 0;
 
-                if ($totalStudents > 0 && $totalContents > 0) {
-                    $completedContents = DB::table('content_user')
-                        ->join('contents', 'content_user.content_id', '=', 'contents.id')
-                        ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                        ->where('lessons.course_id', $course->id)
-                        ->where('content_user.completed', true)
-                        ->count();
-
-                    $averageProgress = round(($completedContents / ($totalStudents * $totalContents)) * 100, 1);
-                } else {
-                    $averageProgress = 0;
+                if ($totalStudents > 0) {
+                    // Panggil fungsi getProgressForCourse yang sudah benar untuk setiap peserta
+                    $totalProgressSum = $course->enrolledUsers->sum(function ($participant) use ($course) {
+                        return $participant->getProgressForCourse($course)['progress_percentage'];
+                    });
+                    // Hitung rata-ratanya
+                    $averageProgress = round($totalProgressSum / $totalStudents);
                 }
 
                 return [
