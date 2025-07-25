@@ -90,8 +90,8 @@
             <div class="bg-white rounded-xl card-shadow overflow-hidden bounce-in">
                 <!-- Status Banner -->
                 @php
-                    $percentage = $quiz->total_marks > 0 ? round(($quizAttempt->score / $quiz->total_marks) * 100) : 0;
-                    $isPassed = $quizAttempt->passed;
+                    $percentage = $quiz->total_marks > 0 ? round(($attempt->score / $quiz->total_marks) * 100) : 0;
+                    $isPassed = $attempt->passed;
                 @endphp
                 
                 <div class="{{ $isPassed ? 'success-gradient' : 'fail-gradient' }} text-white p-6 text-center">
@@ -110,14 +110,14 @@
                         <div class="flex items-center space-x-6 mb-6 lg:mb-0">
                             <div class="score-circle" style="background: conic-gradient({{ $isPassed ? '#4ade80' : '#ef4444' }} 0deg {{ $percentage * 3.6 }}deg, #e5e7eb {{ $percentage * 3.6 }}deg 360deg);">
                                 <div class="score-text text-center">
-                                    <div class="text-2xl font-bold text-gray-800">{{ number_format($quizAttempt->score, 0) }}</div>
+                                    <div class="text-2xl font-bold text-gray-800">{{ number_format($attempt->score, 0) }}</div>
                                     <div class="text-sm text-gray-500">dari {{ $quiz->total_marks }}</div>
                                 </div>
                             </div>
                             <div>
                                 <h3 class="text-xl font-semibold text-gray-800 mb-2">Skor Anda</h3>
                                 <div class="flex items-center space-x-4">
-                                    <span class="text-3xl font-bold {{ $isPassed ? 'text-green-500' : 'text-red-500' }}">{{ number_format($quizAttempt->score, 2) }}</span>
+                                    <span class="text-3xl font-bold {{ $isPassed ? 'text-green-500' : 'text-red-500' }}">{{ number_format($attempt->score, 2) }}</span>
                                     <span class="text-gray-400">/</span>
                                     <span class="text-xl text-gray-600">{{ $quiz->total_marks }}</span>
                                 </div>
@@ -138,7 +138,7 @@
                                 @php
                                     $correctAnswers = 0;
                                     foreach($quiz->questions as $question) {
-                                        $userAnswer = $quizAttempt->answers->where('question_id', $question->id)->first();
+                                        $userAnswer = $attempt->answers->where('question_id', $question->id)->first();
                                         if($userAnswer && $userAnswer->option && $userAnswer->option->is_correct) {
                                             $correctAnswers++;
                                         }
@@ -167,7 +167,7 @@
                                 <i class="fas fa-clock text-gray-500"></i>
                                 <div>
                                     <div class="text-sm text-gray-600">Waktu Selesai</div>
-                                    <div class="font-semibold">{{ $quizAttempt->formatted_completed_at ?? 'Just now' }}</div>
+                                    <div class="font-semibold">{{ $attempt->formatted_completed_at ?? 'Just now' }}</div>
                                 </div>
                             </div>
                         </div>
@@ -176,7 +176,7 @@
                                 <i class="fas fa-hourglass-half text-gray-500"></i>
                                 <div>
                                     <div class="text-sm text-gray-600">Durasi</div>
-                                    <div class="font-semibold">{{ $quizAttempt->duration ?? '-' }}</div>
+                                    <div class="font-semibold">{{ $attempt->duration ?? '-' }}</div>
                                 </div>
                             </div>
                         </div>
@@ -217,7 +217,7 @@
                                         <p class="text-sm text-gray-600 mb-3">({{ $question->marks }} Poin)</p>
 
                                         @php
-                                            $userAnswer = $quizAttempt->answers->where('question_id', $question->id)->first();
+                                            $userAnswer = $attempt->answers->where('question_id', $question->id)->first();
                                             $correctOption = $question->options->where('is_correct', true)->first();
                                         @endphp
 
@@ -323,7 +323,7 @@
                         </a>
                         
                         <!-- Tombol Coba Lagi - HANYA JIKA TIDAK LULUS -->
-                        @if(!$isPassed)
+                        @if(!$hasPassedQuizBefore)
                             <a href="{{ route('quizzes.start', $quiz) }}" 
                                class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold btn-hover flex items-center justify-center space-x-2">
                                 <i class="fas fa-redo"></i>
@@ -393,12 +393,6 @@
                                     <span class="text-green-600 font-semibold text-sm">1</span>
                                 </div>
                                 <span class="text-sm text-gray-700">Lanjutkan ke materi berikutnya</span>
-                            </div>
-                            <div class="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span class="text-blue-600 font-semibold text-sm">2</span>
-                                </div>
-                                <span class="text-sm text-gray-700">Bagikan pencapaian Anda</span>
                             </div>
                         @else
                             <div class="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">

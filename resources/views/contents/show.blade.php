@@ -421,27 +421,33 @@
                                         @endif
 
                                         <div class="text-center">
-                                            @if($hasPassedAttempt)
-                                                <div class="mb-4 p-4 bg-green-100 text-green-800 rounded-xl">
+                                            {{-- Gunakan variabel $hasPassedQuizBefore dari controller --}}
+                                            @if($hasPassedQuizBefore)
+                                                {{-- Jika sudah pernah lulus, tampilkan pesan sukses dan link ke hasil --}}
+                                                <div class="mb-4 p-4 bg-green-100 text-green-800 rounded-xl flex items-center justify-center">
                                                     <svg class="w-6 h-6 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                                     </svg>
-                                                    Selamat! Anda telah lulus quiz ini.
+                                                    <span>Selamat! Anda telah lulus kuis ini.</span>
                                                 </div>
-                                                <a href="{{ route('quizzes.start', $content->quiz) }}"
-                                                   class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
-                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                                    </svg>
-                                                    Coba Lagi
-                                                </a>
+                                                @php
+                                                    $lastPassedAttempt = $userAttempts->where('passed', true)->sortByDesc('completed_at')->first();
+                                                @endphp
+                                                @if($lastPassedAttempt)
+                                                    <a href="{{ route('quizzes.result', ['quiz' => $content->quiz, 'attempt' => $lastPassedAttempt]) }}"
+                                                    class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                        Lihat Hasil Kelulusan
+                                                    </a>
+                                                @endif
                                             @else
+                                                {{-- Jika belum pernah lulus, tampilkan tombol Mulai/Coba Lagi --}}
                                                 <a href="{{ route('quizzes.start', $content->quiz) }}"
-                                                   class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                                class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                                                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.01M15 10h1.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                     </svg>
-                                                    Mulai Quiz
+                                                    {{ $userAttempts->isNotEmpty() ? 'Coba Lagi' : 'Mulai Kuis' }}
                                                 </a>
                                             @endif
                                         </div>
@@ -523,7 +529,7 @@
              }">
             @php
                 // ✅ PERBAIKAN: Mendapatkan konten dalam urutan yang benar
-                $allContents = $unlockedContents; // Gunakan data yang sudah diurutkan dari controller
+                $allContents = $orderedContents; // Gunakan data yang sudah diurutkan dari controller
                 $currentIndex = $allContents->search(function($item) use ($content) {
                     return $item->id === $content->id;
                 });

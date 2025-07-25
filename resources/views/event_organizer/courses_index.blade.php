@@ -51,7 +51,8 @@
                         </div>
                         <div>
                             <p class="text-purple-100 text-sm">Rata-rata Progres</p>
-                            <p class="text-2xl font-bold">75%</p>
+                            {{-- PERBAIKAN: Gunakan variabel dari controller --}}
+                            <p class="text-2xl font-bold">{{ $overallAverageProgress }}%</p>
                         </div>
                     </div>
                 </div>
@@ -117,22 +118,25 @@
                                 <div class="mb-4">
                                     <div class="flex justify-between text-sm mb-1">
                                         <span class="text-gray-600">Progres Keseluruhan</span>
-                                        <span class="font-semibold text-gray-900">{{ rand(65, 95) }}%</span>
+                                        {{-- PERBAIKAN: Gunakan data progres rata-rata per kursus --}}
+                                        <span class="font-semibold text-gray-900">{{ $course->average_progress ?? 0 }}%</span>
                                     </div>
                                     <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-500" style="width: {{ rand(65, 95) }}%"></div>
+                                        <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-500" style="width: {{ $course->average_progress ?? 0 }}%"></div>
                                     </div>
                                 </div>
 
                                 <!-- Stats -->
                                 <div class="grid grid-cols-2 gap-4 mb-6">
                                     <div class="text-center">
-                                        <p class="text-2xl font-bold text-gray-900">{{ rand(15, 50) }}</p>
+                                        {{-- PERBAIKAN: Gunakan data dari withCount --}}
+                                        <p class="text-2xl font-bold text-gray-900">{{ $course->enrolled_users_count }}</p>
                                         <p class="text-xs text-gray-500">Siswa Aktif</p>
                                     </div>
                                     <div class="text-center">
-                                        <p class="text-2xl font-bold text-gray-900">{{ rand(8, 25) }}</p>
-                                        <p class="text-xs text-gray-500">Modul</p>
+                                        {{-- PERBAIKAN: Gunakan data dari withCount --}}
+                                        <p class="text-2xl font-bold text-gray-900">{{ $course->lessons_count }}</p>
+                                        <p class="text-xs text-gray-500">Pelajaran</p>
                                     </div>
                                 </div>
 

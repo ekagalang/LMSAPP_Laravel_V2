@@ -30,7 +30,7 @@ class QuizController extends Controller
             'startAttempt',
             'submitAttempt',
             'showResult',
-            'checkTimeRemaining', // ✅ BARU: Tambahkan method untuk cek waktu tersisa
+            'checkTimeRemaining',
             'saveProgress',
         ]);
     }
@@ -272,6 +272,30 @@ class QuizController extends Controller
         if (!$user->hasRole('participant')) {
             abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
         }
+        
+        // =================================================================
+        // PERUBAHAN DIMULAI DI SINI
+        // =================================================================
+        // Cek apakah pengguna sudah pernah lulus kuis ini dari percobaan sebelumnya.
+        $hasPassedQuizBefore = $user->quizAttempts()
+                                    ->where('quiz_id', $quiz->id)
+                                    ->where('passed', true)
+                                    ->exists();
+
+        // Jika sudah pernah lulus, blokir dan arahkan ke halaman hasil.
+        if ($hasPassedQuizBefore) {
+            $lastPassedAttempt = $user->quizAttempts()
+                                      ->where('quiz_id', $quiz->id)
+                                      ->where('passed', true)
+                                      ->latest('completed_at')
+                                      ->first();
+            
+            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $lastPassedAttempt])
+                   ->with('info', 'Anda sudah lulus kuis ini dan tidak dapat mengerjakannya kembali.');
+        }
+        // =================================================================
+        // PERUBAHAN SELESAI DI SINI
+        // =================================================================
 
         if ($quiz->status !== 'published') {
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
@@ -579,22 +603,54 @@ class QuizController extends Controller
      */
     public function showResult(Quiz $quiz, QuizAttempt $attempt)
     {
-        if ($attempt->user_id !== Auth::id() || $attempt->quiz_id !== $quiz->id) {
+        $user = Auth::user();
+
+        if ($attempt->user_id !== $user->id || $attempt->quiz_id !== $quiz->id) {
             abort(403, 'Akses ditolak.');
         }
 
         if (!$attempt->completed_at) {
             return redirect()->route('quizzes.start_attempt', $quiz)->with('error', 'Percobaan kuis belum selesai.');
         }
-
-        // [PERBAIKAN] Ambil data content yang terkait dengan quiz ini
-        $content = Content::where('quiz_id', $quiz->id)->firstOrFail();
-
-        $attempt->load('answers.question.options', 'user');
-        $quizAttempt = $attempt;
         
-        // [PERBAIKAN] Kirim variabel $content ke view
-        return view('quizzes.result', compact('quiz', 'quizAttempt', 'content'));
+        $attempt->load('answers.question.options', 'user');
+
+        // =================================================================
+        // PERUBAHAN DIMULAI DI SINI
+        // =================================================================
+
+        // Ambil data content yang terkait dengan quiz ini
+        $content = Content::where('quiz_id', $quiz->id)->firstOrFail();
+        
+        // Ambil skor dari attempt yang sudah disimpan
+        $score = $attempt->score;
+        $total_marks = $quiz->total_marks;
+        $score_percentage = ($total_marks > 0) ? ($score / $total_marks) * 100 : 0;
+        
+        // Cek apakah attempt saat ini lulus
+        $passed = $attempt->passed;
+
+        // Cek apakah pengguna PERNAH lulus kuis ini sebelumnya dari semua attempt
+        $hasPassedQuizBefore = $user->quizAttempts()
+                                    ->where('quiz_id', $quiz->id)
+                                    ->where('passed', true) // Cek kolom 'passed' yang sudah ada
+                                    ->exists();
+
+        // Kirim semua data yang dibutuhkan ke view
+        return view('quizzes.result', compact(
+            'quiz', 
+            'attempt', 
+            'content', 
+            'score',
+            'total_marks',
+            'score_percentage',
+            'passed',
+            'hasPassedQuizBefore' // Variabel baru untuk view
+        ));
+        
+        // =================================================================
+        // PERUBAHAN SELESAI DI SINI
+        // =================================================================
     }
 
     /**
@@ -625,6 +681,28 @@ class QuizController extends Controller
         $this->authorize('start', $quiz);
 
         $user = Auth::user();
+        
+        // =================================================================
+        // PENAMBAHAN LOGIKA YANG SAMA DI SINI
+        // =================================================================
+        $hasPassedQuizBefore = $user->quizAttempts()
+                                    ->where('quiz_id', $quiz->id)
+                                    ->where('passed', true)
+                                    ->exists();
+
+        if ($hasPassedQuizBefore) {
+            $lastPassedAttempt = $user->quizAttempts()
+                                      ->where('quiz_id', $quiz->id)
+                                      ->where('passed', true)
+                                      ->latest('completed_at')
+                                      ->first();
+            
+            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $lastPassedAttempt])
+                   ->with('info', 'Anda sudah lulus kuis ini dan tidak dapat mengerjakannya kembali.');
+        }
+        // =================================================================
+        // AKHIR PENAMBAHAN
+        // =================================================================
 
         if ($quiz->status !== 'published') {
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');

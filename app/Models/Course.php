@@ -71,4 +71,22 @@ class Course extends Model
     {
         return $this->belongsToMany(User::class, 'course_event_organizer');
     }
+
+    public function getAverageProgress(): int
+    {
+        $enrolledUsers = $this->enrolledUsers()->with('completedContents')->get();
+        $totalUsers = $enrolledUsers->count();
+
+        if ($totalUsers === 0) {
+            return 0;
+        }
+
+        $totalProgressSum = 0;
+        foreach ($enrolledUsers as $user) {
+            $progressData = $user->getProgressForCourse($this);
+            $totalProgressSum += $progressData['progress_percentage'];
+        }
+
+        return round($totalProgressSum / $totalUsers);
+    }
 }

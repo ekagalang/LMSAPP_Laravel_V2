@@ -25,39 +25,68 @@ trait Duplicateable
 
             // Save the replicated model to get a new ID
             $newModel->push();
+            
+            // =================================================================
+            // PERBAIKAN: Logika khusus untuk duplikasi relasi Quiz secara mendalam
+            // =================================================================
+            // Cek apakah model ini adalah Content dan memiliki Quiz
+            if ($this instanceof \App\Models\Content && $this->quiz) {
+                $originalQuiz = $this->quiz;
+                $newQuiz = $originalQuiz->replicate();
+                $newQuiz->title .= ' (Copy)';
+                $newQuiz->save();
 
-            // Load the relations we want to duplicate
+                // Hubungkan konten baru dengan kuis baru
+                $newModel->quiz_id = $newQuiz->id;
+                $newModel->save();
+
+                // Duplikasi setiap pertanyaan dan opsinya
+                foreach ($originalQuiz->questions as $originalQuestion) {
+                    $newQuestion = $originalQuestion->replicate();
+                    $newQuestion->quiz_id = $newQuiz->id;
+                    $newQuestion->save();
+
+                    foreach ($originalQuestion->options as $originalOption) {
+                        $newOption = $originalOption->replicate();
+                        $newOption->question_id = $newQuestion->id;
+                        $newOption->save();
+                    }
+                }
+            }
+            // =================================================================
+            // AKHIR PERBAIKAN
+            // =================================================================
+
+            // Load the relations we want to duplicate (untuk relasi lain)
             $this->load($this->getRelationsToDuplicate());
 
             foreach ($this->getRelations() as $relationName => $relation) {
-                // Skip if the relation is not in our duplicate list
+                // Skip relasi quiz karena sudah ditangani secara khusus di atas
+                if ($relationName === 'quiz') {
+                    continue;
+                }
+                
                 if (!in_array($relationName, $this->getRelationsToDuplicate())) {
                     continue;
                 }
                 
                 $relationType = get_class($this->{$relationName}());
 
-                // ✅ BARU: Handle BelongsToMany relations (e.g., Course -> Instructors)
                 if ($relationType === 'Illuminate\Database\Eloquent\Relations\BelongsToMany') {
-                    // We don't duplicate the related models (Users), just the relationship.
                     $pivotData = $this->{$relationName}()->get()->pluck('id');
                     $newModel->{$relationName}()->sync($pivotData);
-                    continue; // Continue to next relation
+                    continue;
                 }
 
-                // For HasMany relations (e.g., a Course has many Lessons)
                 if ($relation instanceof \Illuminate\Database\Eloquent\Collection) {
                     foreach ($relation as $relatedModel) {
-                        $newChild = $relatedModel->duplicate(); // Recursive call
+                        $newChild = $relatedModel->duplicate();
                         $newModel->{$relationName}()->save($newChild);
                     }
                 }
-                // For BelongsTo or HasOne relations (e.g., a Content has one Quiz)
                 elseif ($relation instanceof Model) {
-                    $newRelatedModel = $relation->duplicate(); // Recursive call
-                    
+                    $newRelatedModel = $relation->duplicate();
                     $foreignKeyName = $this->{$relationName}()->getForeignKeyName();
-                    
                     $newModel->{$foreignKeyName} = $newRelatedModel->id;
                     $newModel->save();
                 }

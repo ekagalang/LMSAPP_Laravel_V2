@@ -25,28 +25,23 @@ class ContentController extends Controller
         // Otorisasi dasar: pastikan pengguna terdaftar di kursus
         $this->authorize('view', $course);
 
-        // ✅ PERBAIKAN: Ambil semua konten dalam urutan yang benar dengan method yang diperbaiki
         $orderedContents = $this->getOrderedContents($course);
-
-        // Cek apakah konten yang diminta sudah terbuka (unlocked)
         $unlockedContents = $this->getUnlockedContents($user, $orderedContents);
 
         if (!$unlockedContents->contains('id', $content->id) && !$user->hasRole(['super-admin', 'instructor'])) {
-            // Jika konten terkunci (dan pengguna bukan admin/instruktur), kembalikan dengan pesan error.
             return redirect()->back()->with('error', 'Anda harus menyelesaikan materi sebelumnya terlebih dahulu.');
         }
 
-        // Jika lolos, kirim data yang diperlukan ke view
         $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options');
 
-        // Untuk admin/instruktur, semua konten dianggap terbuka
         if ($user->hasRole(['super-admin', 'instructor'])) {
             $unlockedContents = $orderedContents;
         }
 
-        // ✅ TAMBAHAN: Tandai konten sebagai dilihat jika participant dan bukan task
+        // =================================================================
+        // PERBAIKAN: Hapus blok ini untuk mencegah konten selesai otomatis saat dikunjungi
+        /*
         if ($user->hasRole('participant') && !in_array($content->type, ['quiz', 'essay'])) {
-            // Gunakan updateOrCreate untuk memastikan tidak ada duplikasi
             $user->completedContents()->syncWithoutDetaching([
                 $content->id => [
                     'completed' => true,
@@ -56,8 +51,23 @@ class ContentController extends Controller
                 ]
             ]);
         }
+        */
+        // =================================================================
 
-        return view('contents.show', compact('content', 'course', 'unlockedContents'));
+        $hasPassedQuizBefore = false;
+        if ($content->type === 'quiz' && $content->quiz) {
+            if ($user) {
+                $hasPassedQuizBefore = $user->quizAttempts()
+                                            ->where('quiz_id', $content->quiz->id)
+                                            ->where('passed', true)
+                                            ->exists();
+            }
+        }
+
+        // =================================================================
+        // PERBAIKAN: Kirim juga $orderedContents ke view
+        return view('contents.show', compact('content', 'course', 'unlockedContents', 'hasPassedQuizBefore', 'orderedContents'));
+        // =================================================================
     }
 
     /**
@@ -87,32 +97,13 @@ class ContentController extends Controller
         $orderedContents = $this->getOrderedContents($course);
         $unlockedContents = $this->getUnlockedContents($user, $orderedContents);
 
-        $currentIndex = $unlockedContents->search(function ($item) use ($content) {
+        $currentIndex = $orderedContents->search(function ($item) use ($content) {
             return $item->id === $content->id;
         });
 
         $nextContent = null;
-        if ($currentIndex !== false && ($currentIndex + 1) < $unlockedContents->count()) {
-            $nextContent = $unlockedContents[$currentIndex + 1];
-        }
-
-        // ✅ TAMBAHAN: Jika tidak ada next content di unlocked, cek apakah ada yang bisa di-unlock sekarang
-        if (!$nextContent) {
-            // Cek apakah ada konten selanjutnya di ordered contents (meski belum unlocked)
-            $allContents = $this->getOrderedContents($course);
-            $currentIndexInAll = $allContents->search(function ($item) use ($content) {
-                return $item->id === $content->id;
-            });
-
-            if ($currentIndexInAll !== false && ($currentIndexInAll + 1) < $allContents->count()) {
-                // Ada konten berikutnya, refresh unlocked contents untuk lihat apakah sekarang sudah terbuka
-                $refreshedUnlocked = $this->getUnlockedContents($user, $allContents);
-                $possibleNext = $allContents[$currentIndexInAll + 1];
-
-                if ($refreshedUnlocked->contains('id', $possibleNext->id)) {
-                    $nextContent = $possibleNext;
-                }
-            }
+        if ($currentIndex !== false && ($currentIndex + 1) < $orderedContents->count()) {
+            $nextContent = $orderedContents[$currentIndex + 1];
         }
 
         // Jika ada materi selanjutnya, arahkan ke sana.
@@ -122,7 +113,7 @@ class ContentController extends Controller
 
         // ✅ FITUR BARU: Cek apakah semua konten dalam kursus sudah diselesaikan
         $allContents = $this->getOrderedContents($course);
-        $isAllCompleted = true;
+        $isAllCourseCompleted = true;
 
         foreach ($allContents as $contentItem) {
             $isContentCompleted = false;
@@ -143,13 +134,13 @@ class ContentController extends Controller
             }
 
             if (!$isContentCompleted) {
-                $isAllCompleted = false;
+                $isAllCourseCompleted = false;
                 break;
             }
         }
 
         // ✅ JIKA SEMUA KONTEN SELESAI: Mark course completed dan redirect ke dashboard
-        if ($isAllCompleted) {
+        if ($isAllCourseCompleted) {
             // Mark course sebagai completed
             $user->courses()->updateExistingPivot($course->id, [
                 'completed_at' => now(),

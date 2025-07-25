@@ -12,9 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('announcements', function (Blueprint $table) {
-            // Kolom ini akan menyimpan role target dalam format JSON, e.g., ["participant", "instructor"]
-            // Jika null, berarti untuk semua role.
-            $table->json('target_roles')->nullable()->after('content');
+            // Cek dulu apakah kolomnya sudah ada atau belum
+            if (!Schema::hasColumn('announcements', 'target_roles')) {
+                $table->json('target_roles')->nullable()->after('content');
+            }
         });
     }
 

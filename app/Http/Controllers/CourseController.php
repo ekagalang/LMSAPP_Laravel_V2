@@ -46,7 +46,6 @@ class CourseController extends Controller
     {
         $this->authorize('create', Course::class);
 
-        // Validasi yang bersih dan benar
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -58,10 +57,11 @@ class CourseController extends Controller
             $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
         }
 
-        $course = new Course($validatedData);
-        $course->save();
+        // PERBAIKAN: Tambahkan user_id dari user yang sedang login
+        $validatedData['user_id'] = Auth::id();
 
-        // Otomatis tugaskan pembuat (admin) sebagai instruktur awal
+        $course = Course::create($validatedData);
+
         $course->instructors()->attach(Auth::id());
 
         return redirect()->route('courses.index')->with('success', 'Kursus berhasil dibuat.');
@@ -131,16 +131,18 @@ class CourseController extends Controller
             'clear_thumbnail' => 'nullable|boolean'
         ]);
 
-        if ($request->hasFile('thumbnail')) {
-            if ($course->thumbnail) {
-                Storage::disk('public')->delete($course->thumbnail);
-            }
-            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
-        } elseif ($request->boolean('clear_thumbnail')) {
+        if ($request->boolean('clear_thumbnail')) {
+            // Jika checkbox "Hapus" dicentang
             if ($course->thumbnail) {
                 Storage::disk('public')->delete($course->thumbnail);
             }
             $validatedData['thumbnail'] = null;
+        } elseif ($request->hasFile('thumbnail')) {
+            // Jika ada file baru yang diunggah
+            if ($course->thumbnail) {
+                Storage::disk('public')->delete($course->thumbnail);
+            }
+            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
         }
 
         $course->update($validatedData);
