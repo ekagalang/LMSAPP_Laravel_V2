@@ -42,7 +42,7 @@ Ini adalah aplikasi Learning Management System (LMS) yang dibangun menggunakan f
 
 ## 🛠️ Teknologi yang Digunakan
 
-- **Backend**: PHP 8.2+, Laravel 11
+- **Backend**: PHP 8.4+, Laravel 12
 - **Frontend**: Blade, Tailwind CSS, Alpine.js
 - **Database**: MySQL (atau database lain yang didukung Laravel)
 
@@ -56,7 +56,7 @@ Ini adalah aplikasi Learning Management System (LMS) yang dibangun menggunakan f
 
 ### Prasyarat
 
-- PHP >= 8.2
+- PHP >= 8.4
 - Composer
 - Node.js & NPM
 - MySQL/MariaDB
@@ -127,10 +127,10 @@ Setelah menjalankan `php artisan db:seed`, Anda dapat login dengan akun berikut:
 
 | Role            | Email                    | Password  |
 |-----------------|--------------------------|-----------|
-| Admin           | admin@example.com        | password  |
-| Instructor      | instructor@example.com   | password  |
-| Participant     | participant@example.com  | password  |
-| Event Organizer | eo@example.com           | password  |
+| Admin           | admin@lms.com            | password  |
+| Instructor      | instructor@lms.com       | password  |
+| Participant     | participant@lms.com      | password  |
+| Event Organizer | eo@lms.com               | password  |
 
 ---
 
