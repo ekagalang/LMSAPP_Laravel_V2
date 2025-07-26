@@ -57,11 +57,12 @@ class CourseController extends Controller
             $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
         }
 
-        // PERBAIKAN: Tambahkan user_id dari user yang sedang login
-        $validatedData['user_id'] = Auth::id();
+        // Baris yang menyebabkan error telah dihapus.
+        // $validatedData['user_id'] = Auth::id(); 
 
         $course = Course::create($validatedData);
 
+        // Menetapkan user yang login sebagai instruktur untuk course ini.
         $course->instructors()->attach(Auth::id());
 
         return redirect()->route('courses.index')->with('success', 'Kursus berhasil dibuat.');
