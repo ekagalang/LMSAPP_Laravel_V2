@@ -1,62 +1,126 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <div>
-                <a href="{{ route('courses.index') }}" class="inline-flex items-center text-gray-500 hover:text-gray-700 text-sm font-medium">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    {{ __('Kembali ke Daftar Kursus') }}
-                </a>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight mt-2">
-                    Detail Kursus: {{ $course->title }}
-                </h2>
+        <div class="flex flex-wrap justify-between items-center gap-6">
+            <div class="flex items-center space-x-4">
+                <div>
+                    <h2 class="font-bold text-2xl text-gray-900 leading-tight">
+                        {{ $course->title }}
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-1">Detail dan manajemen kursus</p>
+                </div>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex flex-wrap gap-3">
+                <a href="{{ route('courses.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-xl font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Kembali ke Daftar Kursus
+                </a>
                 @can('update', $course)
-                    <a href="{{ route('courses.discussions.index', $course) }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
+                    <a href="{{ route('courses.discussions.index', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
                         Diskusi
                     </a>
                 @endcan
                 @can('grade quizzes')
-                    <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600">
-                        {{ __('Buku Nilai & Feedback') }}
+                    <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium text-sm hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        Buku Nilai & Feedback
                     </a>
                 @endcan
                 @can('view progress reports')
-                    <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
-                        {{ __('Lihat Progres') }}
+                    <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium text-sm hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Lihat Progres
                     </a>
                 @endcan
                 @can('update', $course)
-                    <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700">
-                        {{ __('Edit Kursus') }}
+                    <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium text-sm hover:from-purple-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Edit Kursus
                     </a>
                 @endcan
             </div>
         </div>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if (session('success'))
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <span class="block sm:inline">{{ session('success') }}</span>
+                <div class="mb-8 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm" role="alert">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                        </div>
+                    </div>
                 </div>
             @endif
 
-            <div x-data="{ currentTab: 'lessons' }" class="mt-8">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button @click="currentTab = 'lessons'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'lessons', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'lessons'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pelajaran & Konten</button>
+            <div x-data="{ currentTab: 'lessons' }" class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <!-- Enhanced Tab Navigation -->
+                <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+                    <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                        <button @click="currentTab = 'lessons'" 
+                                :class="{'border-indigo-500 text-indigo-600 bg-indigo-50': currentTab === 'lessons', 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50': currentTab !== 'lessons'}" 
+                                class="whitespace-nowrap py-4 px-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                </svg>
+                                <span>Pelajaran & Konten</span>
+                            </div>
+                        </button>
                         @can('update', $course)
-                            <button @click="currentTab = 'managers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'managers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Assign Instruktur</button>
-                            <button @click="currentTab = 'event_organizers'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'event_organizers', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'event_organizers'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Assign EO</button>
-                            <button @click="currentTab = 'participants'" :class="{'border-indigo-500 text-indigo-600': currentTab === 'participants', 'border-transparent text-gray-500 hover:text-gray-700': currentTab !== 'participants'}" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Peserta Kursus</button>
+                            <button @click="currentTab = 'managers'" 
+                                    :class="{'border-indigo-500 text-indigo-600 bg-indigo-50': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50': currentTab !== 'managers'}" 
+                                    class="whitespace-nowrap py-4 px-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                    <span>Instruktur</span>
+                                </div>
+                            </button>
+                            <button @click="currentTab = 'event_organizers'" 
+                                    :class="{'border-indigo-500 text-indigo-600 bg-indigo-50': currentTab === 'event_organizers', 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50': currentTab !== 'event_organizers'}" 
+                                    class="whitespace-nowrap py-4 px-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    <span>Event Organizer</span>
+                                </div>
+                            </button>
+                            <button @click="currentTab = 'participants'" 
+                                    :class="{'border-indigo-500 text-indigo-600 bg-indigo-50': currentTab === 'participants', 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50': currentTab !== 'participants'}" 
+                                    class="whitespace-nowrap py-4 px-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                    </svg>
+                                    <span>Peserta Kursus</span>
+                                </div>
+                            </button>
                         @endcan
                     </nav>
                 </div>
 
-                <div x-show="currentTab === 'lessons'" class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900" 
+                <!-- Lessons Tab -->
+                <div x-show="currentTab === 'lessons'" class="p-8">
+                    <div 
                         x-data="{
                             lessons: {{ Js::from($course->lessons->sortBy('order')->values()) }},
                             activeAccordion: null,
@@ -78,7 +142,6 @@
                                     body: JSON.stringify({ lessons: orderedIds })
                                 });
                             },
-                            // FUNGSI BARU UNTUK KONTEN
                             moveContentUp(lessonIndex, contentIndex) {
                                 if (contentIndex === 0) return;
                                 let contents = this.lessons[lessonIndex].contents;
@@ -101,137 +164,243 @@
                             }
                         }">
                         
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-gray-900">Daftar Pelajaran</h3>
+                        <div class="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 class="text-2xl font-bold text-gray-900">Daftar Pelajaran</h3>
+                                <p class="text-gray-600 mt-1">Kelola urutan dan konten pelajaran</p>
+                            </div>
                             @can('update', $course)
-                                <a href="{{ route('courses.lessons.create', $course) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
-                                    {{ __('Tambah Pelajaran') }}
+                                <a href="{{ route('courses.lessons.create', $course) }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold text-sm hover:from-indigo-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Tambah Pelajaran
                                 </a>
                             @endcan
                         </div>
 
-                        <p x-show="lessons.length === 0" class="text-center text-gray-500">Belum ada pelajaran dalam kursus ini.</p>
+                        <div x-show="lessons.length === 0" class="text-center py-16">
+                            <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                </svg>
+                            </div>
+                            <h4 class="text-xl font-semibold text-gray-900 mb-2">Belum Ada Pelajaran</h4>
+                            <p class="text-gray-500">Tambahkan pelajaran pertama untuk memulai kursus ini.</p>
+                        </div>
 
-                        <div class="space-y-3">
+                        <div class="space-y-6">
                             <template x-for="(lesson, index) in lessons" :key="lesson.id">
-                                <div class="bg-gray-50 rounded-lg shadow-sm"
+                                <div class="bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300"
                                     :class="{ 'opacity-50 pointer-events-none': !isLessonUnlocked(lesson, index) }">
 
-                                    <div class="p-4 flex justify-between items-center">
+                                    <div class="p-6 flex justify-between items-center">
                                         <div class="flex items-center flex-grow">
                                             @can('update', $course)
-                                                <div class="flex flex-col mr-4">
-                                                    <button @click="moveUp(index)" :disabled="index === 0" :class="{'opacity-25 cursor-not-allowed': index === 0}">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                                <div class="flex flex-col mr-4 space-y-1">
+                                                    <button @click="moveUp(index)" :disabled="index === 0" 
+                                                            :class="{'opacity-25 cursor-not-allowed': index === 0}"
+                                                            class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                                        </svg>
                                                     </button>
-                                                    <button @click="moveDown(index)" :disabled="index === lessons.length - 1" :class="{'opacity-25 cursor-not-allowed': index === lessons.length - 1}">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                    <button @click="moveDown(index)" :disabled="index === lessons.length - 1" 
+                                                            :class="{'opacity-25 cursor-not-allowed': index === lessons.length - 1}"
+                                                            class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                        </svg>
                                                     </button>
                                                 </div>
                                             @endcan
-                                            <div class="flex items-center">
-                                                <template x-if="!isLessonUnlocked(lesson, index)">
-                                                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"></path></svg>
-                                                </template>
-                                                <h4 class="text-lg font-semibold text-gray-800" x-text="lesson.title"></h4>
+                                            <div class="flex items-center space-x-4">
+                                                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                                    <span class="font-bold text-white text-lg" x-text="index + 1"></span>
+                                                </div>
+                                                <div>
+                                                    <template x-if="!isLessonUnlocked(lesson, index)">
+                                                        <div class="flex items-center space-x-2 mb-1">
+                                                            <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            <span class="text-xs text-amber-600 font-medium">Terkunci</span>
+                                                        </div>
+                                                    </template>
+                                                    <h4 class="text-xl font-bold text-gray-900" x-text="lesson.title"></h4>
+                                                    <p class="text-gray-600 text-sm mt-1" x-text="lesson.description || 'Tidak ada deskripsi.'"></p>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="flex items-center space-x-1 flex-shrink-0">
+                                        <div class="flex items-center space-x-2 flex-shrink-0">
                                             @can('update', $course)
-                                                <!-- Tombol Duplikat -->
-                                                <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi pelajaran ini?');">
-                                                    @csrf
-                                                    <button type="submit" class="inline-flex items-center px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600">Duplikat</button>
-                                                </form>
+                                                <!-- Action Buttons -->
+                                                <div class="flex items-center space-x-2">
+                                                    <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi pelajaran ini?');">
+                                                        @csrf
+                                                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-lg hover:bg-green-200 transition-colors">
+                                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                                            </svg>
+                                                            Duplikat
+                                                        </button>
+                                                    </form>
 
-                                                <!-- Tombol Edit -->
-                                                <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="inline-flex items-center px-3 py-1 bg-purple-500 text-white text-xs font-semibold rounded-md hover:bg-purple-600">Edit</a>
+                                                    <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="inline-flex items-center px-3 py-2 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-200 transition-colors">
+                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                        </svg>
+                                                        Edit
+                                                    </a>
 
-                                                <!-- Tombol Hapus -->
-                                                <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="inline-flex items-center px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600">Hapus</button>
-                                                </form>
+                                                    <a :href="`/lessons/${lesson.id}/contents/create`" class="inline-flex items-center px-3 py-2 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-200 transition-colors">
+                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                                        </svg>
+                                                        Tambah Konten
+                                                    </a>
 
-                                                <!-- Tombol Tambah Konten -->
-                                                <a :href="`/lessons/${lesson.id}/contents/create`" class="inline-flex items-center px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600">Tambah Konten</a>
+                                                    <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 transition-colors">
+                                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                            </svg>
+                                                            Hapus
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             @endcan
 
-                                            <!-- Tombol Dropdown (panah bawah) -->
-                                            <button @click="activeAccordion = (activeAccordion === lesson.id) ? null : lesson.id" class="p-1 rounded-full hover:bg-gray-200">
-                                                <svg class="w-6 h-6 text-gray-600 transition-transform" :class="{'rotate-180': activeAccordion === lesson.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <!-- Expand Button -->
+                                            <button @click="activeAccordion = (activeAccordion === lesson.id) ? null : lesson.id" 
+                                                    class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                                                <svg class="w-5 h-5 text-gray-600 transition-transform" :class="{'rotate-180': activeAccordion === lesson.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                                 </svg>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div x-show="activeAccordion === lesson.id" x-collapse.duration.300ms class="border-t border-gray-200">
-                                        <div class="p-4 space-y-4">
-                                            {{-- Tampilkan deskripsi pelajaran jika ada --}}
-                                            <p class="text-gray-600 text-sm" x-text="lesson.description || 'Tidak ada deskripsi.'"></p>
-
-                                            {{-- Daftar Konten --}}
-                                            <h5 class="text-sm font-semibold text-gray-700">Daftar Konten:</h5>
-                                            <ul class="space-y-2">
-                                                {{-- Loop untuk setiap konten di dalam pelajaran --}}
-                                                <template x-for="content in lesson.contents" :key="content.id">
-                                                    <li class="flex items-center justify-between p-2 rounded-md hover:bg-gray-200 transition-colors">
-                                                        <div class="flex items-center">
-
+                                    <!-- Content List -->
+                                    <div x-show="activeAccordion === lesson.id" x-collapse.duration.300ms class="border-t border-gray-200 bg-gray-50">
+                                        <div class="p-6">
+                                            <div class="flex items-center justify-between mb-4">
+                                                <h5 class="text-lg font-semibold text-gray-800">Daftar Konten</h5>
+                                                <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium" x-text="`${lesson.contents.length} konten`"></span>
+                                            </div>
+                                            
+                                            <div class="space-y-3">
+                                                <template x-for="(content, contentIndex) in lesson.contents" :key="content.id">
+                                                    <div class="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200">
+                                                        <div class="flex items-center space-x-4">
                                                             @can('update', $course)
-                                                            <div class="flex flex-col mr-3 text-gray-400 hover:text-gray-700">
-                                                                <button @click="moveContentUp(index, contentIndex)" :disabled="contentIndex === 0" :class="{'opacity-25 cursor-not-allowed': contentIndex === 0}">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                                            <div class="flex flex-col space-y-1">
+                                                                <button @click="moveContentUp(index, contentIndex)" :disabled="contentIndex === 0" 
+                                                                        :class="{'opacity-25 cursor-not-allowed': contentIndex === 0}"
+                                                                        class="p-1 hover:bg-gray-100 rounded">
+                                                                    <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                                                    </svg>
                                                                 </button>
-                                                                <button @click="moveContentDown(index, contentIndex)" :disabled="contentIndex === lesson.contents.length - 1" :class="{'opacity-25 cursor-not-allowed': contentIndex === lesson.contents.length - 1}">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                                <button @click="moveContentDown(index, contentIndex)" :disabled="contentIndex === lesson.contents.length - 1" 
+                                                                        :class="{'opacity-25 cursor-not-allowed': contentIndex === lesson.contents.length - 1}"
+                                                                        class="p-1 hover:bg-gray-100 rounded">
+                                                                    <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                                    </svg>
                                                                 </button>
                                                             </div>
                                                             @endcan
 
-                                                            {{-- Ikon berdasarkan tipe konten --}}
-                                                            <svg class="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                <template x-if="content.type === 'text'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></template>
-                                                                <template x-if="content.type === 'video'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 011.45.89V16.11a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></template>
-                                                                <template x-if="content.type === 'quiz'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></template>
-                                                                <template x-if="!['text', 'video', 'quiz'].includes(content.type)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></template>
-                                                            </svg>
-                                                            <a :href="`/contents/${content.id}`" class="text-indigo-600 hover:underline" x-text="content.title"></a>
+                                                            <!-- Content Type Icon -->
+                                                            <div class="w-10 h-10 rounded-lg flex items-center justify-center" 
+                                                                 :class="{
+                                                                    'bg-blue-100': content.type === 'text',
+                                                                    'bg-red-100': content.type === 'video', 
+                                                                    'bg-green-100': content.type === 'quiz',
+                                                                    'bg-gray-100': !['text', 'video', 'quiz'].includes(content.type)
+                                                                 }">
+                                                                <svg class="w-5 h-5" 
+                                                                     :class="{
+                                                                        'text-blue-600': content.type === 'text',
+                                                                        'text-red-600': content.type === 'video',
+                                                                        'text-green-600': content.type === 'quiz',
+                                                                        'text-gray-600': !['text', 'video', 'quiz'].includes(content.type)
+                                                                     }"
+                                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path x-show="content.type === 'text'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                                    <path x-show="content.type === 'video'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 011.45.89V16.11a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                                                    <path x-show="content.type === 'quiz'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                                    <path x-show="!['text', 'video', 'quiz'].includes(content.type)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                                                </svg>
+                                                            </div>
+                                                            
+                                                            <div>
+                                                                <a :href="`/contents/${content.id}`" class="text-lg font-medium text-indigo-600 hover:text-indigo-800 hover:underline transition-colors" x-text="content.title"></a>
+                                                                <div class="flex items-center space-x-2 mt-1">
+                                                                    <span class="px-2 py-1 text-xs font-medium rounded-full" 
+                                                                          :class="{
+                                                                            'bg-blue-100 text-blue-700': content.type === 'text',
+                                                                            'bg-red-100 text-red-700': content.type === 'video',
+                                                                            'bg-green-100 text-green-700': content.type === 'quiz',
+                                                                            'bg-gray-100 text-gray-700': !['text', 'video', 'quiz'].includes(content.type)
+                                                                          }" 
+                                                                          x-text="content.type.charAt(0).toUpperCase() + content.type.slice(1)"></span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        {{-- Aksi untuk konten (Edit & Hapus) --}}
+                                                        
                                                         @can('update', $course)
                                                         <div class="flex items-center space-x-2">
-                                                            <!-- Tombol Duplikat -->
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi konten ini?');">
                                                                 @csrf
-                                                                <button type="submit" class="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-md hover:bg-green-200 transition ease-in-out duration-150">
+                                                                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-lg hover:bg-green-100 transition-colors">
+                                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                                                    </svg>
                                                                     Duplikat
                                                                 </button>
                                                             </form>
 
-                                                            <!-- Tombol Edit -->
-                                                            <a :href="`/lessons/${lesson.id}/contents/${content.id}/edit`" class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-md hover:bg-purple-200 transition ease-in-out duration-150">
+                                                            <a :href="`/lessons/${lesson.id}/contents/${content.id}/edit`" class="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-100 transition-colors">
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                                </svg>
                                                                 Edit
                                                             </a>
 
-                                                            <!-- Tombol Hapus -->
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-md hover:bg-red-200 transition ease-in-out duration-150">
+                                                                @csrf @method('DELETE')
+                                                                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-700 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors">
+                                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                    </svg>
                                                                     Hapus
                                                                 </button>
                                                             </form>
                                                         </div>
                                                         @endcan
-                                                    </li>
+                                                    </div>
                                                 </template>
-                                                {{-- Pesan jika tidak ada konten --}}
-                                                <template x-if="lesson.contents.length === 0">
-                                                    <li class="p-2 text-center text-sm text-gray-500">Belum ada konten untuk pelajaran ini.</li>
-                                                </template>
-                                            </ul>
+                                                
+                                                <div x-show="lesson.contents.length === 0" class="text-center py-12">
+                                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <p class="text-gray-500 text-sm">Belum ada konten untuk pelajaran ini.</p>
+                                                    @can('update', $course)
+                                                        <a :href="`/lessons/${lesson.id}/contents/create`" class="inline-flex items-center mt-3 px-4 py-2 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-200 transition-colors">
+                                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                                            </svg>
+                                                            Tambah Konten Pertama
+                                                        </a>
+                                                    @endcan
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -241,52 +410,224 @@
                 </div>
 
                 @can('update', $course)
-                    <div x-show="currentTab === 'managers'" x-cloak class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800 mb-4">Instruktur Ditugaskan</h4>
+                    <!-- Managers Tab -->
+                    <div x-show="currentTab === 'managers'" x-cloak class="p-8">
+                        <div class="mb-8">
+                            <h3 class="text-2xl font-bold text-gray-900">Manajemen Instruktur</h3>
+                            <p class="text-gray-600 mt-1">Kelola instruktur yang ditugaskan untuk kursus ini</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Current Instructors -->
+                            <div class="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl p-6 border border-red-200">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mr-3">
+                                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-red-900">Instruktur Ditugaskan</h4>
+                                        <p class="text-sm text-red-700">{{ $course->instructors->count() }} instruktur aktif</p>
+                                    </div>
+                                </div>
+                                
                                 <form action="{{ route('courses.removeInstructor', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus instruktur terpilih?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
-                                        {{-- ✅ PERUBAHAN DI SINI --}}
+                                    @csrf @method('DELETE')
+                                    <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
                                         @forelse($course->instructors as $instructor)
-                                            <div class="flex items-center">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="instructor-{{$instructor->id}}">
-                                                <label for="instructor-{{$instructor->id}}" class="ml-2">{{ $instructor->name }}</label>
+                                            <div class="flex items-center p-3 bg-white rounded-xl border border-red-200 hover:bg-red-50 transition-colors">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="instructor-{{$instructor->id}}" class="mr-3 rounded border-red-300 text-red-600 focus:ring-red-500">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($instructor->name, 0, 1)) }}</span>
+                                                    </div>
+                                                    <label for="instructor-{{$instructor->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $instructor->name }}</label>
+                                                </div>
                                             </div>
                                         @empty
-                                            <p class="text-gray-500 p-2">Belum ada instruktur.</p>
+                                            <div class="text-center py-8">
+                                                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                    </svg>
+                                                </div>
+                                                <p class="text-red-600 font-medium">Belum ada instruktur ditugaskan</p>
+                                            </div>
                                         @endforelse
                                     </div>
                                     @if($course->instructors->isNotEmpty())
-                                        <x-danger-button type="submit">Hapus Terpilih</x-danger-button>
+                                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Hapus Instruktur Terpilih
+                                        </button>
                                     @endif
                                 </form>
                             </div>
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800 mb-4">Tambahkan Instruktur Baru</h4>
+                            
+                            <!-- Available Instructors -->
+                            <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-3">
+                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-green-900">Tambahkan Instruktur</h4>
+                                        <p class="text-sm text-green-700">{{ $availableInstructors->count() }} instruktur tersedia</p>
+                                    </div>
+                                </div>
+                                
                                 <form action="{{ route('courses.addInstructor', $course) }}" method="POST">
                                     @csrf
-                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+                                    <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
                                         @forelse($availableInstructors as $instructor)
-                                            <div class="flex items-center">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="avail-instructor-{{$instructor->id}}">
-                                                <label for="avail-instructor-{{$instructor->id}}" class="ml-2">{{ $instructor->name }}</label>
+                                            <div class="flex items-center p-3 bg-white rounded-xl border border-green-200 hover:bg-green-50 transition-colors">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="avail-instructor-{{$instructor->id}}" class="mr-3 rounded border-green-300 text-green-600 focus:ring-green-500">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($instructor->name, 0, 1)) }}</span>
+                                                    </div>
+                                                    <label for="avail-instructor-{{$instructor->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $instructor->name }}</label>
+                                                </div>
                                             </div>
                                         @empty
-                                            <p class="text-gray-500 p-2">Semua instruktur sudah ditugaskan.</p>
+                                            <div class="text-center py-8">
+                                                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                </div>
+                                                <p class="text-green-600 font-medium">Semua instruktur sudah ditugaskan</p>
+                                            </div>
                                         @endforelse
                                     </div>
                                     @if($availableInstructors->isNotEmpty())
-                                        <x-primary-button type="submit">Tambahkan</x-primary-button>
+                                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Tambahkan Instruktur
+                                        </button>
                                     @endif
                                 </form>
                             </div>
                         </div>
                     </div>
 
-                    <div x-show="currentTab === 'participants'" x-cloak class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg"
+                    <!-- Event Organizers Tab -->
+                    <div x-show="currentTab === 'event_organizers'" x-cloak class="p-8">
+                        <div class="mb-8">
+                            <h3 class="text-2xl font-bold text-gray-900">Manajemen Event Organizer</h3>
+                            <p class="text-gray-600 mt-1">Kelola event organizer yang ditugaskan untuk kursus ini</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Current Event Organizers -->
+                            <div class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-200">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-3">
+                                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-purple-900">EO Ditugaskan</h4>
+                                        <p class="text-sm text-purple-700">{{ $course->eventOrganizers->count() }} EO aktif</p>
+                                    </div>
+                                </div>
+                                
+                                <form action="{{ route('courses.removeEo', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus EO terpilih?');">
+                                    @csrf @method('DELETE')
+                                    <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
+                                        @forelse($course->eventOrganizers as $organizer)
+                                            <div class="flex items-center p-3 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 transition-colors">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="organizer-{{$organizer->id}}" class="mr-3 rounded border-purple-300 text-purple-600 focus:ring-purple-500">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($organizer->name, 0, 1)) }}</span>
+                                                    </div>
+                                                    <label for="organizer-{{$organizer->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $organizer->name }}</label>
+                                                </div>
+                                            </div>
+                                        @empty
+                                            <div class="text-center py-8">
+                                                <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                    </svg>
+                                                </div>
+                                                <p class="text-purple-600 font-medium">Belum ada EO ditugaskan</p>
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                    @if($course->eventOrganizers->isNotEmpty())
+                                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Hapus EO Terpilih
+                                        </button>
+                                    @endif
+                                </form>
+                            </div>
+                            
+                            <!-- Available Event Organizers -->
+                            <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
+                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-blue-900">Tambahkan EO</h4>
+                                        <p class="text-sm text-blue-700">{{ $availableOrganizers->count() }} EO tersedia</p>
+                                    </div>
+                                </div>
+                                
+                                <form action="{{ route('courses.addEo', $course) }}" method="POST">
+                                    @csrf
+                                    <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
+                                        @forelse($availableOrganizers as $organizer)
+                                            <div class="flex items-center p-3 bg-white rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors">
+                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="avail-organizer-{{$organizer->id}}" class="mr-3 rounded border-blue-300 text-blue-600 focus:ring-blue-500">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($organizer->name, 0, 1)) }}</span>
+                                                    </div>
+                                                    <label for="avail-organizer-{{$organizer->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $organizer->name }}</label>
+                                                </div>
+                                            </div>
+                                        @empty
+                                            <div class="text-center py-8">
+                                                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                </div>
+                                                <p class="text-blue-600 font-medium">Semua EO sudah ditugaskan</p>
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                    @if($availableOrganizers->isNotEmpty())
+                                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Tambahkan EO
+                                        </button>
+                                    @endif
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Participants Tab -->
+                    <div x-show="currentTab === 'participants'" x-cloak class="p-8"
                          x-data="{
                             selectedEnrollUsers: [],
                             selectedUnenrollUsers: [],
@@ -309,97 +650,153 @@
                                 );
                             }
                         }">
-                        <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800 mb-4">Peserta Terdaftar</h4>
+                        <div class="mb-8">
+                            <h3 class="text-2xl font-bold text-gray-900">Manajemen Peserta Kursus</h3>
+                            <p class="text-gray-600 mt-1">Kelola pendaftaran dan akses peserta kursus</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Enrolled Participants -->
+                            <div class="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-200">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mr-3">
+                                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-orange-900">Peserta Terdaftar</h4>
+                                        <p class="text-sm text-orange-700">{{ $course->enrolledUsers->count() }} peserta aktif</p>
+                                    </div>
+                                </div>
+
                                 @if($course->enrolledUsers->isEmpty())
-                                    <p class="text-center text-gray-500">Belum ada peserta.</p>
+                                    <div class="text-center py-8">
+                                        <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                            </svg>
+                                        </div>
+                                        <p class="text-orange-600 font-medium">Belum ada peserta terdaftar</p>
+                                    </div>
                                 @else
                                     <form id="unenroll-form" method="POST" action="{{ route('courses.unenroll_mass', $course) }}" onsubmit="return confirm('Anda yakin ingin mencabut akses peserta terpilih?');">
-                                        @csrf
-                                        @method('DELETE')
+                                        @csrf @method('DELETE')
+                                        
+                                        <!-- Search Input -->
                                         <div class="mb-4">
-                                            <input type="text" x-model="searchTermUnenroll" placeholder="Cari peserta terdaftar..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                                            <div class="relative">
+                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                                    </svg>
+                                                </div>
+                                                <input type="text" x-model="searchTermUnenroll" placeholder="Cari peserta terdaftar..." class="block w-full pl-10 pr-3 py-2 border border-orange-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-orange-500 focus:border-orange-500">
+                                            </div>
                                         </div>
-                                        <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
+
+                                        <!-- Participants List -->
+                                        <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
                                             <template x-for="participant in filteredEnrolledParticipants" :key="participant.id">
-                                                <div class="flex items-center">
-                                                    <input type="checkbox" name="user_ids[]" :value="participant.id" x-model="selectedUnenrollUsers">
-                                                    <label class="ml-2" x-text="`${participant.name} (${participant.email})`"></label>
+                                                <div class="flex items-center p-3 bg-white rounded-xl border border-orange-200 hover:bg-orange-50 transition-colors">
+                                                    <input type="checkbox" name="user_ids[]" :value="participant.id" x-model="selectedUnenrollUsers" class="mr-3 rounded border-orange-300 text-orange-600 focus:ring-orange-500">
+                                                    <div class="flex items-center space-x-3">
+                                                        <div class="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
+                                                            <span class="text-white text-sm font-semibold" x-text="participant.name.charAt(0).toUpperCase()"></span>
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-medium text-gray-900" x-text="participant.name"></p>
+                                                            <p class="text-sm text-gray-600" x-text="participant.email"></p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </template>
+                                            
                                             <template x-if="filteredEnrolledParticipants.length === 0">
-                                                <p class="text-gray-500 p-2">Tidak ada hasil.</p>
+                                                <div class="text-center py-8">
+                                                    <p class="text-orange-600 font-medium">Tidak ada hasil pencarian</p>
+                                                </div>
                                             </template>
                                         </div>
-                                        <x-danger-button type="submit" x-bind:disabled="selectedUnenrollUsers.length === 0">Cabut Akses Terpilih</x-danger-button>
+
+                                        <button type="submit" x-bind:disabled="selectedUnenrollUsers.length === 0" 
+                                                :class="selectedUnenrollUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''" 
+                                                class="w-full inline-flex justify-center items-center px-4 py-3 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Cabut Akses Terpilih
+                                        </button>
                                     </form>
                                 @endif
                             </div>
                             
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800 mb-4">Daftarkan Peserta Baru</h4>
+                            <!-- Available Participants -->
+                            <div class="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-6 border border-emerald-200">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center mr-3">
+                                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-emerald-900">Daftarkan Peserta</h4>
+                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->count() }} calon peserta tersedia</p>
+                                    </div>
+                                </div>
+                                
                                 <form id="enroll-form" method="POST" action="{{ route('courses.enroll', $course) }}">
                                     @csrf
+                                    
+                                    <!-- Search Input -->
                                     <div class="mb-4">
-                                        <input type="text" x-model="searchTermEnroll" placeholder="Cari calon peserta..." class="block w-full rounded-md border-gray-300 shadow-sm">
-                                    </div>
-                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
-                                        <template x-for="user in filteredUnEnrolledParticipants" :key="user.id">
-                                            <div class="flex items-center">
-                                                <input type="checkbox" name="user_ids[]" :value="user.id" x-model="selectedEnrollUsers">
-                                                <label class="ml-2" x-text="`${user.name} (${user.email})`"></label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                                </svg>
                                             </div>
-                                        </template>
-                                        <template x-if="filteredUnEnrolledParticipants.length === 0">
-                                            <p class="text-gray-500 p-2">Tidak ada peserta yang tersedia.</p>
-                                        </template>
+                                            <input type="text" x-model="searchTermEnroll" placeholder="Cari calon peserta..." class="block w-full pl-10 pr-3 py-2 border border-emerald-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500">
+                                        </div>
                                     </div>
-                                    <x-primary-button type="submit" x-bind:disabled="selectedEnrollUsers.length === 0">Daftarkan Terpilih</x-primary-button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div x-show="currentTab === 'event_organizers'" x-cloak class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800 mb-4">Event Organizer Ditugaskan</h4>
-                                <form action="{{ route('courses.removeEo', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus EO terpilih?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
-                                        @forelse($course->eventOrganizers as $organizer)
-                                            <div class="flex items-center">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="organizer-{{$organizer->id}}">
-                                                <label for="organizer-{{$organizer->id}}" class="ml-2">{{ $organizer->name }}</label>
+                                    <!-- Available Users List -->
+                                    <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
+                                        <template x-for="user in filteredUnEnrolledParticipants" :key="user.id">
+                                            <div class="flex items-center p-3 bg-white rounded-xl border border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                                <input type="checkbox" name="user_ids[]" :value="user.id" x-model="selectedEnrollUsers" class="mr-3 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-sm font-semibold" x-text="user.name.charAt(0).toUpperCase()"></span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-medium text-gray-900" x-text="user.name"></p>
+                                                        <p class="text-sm text-gray-600" x-text="user.email"></p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        @empty
-                                            <p class="text-gray-500 p-2">Belum ada EO.</p>
-                                        @endforelse
-                                    </div>
-                                    @if($course->eventOrganizers->isNotEmpty())
-                                        <x-danger-button type="submit">Hapus Terpilih</x-danger-button>
-                                    @endif
-                                </form>
-                            </div>
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800 mb-4">Tambahkan Event Organizer</h4>
-                                <form action="{{ route('courses.addEo', $course) }}" method="POST">
-                                    @csrf
-                                    <div class="space-y-2 mb-4 max-h-60 overflow-y-auto border p-2 rounded-md">
-                                        @forelse($availableOrganizers as $organizer)
-                                            <div class="flex items-center">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="avail-organizer-{{$organizer->id}}">
-                                                <label for="avail-organizer-{{$organizer->id}}" class="ml-2">{{ $organizer->name }}</label>
+                                        </template>
+                                        
+                                        <template x-if="filteredUnEnrolledParticipants.length === 0">
+                                            <div class="text-center py-8">
+                                                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                </div>
+                                                <p class="text-emerald-600 font-medium">Semua pengguna sudah terdaftar atau tidak ada hasil</p>
                                             </div>
-                                        @empty
-                                            <p class="text-gray-500 p-2">Semua EO sudah ditugaskan.</p>
-                                        @endforelse
+                                        </template>
                                     </div>
-                                    @if($availableOrganizers->isNotEmpty())
-                                        <x-primary-button type="submit">Tambahkan</x-primary-button>
-                                    @endif
+
+                                    <button type="submit" x-bind:disabled="selectedEnrollUsers.length === 0" 
+                                            :class="selectedEnrollUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''" 
+                                            class="w-full inline-flex justify-center items-center px-4 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                        </svg>
+                                        Daftarkan Terpilih
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -408,4 +805,12 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function isLessonUnlocked(lesson, index) {
+            // Simple unlock logic - you can modify this based on your requirements
+            // For now, lessons are unlocked sequentially
+            return true; // or implement your unlock logic here
+        }
+    </script>
 </x-app-layout>
