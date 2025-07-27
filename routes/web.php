@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\CoursePeriodController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Admin\RoleController;
@@ -161,6 +163,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // NEW: Chat interface routes
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/{chat}', [ChatController::class, 'show'])->name('chat.show');
+
 
 });
 
