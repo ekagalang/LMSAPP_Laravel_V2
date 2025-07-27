@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -56,4 +57,20 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Chat API routes
+    Route::prefix('chats')->group(function () {
+        Route::get('/', [Api\ChatController::class, 'index']);
+        Route::post('/', [Api\ChatController::class, 'store']);
+        Route::get('/{chat}', [Api\ChatController::class, 'show']);
+        Route::get('/{chat}/messages', [Api\MessageController::class, 'index']);
+        Route::post('/{chat}/messages', [Api\MessageController::class, 'store']);
+        Route::post('/{chat}/typing', [Api\MessageController::class, 'typing']);
+    });
+
+    // Helper routes
+    Route::get('/users/available', [Api\ChatController::class, 'availableUsers']);
+    Route::get('/course-periods/available', [Api\ChatController::class, 'availableCoursePeriods']);
 });

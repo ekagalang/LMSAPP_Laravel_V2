@@ -410,4 +410,154 @@ class User extends Authenticatable
             'course_updates' => true,
         ];
     }
+
+
+    // Add these relationships to your existing User model
+    // ========================================
+    // 🆕 NEW CHAT RELATIONSHIPS
+    // ========================================
+
+    public function createdChats()
+    {
+        return $this->hasMany(Chat::class, 'created_by');
+    }
+
+    public function chats()
+    {
+        return $this->belongsToMany(Chat::class, 'chat_participants')
+            ->withPivot(['joined_at', 'last_read_at', 'is_active'])
+            ->withTimestamps();
+    }
+
+    public function activeChats()
+    {
+        return $this->chats()->wherePivot('is_active', true);
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    // ========================================
+    // 🆕 NEW HELPER METHODS
+    // ========================================
+
+    /**
+     * Check if user can chat with another user
+     */
+    public function canChatWith(User $targetUser): bool
+    {
+        // Admin can chat with anyone
+        if ($this->hasRole('super-admin')) {
+            return true;
+        }
+
+        // If admin initiated chat, others can reply
+        $existingAdminChat = Chat::whereHas('participants', function ($q) {
+            $q->where('user_id', $this->id);
+        })->whereHas('participants', function ($q) use ($targetUser) {
+            $q->where('user_id', $targetUser->id);
+        })->whereHas('creator', function ($q) {
+            $q->whereHas('roles', function ($r) {
+                $r->where('name', 'super-admin');
+            });
+        })->first();
+
+        if ($existingAdminChat) {
+            return true;
+        }
+
+        // Check if both users are in the same active course period
+        return $this->hasCommonActivePeriods($targetUser);
+    }
+
+    /**
+     * Get common active course periods with another user
+     */
+    public function hasCommonActivePeriods(User $targetUser): bool
+    {
+        $myPeriods = $this->getActiveCoursePeriods();
+        $targetPeriods = $targetUser->getActiveCoursePeriods();
+
+        return $myPeriods->intersect($targetPeriods)->isNotEmpty();
+    }
+
+    /**
+     * Get all active course periods for this user
+     */
+    public function getActiveCoursePeriods()
+    {
+        // Get enrolled courses
+        $enrolledCourseIds = $this->enrolledUsers()->pluck('course_id');
+
+        // Get instructor courses
+        $instructorCourseIds = $this->instructors()->pluck('course_id');
+
+        // Get event organizer courses
+        $eventOrganizerCourseIds = $this->eventOrganizers()->pluck('course_id');
+
+        // Merge all course IDs
+        $allCourseIds = $enrolledCourseIds->merge($instructorCourseIds)
+            ->merge($eventOrganizerCourseIds)
+            ->unique();
+
+        // Get active periods for these courses
+        return CoursePeriod::whereIn('course_id', $allCourseIds)
+            ->active()
+            ->pluck('id');
+    }
+
+    /**
+     * Get available users to chat with
+     */
+    public function getAvailableChatUsers($search = null)
+    {
+        if ($this->hasRole('super-admin')) {
+            // Admin can chat with anyone
+            $query = User::where('id', '!=', $this->id);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            return $query->select('id', 'name', 'email')->limit(20)->get();
+        }
+
+        // Get users from common active course periods
+        $activePeriods = $this->getActiveCoursePeriods();
+
+        if ($activePeriods->isEmpty()) {
+            return collect();
+        }
+
+        $query = User::where('id', '!=', $this->id)
+            ->where(function ($q) use ($activePeriods) {
+                $q->whereHas('enrolledUsers', function ($sq) use ($activePeriods) {
+                    $sq->whereHas('periods', function ($pq) use ($activePeriods) {
+                        $pq->whereIn('id', $activePeriods);
+                    });
+                })->orWhereHas('instructors', function ($sq) use ($activePeriods) {
+                    $sq->whereHas('periods', function ($pq) use ($activePeriods) {
+                        $pq->whereIn('id', $activePeriods);
+                    });
+                })->orWhereHas('eventOrganizers', function ($sq) use ($activePeriods) {
+                    $sq->whereHas('periods', function ($pq) use ($activePeriods) {
+                        $pq->whereIn('id', $activePeriods);
+                    });
+                });
+            });
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->select('id', 'name', 'email')->limit(20)->get();
+    }
 }

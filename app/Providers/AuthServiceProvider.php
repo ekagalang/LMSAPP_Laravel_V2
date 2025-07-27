@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Course;
 use App\Models\Quiz;
+use App\Models\Chat;
+use App\Policies\ChatPolicy;
 use App\Policies\CoursePolicy;
 use App\Policies\QuizPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -22,6 +24,7 @@ class AuthServiceProvider extends ServiceProvider
         // setiap kali ada pengecekan hak akses terkait model Course.
         Course::class => CoursePolicy::class,
         Quiz::class => QuizPolicy::class,
+        Chat::class => ChatPolicy::class,
     ];
 
     /**

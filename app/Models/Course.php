@@ -26,7 +26,7 @@ class Course extends Model
      * @var array
      */
     protected $duplicateRelations = ['lessons', 'instructors', 'eventOrganizers'];
-    
+
     /**
      * Define which attribute contains a file to be duplicated.
      * @var string
@@ -88,5 +88,82 @@ class Course extends Model
         }
 
         return round($totalProgressSum / $totalUsers);
+    }
+
+    // ========================================
+    // 🆕 NEW RELATIONSHIPS FOR INTEGRATION
+    // ========================================
+
+    /**
+     * Course periods - one course can have multiple periods/batches
+     */
+    public function periods()
+    {
+        return $this->hasMany(CoursePeriod::class)->orderBy('start_date');
+    }
+
+    /**
+     * Currently active period
+     */
+    public function activePeriod()
+    {
+        return $this->hasOne(CoursePeriod::class)->where('status', 'active')
+                    ->where('start_date', '<=', now())
+                    ->where('end_date', '>=', now());
+    }
+
+    /**
+     * All chats related to this course through periods
+     */
+    public function chats()
+    {
+        return $this->hasManyThrough(Chat::class, CoursePeriod::class);
+    }
+
+    // ========================================
+    // 🆕 NEW HELPER METHODS
+    // ========================================
+
+    /**
+     * Check if course has any active period
+     */
+    public function hasActivePeriod(): bool
+    {
+        return $this->periods()->where('status', 'active')
+                               ->where('start_date', '<=', now())
+                               ->where('end_date', '>=', now())
+                               ->exists();
+    }
+
+    /**
+     * Get all users associated with this course (any role)
+     */
+    public function getAllUsers()
+    {
+        $enrolled = $this->enrolledUsers()->pluck('user_id');
+        $instructors = $this->instructors()->pluck('user_id');
+        $eventOrganizers = $this->eventOrganizers()->pluck('user_id');
+
+        $allUserIds = $enrolled->merge($instructors)->merge($eventOrganizers)->unique();
+
+        return User::whereIn('id', $allUserIds)->get();
+    }
+
+    /**
+     * Check if user has any role in this course
+     */
+    public function hasUser($userId): bool
+    {
+        return  $this->enrolledUsers()->where('user_id', $userId)->exists() ||
+                $this->instructors()->where('user_id', $userId)->exists() ||
+                $this->eventOrganizers()->where('user_id', $userId)->exists();
+    }
+
+    /**
+     * Get periods that are available for chat
+     */
+    public function activeChatPeriods()
+    {
+        return $this->periods()->whereIn('status', ['active'])->get();
     }
 }

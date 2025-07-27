@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use App\Models\CoursePeriod;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -30,7 +33,7 @@ class CourseController extends Controller
                 $q->where('user_id', $user->id);
             });
         }
-        
+
         $courses = $query->with('instructors')->latest()->get();
 
         return view('courses.index', compact('courses'));
@@ -46,26 +49,133 @@ class CourseController extends Controller
     {
         $this->authorize('create', Course::class);
 
+        // Enhanced validation including periods
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'objectives' => 'nullable|string',
             'thumbnail' => 'nullable|image|max:2048',
             'status' => 'required|in:draft,published',
+
+            'enable_periods' => 'nullable|boolean',
+
+            // ✅ UPDATED: Optional periods validation
+            'periods' => 'nullable|array',
+            'periods.*.name' => 'required_with:periods|string|max:255',
+            'periods.*.start_date' => 'required_with:periods|date|after_or_equal:today',
+            'periods.*.end_date' => 'required_with:periods|date|after:periods.*.start_date',
+            'periods.*.description' => 'nullable|string',
+            'periods.*.max_participants' => 'nullable|integer|min:1',
+
+            // ✅ UPDATED: Default period optional
+            'create_default_period' => 'nullable|boolean',
+            'default_start_date' => 'required_if:create_default_period,true|nullable|date|after_or_equal:today',
+            'default_end_date' => 'required_if:create_default_period,true|nullable|date|after:default_start_date',
         ]);
 
-        if ($request->hasFile('thumbnail')) {
-            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+        try {
+            DB::beginTransaction(); // ← DB sudah di-import di atas
+
+            // Handle thumbnail
+            if ($request->hasFile('thumbnail')) {
+                $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+            }
+
+            // Create course
+            $course = Course::create([
+                'title' => $validatedData['title'],
+                'description' => $validatedData['description'],
+                'objectives' => $validatedData['objectives'],
+                'thumbnail' => $validatedData['thumbnail'] ?? null,
+                'status' => $validatedData['status'],
+            ]);
+
+            // Assign creator as instructor
+            $course->instructors()->attach(Auth::id());
+
+            if ($request->boolean('enable_periods')) {
+                // Hanya buat periode jika fitur periode diaktifkan
+                if (
+                    $request->boolean('create_default_period') ||
+                    (isset($validatedData['periods']) && is_array($validatedData['periods']) && count($validatedData['periods']) > 0)
+                ) {
+                    $this->createCoursePeriods($course, $request, $validatedData);
+                }
+                // Jika enable_periods true tapi tidak ada periode yang dibuat,
+                // kita bisa biarkan kosong atau buat default, tergantung requirement
+            }
+
+            // ✅ UPDATED: Only create periods if requested
+            // if (
+            //     $request->boolean('create_default_period') ||
+            //     (isset($validatedData['periods']) && is_array($validatedData['periods']))
+            // ) {
+            //     $this->createCoursePeriods($course, $request, $validatedData);
+            // } else {
+            //     // ✅ Create default period only if no periods were manually created
+            //     $course->periods()->create([
+            //         'name' => $course->title . ' - Default Period',
+            //         'start_date' => now(),
+            //         'end_date' => now()->addYear(),
+            //         'status' => 'active',
+            //     ]);
+            // }
+
+            DB::commit();
+
+            return redirect()->route('courses.show', $course)
+                ->with('success', 'Kursus berhasil dibuat!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (isset($validatedData['thumbnail'])) {
+                Storage::disk('public')->delete($validatedData['thumbnail']);
+            }
+
+            return back()->withInput()->withErrors(['error' => 'Gagal membuat kursus: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Handle course periods creation
+     */
+    private function createCoursePeriods(Course $course, Request $request, array $validatedData)
+    {
+        // Option 1: Create default period
+        if ($request->boolean('create_default_period')) {
+            $startDate = Carbon::parse($validatedData['default_start_date']);
+            $course->periods()->create([
+                'name' => $course->title . ' - Periode 1',
+                'start_date' => $startDate,
+                'end_date' => Carbon::parse($validatedData['default_end_date']),
+                'status' => $startDate->isToday() || $startDate->isPast() ? 'active' : 'upcoming',
+            ]);
         }
 
-        // Baris yang menyebabkan error telah dihapus.
-        // $validatedData['user_id'] = Auth::id(); 
+        // Option 2: Create custom periods
+        if (isset($validatedData['periods']) && is_array($validatedData['periods']) && count($validatedData['periods']) > 0) {
+            foreach ($validatedData['periods'] as $periodData) {
+                $startDate = Carbon::parse($periodData['start_date']);
+                $course->periods()->create([
+                    'name' => $periodData['name'],
+                    'start_date' => $startDate,
+                    'end_date' => Carbon::parse($periodData['end_date']),
+                    'status' => $startDate->isToday() || $startDate->isPast() ? 'active' : 'upcoming',
+                    'description' => $periodData['description'] ?? null,
+                    'max_participants' => $periodData['max_participants'] ?? null,
+                ]);
+            }
+        }
 
-        $course = Course::create($validatedData);
-
-        // Menetapkan user yang login sebagai instruktur untuk course ini.
-        $course->instructors()->attach(Auth::id());
-
-        return redirect()->route('courses.index')->with('success', 'Kursus berhasil dibuat.');
+        // Fallback: Create default open period if none created
+        // if ($course->periods()->count() === 0) {
+        //     $course->periods()->create([
+        //         'name' => $course->title . ' - Default Period',
+        //         'start_date' => now(),
+        //         'end_date' => now()->addYear(),
+        //         'status' => 'active',
+        //     ]);
+        // }
     }
 
     public function show(Course $course)
@@ -79,7 +189,7 @@ class CourseController extends Controller
             if ($course->enrolledUsers->contains($user)) {
                 // Urutkan lesson berdasarkan 'order' jika ada, jika tidak pakai 'id'
                 $firstLesson = $course->lessons()->orderBy('order', 'asc')->orderBy('id', 'asc')->first();
-                
+
                 if ($firstLesson) {
                     // Urutkan content berdasarkan 'order' jika ada, jika tidak pakai 'id'
                     $firstContent = $firstLesson->contents()->orderBy('order', 'asc')->orderBy('id', 'asc')->first();
@@ -95,11 +205,11 @@ class CourseController extends Controller
         // Jika bukan peserta, atau jika tidak ada content, atau jika tidak terdaftar,
         // tampilkan halaman detail seperti biasa.
         $course->load('lessons.contents', 'instructors', 'enrolledUsers');
-        
+
         $availableInstructors = User::role('instructor')
             ->whereNotIn('id', $course->instructors->pluck('id'))
             ->get();
-            
+
         $unEnrolledParticipants = User::role('participant')
             ->whereDoesntHave('courses', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
@@ -110,7 +220,7 @@ class CourseController extends Controller
         $availableOrganizers = User::role('event-organizer')
             ->whereNotIn('id', $course->eventOrganizers->pluck('id'))
             ->get();
-            
+
         return view('courses.show', compact('course', 'availableInstructors', 'availableOrganizers', 'unEnrolledParticipants'));
     }
 
@@ -127,28 +237,92 @@ class CourseController extends Controller
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'objectives' => 'nullable|string',
             'thumbnail' => 'nullable|image|max:2048',
             'status' => 'required|in:draft,published',
-            'clear_thumbnail' => 'nullable|boolean'
+            'clear_thumbnail' => 'nullable|boolean',
+
+            // ✅ BARU: Validation untuk periode
+            'enable_periods' => 'nullable|boolean',
+            'periods_to_delete' => 'nullable|array',
+            'periods_to_delete.*' => 'exists:course_periods,id',
+            'periods' => 'nullable|array',
+            'periods.*.id' => 'nullable|exists:course_periods,id',
+            'periods.*.name' => 'required_with:periods|string|max:255',
+            'periods.*.start_date' => 'required_with:periods|date',
+            'periods.*.end_date' => 'required_with:periods|date|after:periods.*.start_date',
+            'periods.*.description' => 'nullable|string',
+            'periods.*.max_participants' => 'nullable|integer|min:1',
+            'periods.*.status' => 'required_with:periods|in:upcoming,active,completed,cancelled',
         ]);
 
-        if ($request->boolean('clear_thumbnail')) {
-            // Jika checkbox "Hapus" dicentang
-            if ($course->thumbnail) {
-                Storage::disk('public')->delete($course->thumbnail);
+        try {
+            DB::beginTransaction();
+
+            // Handle thumbnail update (existing logic)
+            if ($request->boolean('clear_thumbnail')) {
+                if ($course->thumbnail) {
+                    Storage::disk('public')->delete($course->thumbnail);
+                }
+                $validatedData['thumbnail'] = null;
+            } elseif ($request->hasFile('thumbnail')) {
+                if ($course->thumbnail) {
+                    Storage::disk('public')->delete($course->thumbnail);
+                }
+                $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
             }
-            $validatedData['thumbnail'] = null;
-        } elseif ($request->hasFile('thumbnail')) {
-            // Jika ada file baru yang diunggah
-            if ($course->thumbnail) {
-                Storage::disk('public')->delete($course->thumbnail);
+
+            $course->update($validatedData);
+
+            // ✅ BARU: Handle periods update
+            if ($request->boolean('enable_periods')) {
+                $this->updateCoursePeriods($course, $request, $validatedData);
+            } else {
+                // Hapus semua periode jika fitur dinonaktifkan
+                $course->periods()->delete();
             }
-            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+
+            DB::commit();
+            return redirect()->route('courses.index')->with('success', 'Kursus berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->withErrors(['error' => 'Gagal memperbarui kursus: ' . $e->getMessage()]);
+        }
+    }
+
+    private function updateCoursePeriods(Course $course, Request $request, array $validatedData)
+    {
+        // 1. Delete marked periods
+        if (isset($validatedData['periods_to_delete'])) {
+            $course->periods()->whereIn('id', $validatedData['periods_to_delete'])->delete();
         }
 
-        $course->update($validatedData);
-
-        return redirect()->route('courses.index')->with('success', 'Kursus berhasil diperbarui.');
+        // 2. Update/Create periods
+        if (isset($validatedData['periods'])) {
+            foreach ($validatedData['periods'] as $periodData) {
+                if (isset($periodData['id']) && $periodData['id']) {
+                    // Update existing period
+                    $course->periods()->where('id', $periodData['id'])->update([
+                        'name' => $periodData['name'],
+                        'start_date' => $periodData['start_date'],
+                        'end_date' => $periodData['end_date'],
+                        'description' => $periodData['description'] ?? null,
+                        'max_participants' => $periodData['max_participants'] ?? null,
+                        'status' => $periodData['status'],
+                    ]);
+                } else {
+                    // Create new period
+                    $course->periods()->create([
+                        'name' => $periodData['name'],
+                        'start_date' => $periodData['start_date'],
+                        'end_date' => $periodData['end_date'],
+                        'description' => $periodData['description'] ?? null,
+                        'max_participants' => $periodData['max_participants'] ?? null,
+                        'status' => $periodData['status'],
+                    ]);
+                }
+            }
+        }
     }
 
     public function destroy(Course $course)
@@ -232,7 +406,7 @@ class CourseController extends Controller
                 ->where('lesson.course_id', $course->id)
                 ->sortByDesc('pivot.completed_at')
                 ->first();
-            
+
             $lastPosition = $lastCompletedContent ? $lastCompletedContent->lesson->title : 'Belum Memulai';
 
             return [
@@ -244,7 +418,7 @@ class CourseController extends Controller
                 'last_position' => $lastPosition,
             ];
         });
-        
+
         $totalContentCount = $course->lessons()->withCount('contents')->get()->sum('contents_count');
 
         return view('courses.progress', [
@@ -316,7 +490,7 @@ class CourseController extends Controller
         $participantsProgress = $course->enrolledUsers->map(function ($participant) use ($allContentIds, $totalContentCount) {
             $completedCount = $participant->completedContents->whereIn('id', $allContentIds)->count();
             $progressPercentage = $totalContentCount > 0 ? round(($completedCount / $totalContentCount) * 100) : 0;
-            
+
             return [
                 'name' => $participant->name,
                 'email' => $participant->email,

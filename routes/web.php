@@ -153,6 +153,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Prasyarat
     Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
 
+    // Course Period routes
+    Route::resource('course-periods', CoursePeriodController::class);
+    Route::get('/course-periods/create/{course}', [CoursePeriodController::class, 'create'])
+        ->name('course-periods.create');
+
+    // NEW: Chat interface routes
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/{chat}', [ChatController::class, 'show'])->name('chat.show');
+
 });
 
 require __DIR__.'/auth.php';
