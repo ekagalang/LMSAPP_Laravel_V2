@@ -70,7 +70,7 @@ Route::middleware('auth:sanctum')->prefix('api')->group(function () {
         Route::get('/{chat}', [ApiChatController::class, 'show']);
         Route::get('/{chat}/messages', [ApiMessageController::class, 'index']);
         Route::post('/{chat}/messages', [ApiMessageController::class, 'store']);
-        Route::post('/{chat}/typing', [ApiMessageController::class, 'UserTyping']);
+        Route::post('/{chat}/typing', [ApiMessageController::class, 'typing']);
     });
 
     // Helper routes untuk mobile/external apps
