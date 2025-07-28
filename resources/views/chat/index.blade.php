@@ -561,7 +561,7 @@ async function handleFormSubmit(e) {
     let data = {
         type: chatType,
         course_period_id: coursePeriodId,
-        name: chatType === 'group' ? formData.get('name') : null
+        name: chatType === 'group' ? (formData.get('name') || null) : null
     };
 
     if (chatType === 'group' && coursePeriodId) {
