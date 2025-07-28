@@ -87,4 +87,17 @@ class MessageController extends Controller
 
         return response()->json(['status' => 'ok']);
     }
+
+    public function userTyping(Request $request, Chat $chat)
+    {
+        // Keamanan tambahan: pastikan user adalah partisipan
+        if (! $chat->hasParticipant(auth()->id())) {
+             return response()->json(['message' => 'Forbidden'], 403);
+        }
+        
+        // Menyiarkan event ke user lain
+        broadcast(new UserTyping(auth()->user(), $chat, true))->toOthers();
+
+        return response()->json(['status' => 'ok']);
+    }
 }
