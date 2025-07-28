@@ -484,72 +484,38 @@ class User extends Authenticatable
     }
 
     /**
-     * Get all active course periods for this user
-     */
-    public function getActiveCoursePeriods()
-    {
-        // Get enrolled courses
-        $enrolledCourseIds = $this->enrolledUsers()->pluck('course_id');
+ * Get all active course periods for this user
+ */
+public function getActiveCoursePeriods()
+{
+    // Get enrolled course IDs
+    $enrolledCourseIds = $this->courses()->pluck('course_id');
 
-        // Get instructor courses
-        $instructorCourseIds = $this->instructors()->pluck('course_id');
+    // Get instructor course IDs
+    $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
 
-        // Get event organizer courses
-        $eventOrganizerCourseIds = $this->eventOrganizers()->pluck('course_id');
+    // Get event organizer course IDs
+    $eventOrganizerCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
 
-        // Merge all course IDs
-        $allCourseIds = $enrolledCourseIds->merge($instructorCourseIds)
-            ->merge($eventOrganizerCourseIds)
-            ->unique();
+    // Merge all course IDs
+    $allCourseIds = $enrolledCourseIds->merge($instructorCourseIds)
+        ->merge($eventOrganizerCourseIds)
+        ->unique();
 
-        // Get active periods for these courses
-        return CoursePeriod::whereIn('course_id', $allCourseIds)
-            ->active()
-            ->pluck('id');
-    }
+    // Get active periods for these courses
+    return CoursePeriod::whereIn('course_id', $allCourseIds)
+        ->active()
+        ->pluck('id');
+}
 
     /**
-     * Get available users to chat with
-     */
-    public function getAvailableChatUsers($search = null)
-    {
-        if ($this->hasRole('super-admin')) {
-            // Admin can chat with anyone
-            $query = User::where('id', '!=', $this->id);
-
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
-            }
-
-            return $query->select('id', 'name', 'email')->limit(20)->get();
-        }
-
-        // Get users from common active course periods
-        $activePeriods = $this->getActiveCoursePeriods();
-
-        if ($activePeriods->isEmpty()) {
-            return collect();
-        }
-
-        $query = User::where('id', '!=', $this->id)
-            ->where(function ($q) use ($activePeriods) {
-                $q->whereHas('enrolledUsers', function ($sq) use ($activePeriods) {
-                    $sq->whereHas('periods', function ($pq) use ($activePeriods) {
-                        $pq->whereIn('id', $activePeriods);
-                    });
-                })->orWhereHas('instructors', function ($sq) use ($activePeriods) {
-                    $sq->whereHas('periods', function ($pq) use ($activePeriods) {
-                        $pq->whereIn('id', $activePeriods);
-                    });
-                })->orWhereHas('eventOrganizers', function ($sq) use ($activePeriods) {
-                    $sq->whereHas('periods', function ($pq) use ($activePeriods) {
-                        $pq->whereIn('id', $activePeriods);
-                    });
-                });
-            });
+ * Get available users to chat with
+ */
+public function getAvailableChatUsers($search = null)
+{
+    if ($this->hasRole('super-admin')) {
+        // Admin can chat with anyone
+        $query = User::where('id', '!=', $this->id);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -560,4 +526,40 @@ class User extends Authenticatable
 
         return $query->select('id', 'name', 'email')->limit(20)->get();
     }
+
+    // Get users from common active course periods
+    $activePeriods = $this->getActiveCoursePeriods();
+
+    if ($activePeriods->isEmpty()) {
+        return collect();
+    }
+
+    // Get all users who are enrolled, instructors, or event organizers in the same course periods
+    $courseIds = CoursePeriod::whereIn('id', $activePeriods)->pluck('course_id')->unique();
+    
+    $query = User::where('id', '!=', $this->id)
+        ->where(function ($q) use ($courseIds) {
+            // Users enrolled in these courses
+            $q->whereHas('courses', function ($sq) use ($courseIds) {
+                $sq->whereIn('course_id', $courseIds);
+            })
+            // Users who are instructors for these courses
+            ->orWhereHas('taughtCourses', function ($sq) use ($courseIds) {
+                $sq->whereIn('course_id', $courseIds);
+            })
+            // Users who are event organizers for these courses
+            ->orWhereHas('eventOrganizedCourses', function ($sq) use ($courseIds) {
+                $sq->whereIn('course_id', $courseIds);
+            });
+        });
+
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
+        });
+    }
+
+    return $query->select('id', 'name', 'email')->limit(20)->get();
+}
 }

@@ -4,7 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LessonController;
-use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\CoursePeriodController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\DashboardController;
@@ -161,9 +161,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('course-periods.create');
 
     // NEW: Chat interface routes
-    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
-    Route::get('/chat/{chat}', [ChatController::class, 'show'])->name('chat.show');
+    Route::get('/chat', [App\Http\Controllers\Api\ChatController::class, 'webIndex'])->name('chat.index');
+    Route::get('/chat/{chat}', [App\Http\Controllers\Api\ChatController::class, 'webShow'])->name('chat.show');
 
+    // Chat API routes untuk WEB interface (tanpa sanctum!)
+    Route::post('/chats', [App\Http\Controllers\Api\ChatController::class, 'store'])->name('chats.store');
+    Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers'])->name('chats.users');
+    Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods'])->name('chats.periods');
 
 });
 

@@ -13,6 +13,7 @@ use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
 {
+    // ✅ EXISTING API METHODS (unchanged)
     public function index(Request $request)
     {
         $user = $request->user();
@@ -141,37 +142,74 @@ class ChatController extends Controller
         ]);
     }
 
-    public function availableUsers(Request $request)
-    {
-        $user = $request->user();
-        $query = $request->get('q', '');
-        $coursePeriodId = $request->get('course_period_id');
+   
 
-        if ($coursePeriodId) {
-            // Get users for specific course period
-            $coursePeriod = CoursePeriod::findOrFail($coursePeriodId);
-            $users = $coursePeriod->course->getAllUsers()
-                ->where('id', '!=', $user->id)
-                ->when($query, function ($collection) use ($query) {
-                    return $collection->filter(function ($user) use ($query) {
-                        return stripos($user->name, $query) !== false ||
-                            stripos($user->email, $query) !== false;
-                    });
-                })
-                ->take(20)
-                ->values();
+public function availableUsers(Request $request)
+{
+    $user = $request->user();
+    $query = $request->get('q', '');
+    $coursePeriodId = $request->get('course_period_id');
+
+    if ($coursePeriodId) {
+        // Get users for specific course period
+        $coursePeriod = CoursePeriod::findOrFail($coursePeriodId);
+        $users = $coursePeriod->course->getAllUsers()
+            ->where('id', '!=', $user->id)
+            ->when($query, function ($collection) use ($query) {
+                return $collection->filter(function ($user) use ($query) {
+                    return stripos($user->name, $query) !== false ||
+                        stripos($user->email, $query) !== false;
+                });
+            })
+            ->take(50)
+            ->values();
+    } else {
+        // For admin: get all users, for others: get available chat users
+        if ($user->hasRole('super-admin')) {
+            $usersQuery = User::where('id', '!=', $user->id);
+            
+            if ($query) {
+                $usersQuery->where(function ($q) use ($query) {
+                    $q->where('name', 'like', "%{$query}%")
+                      ->orWhere('email', 'like', "%{$query}%");
+                });
+            }
+            
+            $users = $usersQuery->take(50)->get()->map(function ($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email
+                ];
+            });
         } else {
-            // Get all available users
+            // Use existing method for non-admin users
             $users = $user->getAvailableChatUsers($query);
         }
-
-        return response()->json(['users' => $users]);
     }
 
-    public function availableCoursePeriods(Request $request)
-    {
-        $user = $request->user();
+    return response()->json(['users' => $users]);
+}
 
+public function availableCoursePeriods(Request $request)
+{
+    $user = $request->user();
+
+    if ($user->hasRole('super-admin')) {
+        // Admin can see all active course periods
+        $periods = CoursePeriod::active()
+            ->with('course:id,title')
+            ->get()
+            ->map(function ($period) {
+                return [
+                    'id' => $period->id,
+                    'name' => $period->name,
+                    'course_title' => $period->course->title,
+                    'full_name' => $period->course->title . ' - ' . $period->name,
+                ];
+            });
+    } else {
+        // Non-admin users see only their course periods
         $periods = CoursePeriod::forUser($user->id)
             ->active()
             ->with('course:id,title')
@@ -184,9 +222,10 @@ class ChatController extends Controller
                     'full_name' => $period->course->title . ' - ' . $period->name,
                 ];
             });
-
-        return response()->json(['periods' => $periods]);
     }
+
+    return response()->json(['periods' => $periods]);
+}
 
     private function getUnreadCount(Chat $chat, $userId): int
     {
@@ -200,5 +239,50 @@ class ChatController extends Controller
             ->where('created_at', '>', $participant->pivot->last_read_at)
             ->where('user_id', '!=', $userId)
             ->count();
+    }
+
+    // ✅ NEW WEB METHODS
+    /**
+     * Display chat index page for web interface
+     */
+    public function webIndex(Request $request)
+    {
+        $user = $request->user();
+
+        $chats = Chat::forUser($user->id)
+            ->active()
+            ->with([
+                'latestMessage.user:id,name',
+                'activeParticipants:id,name',
+                'coursePeriod.course:id,title'
+            ])
+            ->orderBy('last_message_at', 'desc')
+            ->get();
+
+        return view('chat.index', compact('chats'));
+    }
+
+    /**
+     * Display specific chat page for web interface
+     */
+    public function webShow(Chat $chat)
+    {
+        Gate::authorize('view', $chat);
+
+        // Load recent messages for initial display
+        $messages = $chat->messages()
+            ->with('user:id,name')
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->reverse()
+            ->values();
+
+        // Update last read timestamp
+        $chat->participants()->updateExistingPivot(auth()->id(), [
+            'last_read_at' => now()
+        ]);
+
+        return view('chat.show', compact('chat', 'messages'));
     }
 }

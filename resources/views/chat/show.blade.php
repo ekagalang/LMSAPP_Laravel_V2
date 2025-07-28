@@ -1,7 +1,6 @@
 <!-- resources/views/chat/show.blade.php -->
-@extends('layouts.app')
 
-@section('content')
+<x-app-layout>
 <div class="chat-container" id="chat-container" data-chat-id="{{ $chat->id }}" data-user-id="{{ auth()->id() }}">
     <div class="chat-header">
         <h3>{{ $chat->getDisplayName() }}</h3>
@@ -36,4 +35,4 @@
 <script src="{{ asset('js/echo.js') }}"></script>
 <script src="{{ asset('js/components/ChatComponent.js') }}"></script>
 @endpush
-@endsection
+</x-app-layout>

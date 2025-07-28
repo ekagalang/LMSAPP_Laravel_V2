@@ -1,4 +1,5 @@
 <?php
+// routes/auth.php - hanya untuk authentication dan API murni
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
@@ -9,7 +10,8 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
-use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Api\ChatController as ApiChatController;
+use App\Http\Controllers\Api\MessageController as ApiMessageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -59,18 +61,19 @@ Route::middleware('auth')->group(function () {
         ->name('logout');
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    // Chat API routes
+// ✅ TRUE API ROUTES - untuk mobile apps, external integrations, etc (dengan sanctum)
+Route::middleware('auth:sanctum')->prefix('api')->group(function () {
+    // Chat API routes untuk mobile/external apps
     Route::prefix('chats')->group(function () {
-        Route::get('/', [Api\ChatController::class, 'index']);
-        Route::post('/', [Api\ChatController::class, 'store']);
-        Route::get('/{chat}', [Api\ChatController::class, 'show']);
-        Route::get('/{chat}/messages', [Api\MessageController::class, 'index']);
-        Route::post('/{chat}/messages', [Api\MessageController::class, 'store']);
-        Route::post('/{chat}/typing', [Api\MessageController::class, 'typing']);
+        Route::get('/', [ApiChatController::class, 'index']);
+        Route::post('/', [ApiChatController::class, 'store']);
+        Route::get('/{chat}', [ApiChatController::class, 'show']);
+        Route::get('/{chat}/messages', [ApiMessageController::class, 'index']);
+        Route::post('/{chat}/messages', [ApiMessageController::class, 'store']);
+        Route::post('/{chat}/typing', [ApiMessageController::class, 'typing']);
     });
 
-    // Helper routes
-    Route::get('/users/available', [Api\ChatController::class, 'availableUsers']);
-    Route::get('/course-periods/available', [Api\ChatController::class, 'availableCoursePeriods']);
+    // Helper routes untuk mobile/external apps
+    Route::get('/users/available', [ApiChatController::class, 'availableUsers']);
+    Route::get('/course-periods/available', [ApiChatController::class, 'availableCoursePeriods']);
 });
