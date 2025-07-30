@@ -6,103 +6,152 @@ use App\Http\Controllers\Controller;
 use App\Models\CertificateTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class CertificateTemplateController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $templates = CertificateTemplate::latest()->paginate(10);
         return view('admin.certificate-templates.index', compact('templates'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('admin.certificate-templates.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'background_image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'layout_data' => 'nullable|json'
+            'layout_data' => 'required|json',
+            'backgrounds' => 'required|array',
+            'backgrounds.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        $path = $request->file('background_image')->store('certificate_backgrounds', 'public');
+        try {
+            $layoutData = json_decode($request->layout_data, true);
+            $backgroundFiles = $request->file('backgrounds');
 
-        CertificateTemplate::create([
-            'name' => $request->name,
-            'background_image_path' => $path,
-            'layout_data' => $request->input('layout_data', '[]'), // Simpan layout, default array kosong
-        ]);
+            // Pastikan jumlah gambar sesuai dengan jumlah halaman
+            if (count($layoutData) !== count($backgroundFiles)) {
+                return back()->withErrors(['backgrounds' => 'The number of background images does not match the number of pages.'])->withInput();
+            }
 
-        return redirect()->route('admin.certificate-templates.index')->with('success', 'Template created successfully.');
+            // Proses setiap halaman dan simpan background image
+            foreach ($layoutData as $index => &$page) {
+                if (isset($backgroundFiles[$index])) {
+                    $path = $backgroundFiles[$index]->store('certificate_backgrounds', 'public');
+                    $page['background_image_path'] = $path;
+                } else {
+                    return back()->withErrors(['backgrounds' => "Background image for page " . ($index + 1) . " is required."])->withInput();
+                }
+            }
+
+            // Simpan template
+            CertificateTemplate::create([
+                'name' => $request->name,
+                'layout_data' => $layoutData,
+            ]);
+
+            return redirect()->route('admin.certificate-templates.index')
+                ->with('success', 'Template created successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Error creating certificate template: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to create template. Please try again.'])->withInput();
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(CertificateTemplate $certificateTemplate)
     {
-        // Biasanya tidak digunakan untuk template, bisa redirect ke edit
         return redirect()->route('admin.certificate-templates.edit', $certificateTemplate);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(CertificateTemplate $certificateTemplate)
     {
         return view('admin.certificate-templates.edit', compact('certificateTemplate'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, CertificateTemplate $certificateTemplate)
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'background_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'layout_data' => 'nullable|json'
+            'layout_data' => 'required|json',
+            'backgrounds' => 'nullable|array',
+            'backgrounds.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        $data = [
-            'name' => $request->name,
-            'layout_data' => $request->input('layout_data', '[]'),
-        ];
+        try {
+            $newLayoutData = json_decode($request->layout_data, true);
+            $oldLayoutData = $certificateTemplate->layout_data;
+            $backgroundFiles = $request->file('backgrounds', []);
 
-        if ($request->hasFile('background_image')) {
-            // Hapus gambar lama
-            Storage::disk('public')->delete($certificateTemplate->background_image_path);
-            // Simpan gambar baru
-            $data['background_image_path'] = $request->file('background_image')->store('certificate_backgrounds', 'public');
+            // Kumpulkan path gambar lama untuk kemungkinan penghapusan
+            $oldImagePaths = collect($oldLayoutData)->pluck('background_image_path')->filter();
+
+            // Proses setiap halaman
+            foreach ($newLayoutData as $index => &$page) {
+                // Jika ada file baru untuk halaman ini
+                if (isset($backgroundFiles[$index]) && $backgroundFiles[$index]) {
+                    // Upload file baru
+                    $path = $backgroundFiles[$index]->store('certificate_backgrounds', 'public');
+                    $page['background_image_path'] = $path;
+                } 
+                // Jika tidak ada file baru, pertahankan path lama jika ada
+                elseif (isset($oldLayoutData[$index]['background_image_path'])) {
+                    $page['background_image_path'] = $oldLayoutData[$index]['background_image_path'];
+                }
+                // Jika halaman baru tanpa background, berikan error
+                elseif (!isset($page['background_image_path'])) {
+                    return back()->withErrors(['backgrounds' => "Background image for page " . ($index + 1) . " is required."])->withInput();
+                }
+            }
+
+            // Hapus gambar yang tidak digunakan lagi
+            $newImagePaths = collect($newLayoutData)->pluck('background_image_path')->filter();
+            $imagesToDelete = $oldImagePaths->diff($newImagePaths);
+
+            foreach ($imagesToDelete as $path) {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            // Update template
+            $certificateTemplate->update([
+                'name' => $request->name,
+                'layout_data' => $newLayoutData,
+            ]);
+
+            return redirect()->route('admin.certificate-templates.index')
+                ->with('success', 'Template updated successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Error updating certificate template: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to update template. Please try again.'])->withInput();
         }
-
-        $certificateTemplate->update($data);
-
-        return redirect()->route('admin.certificate-templates.index')->with('success', 'Template updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(CertificateTemplate $certificateTemplate)
     {
-        // Hapus gambar dari storage
-        Storage::disk('public')->delete($certificateTemplate->background_image_path);
-        
-        $certificateTemplate->delete();
+        try {
+            // Hapus semua gambar latar yang terkait
+            foreach ($certificateTemplate->layout_data as $page) {
+                if (isset($page['background_image_path']) && Storage::disk('public')->exists($page['background_image_path'])) {
+                    Storage::disk('public')->delete($page['background_image_path']);
+                }
+            }
+            
+            $certificateTemplate->delete();
 
-        return redirect()->route('admin.certificate-templates.index')->with('success', 'Template deleted successfully.');
+            return redirect()->route('admin.certificate-templates.index')
+                ->with('success', 'Template deleted successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting certificate template: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to delete template. Please try again.']);
+        }
     }
 }
