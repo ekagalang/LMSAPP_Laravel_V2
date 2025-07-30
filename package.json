@@ -21,6 +21,7 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
-        "@alpinejs/collapse": "^3.14.9"
+        "@alpinejs/collapse": "^3.14.9",
+        "interactjs": "^1.10.27"
     }
 }

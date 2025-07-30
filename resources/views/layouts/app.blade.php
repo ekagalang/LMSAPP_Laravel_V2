@@ -55,6 +55,9 @@
                                 <x-nav-link :href="route('admin.announcements.index')">
                                     {{ __('Manajemen Pengumuman') }}
                                 </x-nav-link>
+                                <x-nav-link :href="route('admin.certificate-templates.index')">
+                                    {{ __('Certificate Templates') }}
+                                </x-nav-link>
                             @endrole
                         </div>
                     </div>
@@ -117,6 +120,9 @@
                         <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
                             {{ __('Manajemen Peran') }}
                         </x-responsive-nav-link>
+                        <x-nav-link :href="route('admin.certificate-templates.index')">
+                            {{ __('Certificate Templates') }}
+                        </x-nav-link>
                     @endrole
                 </div>
                 <div class="pt-4 pb-1 border-t border-gray-200">

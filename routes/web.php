@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Admin\CertificateTemplateController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\GradebookController;
@@ -109,6 +110,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('roles', RoleController::class);
         Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
         Route::resource('roles', RoleController::class)->except(['show']);
+
+        // Sertifikat
+        Route::resource('certificate-templates', CertificateTemplateController::class);
 
         // [BARU] Route untuk Manajemen Pengumuman
         Route::resource('announcements', AnnouncementController::class);
