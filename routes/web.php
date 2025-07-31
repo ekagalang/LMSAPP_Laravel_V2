@@ -33,6 +33,12 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
+Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])
+    ->name('certificates.verify');
+
+Route::get('/certificates/download/{code}', [CertificateController::class, 'publicDownload'])
+    ->name('certificates.public-download');
+
 Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
@@ -185,6 +191,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers'])->name('chats.users');
         Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods'])->name('chats.periods');
     });
+
+    Route::get('/certificates', [CertificateController::class, 'index'])
+        ->name('certificates.index');
+
+    Route::get('/certificates/{certificate}', [CertificateController::class, 'show'])
+        ->name('certificates.show');
+
+    Route::get('/certificates/{certificate}/download', [CertificateController::class, 'download'])
+        ->name('certificates.download');
+
+    // Course-specific certificate management (for instructors/organizers)
+    Route::get('/courses/{course}/certificates', [CertificateController::class, 'courseIndex'])
+        ->name('courses.certificates.index');
+
+    Route::post('/courses/{course}/users/{user}/certificates/generate', [CertificateController::class, 'generate'])
+        ->name('courses.certificates.generate');
+
+    Route::post('/courses/{course}/certificates/bulk-generate', [CertificateController::class, 'bulkGenerate'])
+        ->name('courses.certificates.bulk-generate');
+
+    Route::post('/certificates/{certificate}/regenerate', [CertificateController::class, 'regenerate'])
+        ->name('certificates.regenerate');
+
+    Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
+        ->name('certificates.destroy');
 });
 
 require __DIR__.'/auth.php';

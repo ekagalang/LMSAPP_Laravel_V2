@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->foreignId('template_id')->constrained('certificate_templates')->onDelete('cascade');
+            $table->foreignId('certificate_template_id')->constrained('certificate_templates')->onDelete('cascade');
             $table->string('certificate_code')->unique();
+            $table->string('path')->nullable(); // Path ke file PDF
             $table->timestamp('issued_at');
             $table->timestamps();
         });

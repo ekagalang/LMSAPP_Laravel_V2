@@ -172,4 +172,55 @@ class Course extends Model
     {
         return $this->periods()->whereIn('status', ['active'])->get();
     }
+
+    // Add this relation to your existing Course model (App\Models\Course.php)
+
+    /**
+     * Get the certificate template for this course.
+     */
+    public function certificateTemplate()
+    {
+        return $this->belongsTo(CertificateTemplate::class);
+    }
+
+    /**
+     * Get all certificates issued for this course.
+     */
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
+    /**
+     * Check if course has a certificate template assigned
+     */
+    public function hasCertificateTemplate(): bool
+    {
+        return !is_null($this->certificate_template_id);
+    }
+
+    /**
+     * Get issued certificates count for this course
+     */
+    public function getIssuedCertificatesCountAttribute(): int
+    {
+        return $this->certificates()->count();
+    }
+
+    /**
+     * Get eligible users count (users who completed the course)
+     */
+    public function getEligibleForCertificateCountAttribute(): int
+    {
+        $count = 0;
+        foreach ($this->enrolledUsers as $user) {
+            $progress = $user->courseProgress($this);
+            $allGraded = $user->areAllGradedItemsMarked($this);
+
+            if ($progress >= 100 && $allGraded) {
+                $count++;
+            }
+        }
+        return $count;
+    }
 }

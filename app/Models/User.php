@@ -300,7 +300,7 @@ class User extends Authenticatable
             ->get();
     }
 
-    
+
     /**
      * Scope for filtering users by role
      */
@@ -498,7 +498,7 @@ public function getAvailableChatUsers($search = null)
 
     // Get all users who are enrolled, instructors, or event organizers in the same course periods
     $courseIds = CoursePeriod::whereIn('id', $activePeriods)->pluck('course_id')->unique();
-    
+
     $query = User::where('id', '!=', $this->id)
         ->where(function ($q) use ($courseIds) {
             // Users enrolled in these courses
@@ -536,7 +536,7 @@ public function getAvailableChatUsers($search = null)
             ->whereIn('content_id', $course->contents()->pluck('id'))
             ->wherePivot('completed', true) // Menggunakan wherePivot('completed', true)
             ->count();
-            
+
         return round(($completedContentsCount / $totalContents) * 100, 2);
     }
 
@@ -553,7 +553,7 @@ public function getAvailableChatUsers($search = null)
             if ($item->type == 'essay') {
                 $submission = $this->essaySubmissions()->where('content_id', $item->id)->first();
                 // Pastikan statusnya 'graded'
-                if (!$submission || $submission->status !== 'graded') { 
+                if (!$submission || $submission->status !== 'graded') {
                     return false;
                 }
             }
@@ -583,5 +583,85 @@ public function getAvailableChatUsers($search = null)
     public function hasCompletedLesson(Lesson $lesson): bool
     {
         return $this->lessons()->where('lesson_id', $lesson->id)->wherePivot('status', 'completed')->exists();
+    }
+
+    // Add these relations and methods to your existing User model (App\Models\User.php)
+
+    /**
+     * Get all certificates earned by this user.
+     */
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
+    /**
+     * Get certificates count for this user
+     */
+    public function getCertificatesCountAttribute(): int
+    {
+        return $this->certificates()->count();
+    }
+
+    /**
+     * Get recent certificates (last 5)
+     */
+    public function getRecentCertificatesAttribute()
+    {
+        return $this->certificates()
+            ->with(['course', 'certificateTemplate'])
+            ->orderBy('issued_at', 'desc')
+            ->take(5)
+            ->get();
+    }
+
+    /**
+     * Check if user has certificate for a specific course
+     */
+    public function hasCertificateForCourse(Course $course): bool
+    {
+        return $this->certificates()
+            ->where('course_id', $course->id)
+            ->exists();
+    }
+
+    /**
+     * Get certificate for a specific course
+     */
+    public function getCertificateForCourse(Course $course)
+    {
+        return $this->certificates()
+            ->where('course_id', $course->id)
+            ->with(['certificateTemplate'])
+            ->first();
+    }
+
+    /**
+     * Check if user is eligible for certificate in a course
+     */
+    public function isEligibleForCertificate(Course $course): bool
+    {
+        // Must be enrolled
+        if (!$this->isEnrolled($course)) {
+            return false;
+        }
+
+        // Must have 100% progress
+        $progress = $this->courseProgress($course);
+        if ($progress < 100) {
+            return false;
+        }
+
+        // All graded items must be marked
+        if (!$this->areAllGradedItemsMarked($course)) {
+            return false;
+        }
+
+        // Course must have certificate template
+        if (!$course->hasCertificateTemplate()) {
+            return false;
+        }
+
+        return true;
     }
 }

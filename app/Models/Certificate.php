@@ -4,22 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class Certificate extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'course_id',
-        'template_id',
+        'certificate_template_id',
         'certificate_code',
+        'path',
         'issued_at',
+    ];
+
+    protected $casts = [
+        'issued_at' => 'datetime',
     ];
 
     /**
@@ -41,8 +43,86 @@ class Certificate extends Model
     /**
      * Get the template used for this certificate.
      */
+    public function certificateTemplate()
+    {
+        return $this->belongsTo(CertificateTemplate::class);
+    }
+
+    /**
+     * Alias for certificateTemplate for backward compatibility
+     */
     public function template()
     {
-        return $this->belongsTo(CertificateTemplate::class, 'template_id');
+        return $this->certificateTemplate();
+    }
+
+    /**
+     * Get the full URL to the certificate PDF
+     */
+    public function getPdfUrlAttribute()
+    {
+        if ($this->path) {
+            // Try multiple methods for URL generation
+            try {
+                // Method 1: Try Storage::url()
+                return Storage::disk('public')->url($this->path);
+            } catch (\Exception $e) {
+                // Method 2: Use asset() as fallback
+                return asset('storage/' . $this->path);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the verification URL for this certificate
+     */
+    public function getVerificationUrlAttribute()
+    {
+        return route('certificates.verify', $this->certificate_code);
+    }
+
+    /**
+     * Check if the certificate file exists
+     */
+    public function fileExists()
+    {
+        return $this->path && Storage::disk('public')->exists($this->path);
+    }
+
+    /**
+     * Generate a unique certificate code
+     */
+    public static function generateCertificateCode()
+    {
+        do {
+            $code = 'CERT-' . strtoupper(\Illuminate\Support\Str::random(12));
+        } while (self::where('certificate_code', $code)->exists());
+
+        return $code;
+    }
+
+    /**
+     * Get download URL for the certificate
+     */
+    public function getDownloadUrlAttribute()
+    {
+        return route('certificates.download', $this);
+    }
+
+    /**
+     * Get public download URL (for verification page)
+     */
+    public function getPublicDownloadUrlAttribute()
+    {
+        return route('certificates.public-download', $this->certificate_code);
+    }
+
+    /**
+     * Get the storage path for the certificate
+     */
+    public function getStoragePathAttribute()
+    {
+        return storage_path('app/public/' . $this->path);
     }
 }

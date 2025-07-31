@@ -92,20 +92,37 @@ class ProgressController extends Controller
     // =================================================================
     private function checkAndGenerateCertificate(Course $course, User $user)
     {
+        Log::info("Checking certificate eligibility for user {$user->id} in course {$course->id}");
+
+        // Cek apakah course punya template sertifikat
         if (!$course->certificate_template_id) {
+            Log::info("No certificate template set for course {$course->id}");
             return;
         }
 
+        // Cek progress user
         $progress = $user->courseProgress($course);
+        Log::info("User {$user->id} progress: {$progress}%");
 
-        if ($progress >= 100 && $user->areAllGradedItemsMarked($course)) {
+        // Cek apakah semua graded items sudah dinilai
+        $allGradedItemsMarked = $user->areAllGradedItemsMarked($course);
+        Log::info("All graded items marked: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
+
+        // Syarat untuk mendapat sertifikat: progress 100% dan semua item graded sudah dinilai
+        if ($progress >= 100 && $allGradedItemsMarked) {
+            // Cek apakah sertifikat sudah ada
             $existingCertificate = Certificate::where('course_id', $course->id)
                 ->where('user_id', $user->id)
                 ->first();
 
             if (!$existingCertificate) {
+                Log::info("Generating new certificate for user {$user->id} in course {$course->id}");
                 $this->generateCertificate($course, $user);
+            } else {
+                Log::info("Certificate already exists for user {$user->id} in course {$course->id}");
             }
+        } else {
+            Log::info("Certificate conditions not met - Progress: {$progress}%, All graded: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
         }
     }
 
@@ -120,27 +137,58 @@ class ProgressController extends Controller
         Log::info("Generating certificate for user {$user->id} in course {$course->id}");
 
         try {
-            $pdf = Pdf::loadView('reports.progress_pdf', [
-                'user' => $user,
-                'course' => $course,
-                'template' => $template,
-            ]);
+            // Generate unique certificate code
+            $certificateCode = Certificate::generateCertificateCode();
 
-            $fileName = 'certificate-' . $user->id . '-' . $course->id . '-' . time() . '.pdf';
-            $filePath = 'certificates/' . $fileName;
-
-            Storage::disk('public')->put($filePath, $pdf->output());
-
-            Certificate::create([
+            // Create certificate record first
+            $certificate = Certificate::create([
                 'user_id' => $user->id,
                 'course_id' => $course->id,
                 'certificate_template_id' => $template->id,
-                'path' => $filePath,
+                'certificate_code' => $certificateCode,
                 'issued_at' => now(),
             ]);
-            Log::info("Certificate generated successfully for user {$user->id} in course {$course->id}");
+
+            // Generate PDF using the certificate render view
+            $pdf = Pdf::loadView('certificates.render', compact('certificate'))
+                ->setPaper('a4', 'landscape')
+                ->setOptions([
+                    'dpi' => 150,
+                    'defaultFont' => 'times',
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => true,
+                ]);
+
+            // Create certificates directory if it doesn't exist
+            $certificatesDir = 'certificates';
+            if (!Storage::disk('public')->exists($certificatesDir)) {
+                Storage::disk('public')->makeDirectory($certificatesDir);
+            }
+
+            // Save PDF file
+            $fileName = $certificateCode . '.pdf';
+            $filePath = $certificatesDir . '/' . $fileName;
+
+            Storage::disk('public')->put($filePath, $pdf->output());
+
+            // Update certificate record with file path
+            $certificate->update(['path' => $filePath]);
+
+            Log::info("Certificate generated successfully for user {$user->id} in course {$course->id}, file: {$filePath}");
+
+            // Optionally, you can trigger a notification here
+            // $user->notify(new CertificateGeneratedNotification($certificate));
+
+            return $certificate;
         } catch (\Exception $e) {
             Log::error("Certificate generation failed for user {$user->id} in course {$course->id}: " . $e->getMessage());
+
+            // Clean up certificate record if PDF generation failed
+            if (isset($certificate)) {
+                $certificate->delete();
+            }
+
+            return null;
         }
     }
 
@@ -151,7 +199,7 @@ class ProgressController extends Controller
         $lessons = $course->lessons()->with(['contents' => function ($query) {
             $query->orderBy('order');
         }])->orderBy('order')->get();
-        
+
         // Buat koleksi datar dari semua ID konten untuk kursus ini
         $allContentIds = $lessons->pluck('contents.*.id')->flatten()->unique();
 
@@ -162,7 +210,7 @@ class ProgressController extends Controller
             ->whereIn('content_id', $allContentIds)
             ->where('completed', true)
             ->get()
-            ->keyBy(fn ($item) => $item->user_id . '-' . $item->content_id);
+            ->keyBy(fn($item) => $item->user_id . '-' . $item->content_id);
 
         // 3. Siapkan struktur data yang mendetail untuk dikirim ke view
         $participantsProgress = [];

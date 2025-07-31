@@ -9,11 +9,14 @@ use App\Models\Question;
 use App\Models\Option;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\Certificate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\CertificateController;
 
 class ContentController extends Controller
@@ -74,27 +77,25 @@ class ContentController extends Controller
     /**
      * ✅ TAMBAHAN: Method untuk menandai konten selesai dan lanjut ke berikutnya
      */
-    public function completeAndContinue(Request $request, Content $content)
+    public function completeAndContinue(Content $content)
     {
         $user = Auth::user();
-        $course = $content->lesson->course;
+        $lesson = $content->lesson;
+        $course = $lesson->course;
 
-        $this->authorize('view', $course);
+        // Tandai konten saat ini sebagai selesai
+        $user->completedContents()->syncWithoutDetaching([
+            $content->id => ['completed' => true, 'completed_at' => now()]
+        ]);
 
-        // Tandai konten saat ini sebagai selesai (hanya untuk non-task content)
-        if (!in_array($content->type, ['quiz', 'essay'])) {
-            $user->completedContents()->syncWithoutDetaching([
-                $content->id => ['completed' => true, 'completed_at' => now()]
-            ]);
-        }
-
-        // Cek progres SETELAH menandai konten selesai
+        // Cek progress course
         $progressData = $user->getProgressForCourse($course);
 
         // Jika progres sudah 100% atau lebih
         if ($progressData['progress_percentage'] >= 100) {
-            // Panggil metode untuk generate sertifikat
-            CertificateController::generateForUser($course, $user);
+
+            // PERBAIKAN: Gunakan method internal bukan CertificateController::generateForUser
+            $this->checkAndGenerateCertificate($course, $user);
 
             // Tandai kursus sebagai selesai untuk pengguna
             $user->courses()->updateExistingPivot($course->id, ['completed_at' => now()]);
@@ -106,17 +107,119 @@ class ContentController extends Controller
             ]);
         }
 
-        // Jika belum 100%, cari konten berikutnya untuk dilanjutkan
-        $orderedContents = $this->getOrderedContents($course);
-        $currentIndex = $orderedContents->search(fn($item) => $item->id === $content->id);
+        // Lanjutkan ke konten berikutnya atau kembali ke course
+        $nextContent = $lesson->contents()
+            ->where('order', '>', $content->order)
+            ->orderBy('order', 'asc')
+            ->first();
 
-        if ($currentIndex !== false && isset($orderedContents[$currentIndex + 1])) {
-            $nextContent = $orderedContents[$currentIndex + 1];
-            return redirect()->route('contents.show', $nextContent->id)->with('success', 'Materi selesai! Lanjut ke materi berikutnya.');
+        if ($nextContent) {
+            return redirect()->route('contents.show', ['content' => $nextContent->id])
+                ->with('success', 'Lanjut ke konten berikutnya!');
         }
 
-        // Jika ini adalah konten terakhir tetapi progres belum 100%
-        return redirect()->route('courses.show', $course->id)->with('success', 'Materi terakhir dalam pelajaran ini telah selesai.');
+        return redirect()->route('courses.show', $course->id)
+            ->with('success', 'Selamat! Anda telah menyelesaikan konten ini.');
+    }
+
+    // TAMBAHKAN method ini ke ContentController:
+    private function checkAndGenerateCertificate(Course $course, User $user)
+    {
+        Log::info("Checking certificate eligibility for user {$user->id} in course {$course->id}");
+
+        // Cek apakah course punya template sertifikat
+        if (!$course->certificate_template_id) {
+            Log::info("No certificate template set for course {$course->id}");
+            return;
+        }
+
+        // Cek progress user
+        $progress = $user->courseProgress($course);
+        Log::info("User {$user->id} progress: {$progress}%");
+
+        // Cek apakah semua graded items sudah dinilai
+        $allGradedItemsMarked = $user->areAllGradedItemsMarked($course);
+        Log::info("All graded items marked: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
+
+        // Syarat untuk mendapat sertifikat: progress 100% dan semua item graded sudah dinilai
+        if ($progress >= 100 && $allGradedItemsMarked) {
+            // Cek apakah sertifikat sudah ada
+            $existingCertificate = Certificate::where('course_id', $course->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$existingCertificate) {
+                Log::info("Generating new certificate for user {$user->id} in course {$course->id}");
+                $this->generateCertificate($course, $user);
+            } else {
+                Log::info("Certificate already exists for user {$user->id} in course {$course->id}");
+            }
+        } else {
+            Log::info("Certificate conditions not met - Progress: {$progress}%, All graded: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
+        }
+    }
+
+    private function generateCertificate(Course $course, User $user)
+    {
+        $template = $course->certificateTemplate;
+        if (!$template) {
+            Log::warning("Certificate generation skipped for user {$user->id} in course {$course->id}: No template found.");
+            return;
+        }
+
+        Log::info("Generating certificate for user {$user->id} in course {$course->id}");
+
+        try {
+            // Generate unique certificate code
+            $certificateCode = Certificate::generateCertificateCode();
+
+            // Create certificate record first
+            $certificate = Certificate::create([
+                'user_id' => $user->id,
+                'course_id' => $course->id,
+                'certificate_template_id' => $template->id,
+                'certificate_code' => $certificateCode,
+                'issued_at' => now(),
+            ]);
+
+            // Generate PDF using the certificate render view
+            $pdf = Pdf::loadView('certificates.render-pdf', compact('certificate'))
+                ->setPaper('a4', 'landscape')
+                ->setOptions([
+                    'dpi' => 150,
+                    'defaultFont' => 'times',
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => true,
+                ]);
+
+            // Create certificates directory if it doesn't exist
+            $certificatesDir = 'certificates';
+            if (!Storage::disk('public')->exists($certificatesDir)) {
+                Storage::disk('public')->makeDirectory($certificatesDir);
+            }
+
+            // Save PDF file
+            $fileName = $certificateCode . '.pdf';
+            $filePath = $certificatesDir . '/' . $fileName;
+
+            Storage::disk('public')->put($filePath, $pdf->output());
+
+            // Update certificate record with file path
+            $certificate->update(['path' => $filePath]);
+
+            Log::info("Certificate generated successfully for user {$user->id} in course {$course->id}, file: {$filePath}");
+
+            return $certificate;
+        } catch (\Exception $e) {
+            Log::error("Certificate generation failed for user {$user->id} in course {$course->id}: " . $e->getMessage());
+
+            // Clean up certificate record if PDF generation failed
+            if (isset($certificate)) {
+                $certificate->delete();
+            }
+
+            return null;
+        }
     }
 
     // ✅ PERBAIKAN UTAMA: Method untuk mendapatkan konten dalam urutan yang benar
@@ -464,7 +567,7 @@ class ContentController extends Controller
             // The trait handles the duplication, we just ensure it's linked to the correct lesson.
             $newContent->lesson_id = $lesson->id;
             $newContent->save();
-            
+
             return redirect()->route('courses.show', $lesson->course)->with('success', 'Content duplicated successfully.');
         } catch (\Exception $e) {
             // Optional: Log the exception
