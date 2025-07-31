@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\CoursePeriod;
+use App\Models\CertificateTemplate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -42,7 +43,8 @@ class CourseController extends Controller
     public function create()
     {
         $this->authorize('create', Course::class);
-        return view('courses.create');
+        $templates = CertificateTemplate::all(); // Ambil semua template
+        return view('courses.create', compact('templates')); // Kirim ke view
     }
 
     public function store(Request $request)
@@ -56,6 +58,7 @@ class CourseController extends Controller
             'objectives' => 'nullable|string',
             'thumbnail' => 'nullable|image|max:2048',
             'status' => 'required|in:draft,published',
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id',
 
             'enable_periods' => 'nullable|boolean',
 
@@ -104,22 +107,6 @@ class CourseController extends Controller
                 // Jika enable_periods true tapi tidak ada periode yang dibuat,
                 // kita bisa biarkan kosong atau buat default, tergantung requirement
             }
-
-            // ✅ UPDATED: Only create periods if requested
-            // if (
-            //     $request->boolean('create_default_period') ||
-            //     (isset($validatedData['periods']) && is_array($validatedData['periods']))
-            // ) {
-            //     $this->createCoursePeriods($course, $request, $validatedData);
-            // } else {
-            //     // ✅ Create default period only if no periods were manually created
-            //     $course->periods()->create([
-            //         'name' => $course->title . ' - Default Period',
-            //         'start_date' => now(),
-            //         'end_date' => now()->addYear(),
-            //         'status' => 'active',
-            //     ]);
-            // }
 
             DB::commit();
 
@@ -227,7 +214,8 @@ class CourseController extends Controller
     public function edit(Course $course)
     {
         $this->authorize('update', $course);
-        return view('courses.edit', compact('course'));
+        $templates = CertificateTemplate::all(); // <-- AMBIL SEMUA TEMPLATE
+        return view('courses.edit', compact('course', 'templates')); // <-- KIRIM TEMPLATE KE VIEW
     }
 
     public function update(Request $request, Course $course)
@@ -241,8 +229,9 @@ class CourseController extends Controller
             'thumbnail' => 'nullable|image|max:2048',
             'status' => 'required|in:draft,published',
             'clear_thumbnail' => 'nullable|boolean',
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id', // <-- VALIDASI UNTUK TEMPLATE
 
-            // ✅ BARU: Validation untuk periode
+            // ... (validasi periode tetap sama)
             'enable_periods' => 'nullable|boolean',
             'periods_to_delete' => 'nullable|array',
             'periods_to_delete.*' => 'exists:course_periods,id',
@@ -259,7 +248,6 @@ class CourseController extends Controller
         try {
             DB::beginTransaction();
 
-            // Handle thumbnail update (existing logic)
             if ($request->boolean('clear_thumbnail')) {
                 if ($course->thumbnail) {
                     Storage::disk('public')->delete($course->thumbnail);
@@ -274,11 +262,9 @@ class CourseController extends Controller
 
             $course->update($validatedData);
 
-            // ✅ BARU: Handle periods update
             if ($request->boolean('enable_periods')) {
                 $this->updateCoursePeriods($course, $request, $validatedData);
             } else {
-                // Hapus semua periode jika fitur dinonaktifkan
                 $course->periods()->delete();
             }
 

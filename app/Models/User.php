@@ -86,8 +86,26 @@ class User extends Authenticatable
     public function completedContents()
     {
         return $this->belongsToMany(Content::class, 'content_user')
-            ->withPivot('completed', 'completed_at')
+            ->withPivot('completed', 'completed_at') // Menggunakan kolom 'completed'
             ->withTimestamps();
+    }
+
+    public function contents()
+    {
+        return $this->completedContents();
+    }
+
+    public function getProgressForCourse(Course $course): array
+    {
+        $progressPercentage = $this->courseProgress($course);
+        $totalContents = $course->contents()->count();
+        $completedContents = round(($progressPercentage / 100) * $totalContents);
+
+        return [
+            'total_contents' => $totalContents,
+            'completed_contents' => $completedContents,
+            'progress_percentage' => $progressPercentage,
+        ];
     }
 
     /**
@@ -282,63 +300,7 @@ class User extends Authenticatable
             ->get();
     }
 
-    /**
-     * Get learning progress for a specific course
-     */
-    public function getProgressForCourse(Course $course): array
-    {
-        // 1. Dapatkan total konten dalam kursus dengan cara yang lebih efisien
-        $totalContents = $course->lessons()->withCount('contents')->get()->sum('contents_count');
-
-        if ($totalContents === 0) {
-            return [
-                'total_contents' => 0,
-                'completed_contents' => 0,
-                'progress_percentage' => 0,
-            ];
-        }
-
-        // 2. Hitung konten biasa (non-tugas) yang selesai
-        $completedRegularContents = $this->completedContents()
-            ->whereHas('lesson', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
-            })
-            // Pastikan hanya menghitung tipe selain kuis dan esai
-            ->whereNotIn('type', ['quiz', 'essay'])
-            ->count();
-
-        // 3. Hitung kuis yang telah LULUS (setiap kuis dihitung sekali)
-        $passedQuizzes = $this->quizAttempts()
-            ->where('passed', true)
-            ->whereHas('quiz.lesson', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
-            })
-            ->select('quiz_id')
-            ->distinct()
-            ->get()
-            ->count();
-
-        // 4. Hitung esai yang telah DIKUMPULKAN (setiap esai dihitung sekali)
-        $submittedEssays = $this->essaySubmissions()
-            ->whereHas('content.lesson', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
-            })
-            ->select('content_id')
-            ->distinct()
-            ->get()
-            ->count();
-
-        // 5. Jumlahkan semua item yang selesai
-        $totalCompleted = $completedRegularContents + $passedQuizzes + $submittedEssays;
-        $progressPercentage = round(($totalCompleted / $totalContents) * 100);
-
-        return [
-            'total_contents' => $totalContents,
-            'completed_contents' => $totalCompleted,
-            'progress_percentage' => min(100, $progressPercentage), // Batasi maksimal 100%
-        ];
-    }
-
+    
     /**
      * Scope for filtering users by role
      */
@@ -562,4 +524,64 @@ public function getAvailableChatUsers($search = null)
 
     return $query->select('id', 'name', 'email')->limit(20)->get();
 }
+
+    public function courseProgress(Course $course): float
+    {
+        $totalContents = $course->contents()->count();
+        if ($totalContents === 0) {
+            return 0;
+        }
+
+        $completedContentsCount = $this->completedContents()
+            ->whereIn('content_id', $course->contents()->pluck('id'))
+            ->wherePivot('completed', true) // Menggunakan wherePivot('completed', true)
+            ->count();
+            
+        return round(($completedContentsCount / $totalContents) * 100, 2);
+    }
+
+    public function areAllGradedItemsMarked(Course $course): bool
+    {
+        $gradedContentTypes = ['essay'];
+        $itemsToGrade = $course->contents()->whereIn('type', $gradedContentTypes)->get();
+
+        if ($itemsToGrade->isEmpty()) {
+            return true;
+        }
+
+        foreach ($itemsToGrade as $item) {
+            if ($item->type == 'essay') {
+                $submission = $this->essaySubmissions()->where('content_id', $item->id)->first();
+                // Pastikan statusnya 'graded'
+                if (!$submission || $submission->status !== 'graded') { 
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public function hasCompletedAllContentsInLesson(Lesson $lesson): bool
+    {
+        $totalContentsInLesson = $lesson->contents()->count();
+        if ($totalContentsInLesson === 0) {
+            return true;
+        }
+
+        $completedCountInLesson = $this->contents()
+            ->where('lesson_id', $lesson->id)
+            ->wherePivot('status', 'completed')
+            ->count();
+
+        return $completedCountInLesson >= $totalContentsInLesson;
+    }
+
+    /**
+     * Memeriksa apakah sebuah lesson sudah ditandai selesai.
+     */
+    public function hasCompletedLesson(Lesson $lesson): bool
+    {
+        return $this->lessons()->where('lesson_id', $lesson->id)->wherePivot('status', 'completed')->exists();
+    }
 }

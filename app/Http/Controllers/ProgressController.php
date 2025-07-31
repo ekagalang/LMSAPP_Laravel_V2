@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Content;
 use App\Models\Lesson;
+use App\Models\Course; // <-- TAMBAHKAN USE STATEMENT
+use App\Models\Certificate; // <-- TAMBAHKAN USE STATEMENT
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; // <-- TAMBAHKAN USE STATEMENT
+use Illuminate\Support\Facades\Log; // <-- TAMBAHKAN USE STATEMENT
+use Illuminate\Support\Facades\Storage; // <-- TAMBAHKAN USE STATEMENT
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ProgressController extends Controller
@@ -15,17 +20,23 @@ class ProgressController extends Controller
     public function markContentAsCompleted(Content $content)
     {
         $user = Auth::user();
+        $lesson = $content->lesson;
+        $course = $lesson->course;
 
         // Tandai konten saat ini sebagai selesai
         $user->completedContents()->syncWithoutDetaching([
             $content->id => ['completed' => true, 'completed_at' => now()]
         ]);
 
-        $lesson = $content->lesson;
-        $course = $lesson->course;
+        // Cek apakah lesson (materi) sekarang sudah selesai
+        if ($user->hasCompletedAllContentsInLesson($lesson)) {
+            $user->lessons()->syncWithoutDetaching([$lesson->id => ['status' => 'completed']]);
+        }
 
         // =================================================================
-        // PERUBAHAN DIMULAI DI SINI
+        // PERUBAHAN UTAMA: Panggil fungsi pengecekan sertifikat
+        // =================================================================
+        $this->checkAndGenerateCertificate($course, $user);
         // =================================================================
 
         // Cari konten berikutnya dalam pelajaran yang sama berdasarkan urutan
@@ -44,7 +55,7 @@ class ProgressController extends Controller
         // cek apakah semua pelajaran di kursus ini sudah selesai.
         $allLessonsCompleted = true;
         foreach ($course->lessons as $courseLesson) {
-            if (!$user->hasCompletedLesson($courseLesson->id)) {
+            if (!$user->hasCompletedLesson($courseLesson)) {
                 $allLessonsCompleted = false;
                 break;
             }
@@ -57,34 +68,80 @@ class ProgressController extends Controller
         // Jika ini adalah konten terakhir dari pelajaran, tapi masih ada pelajaran lain,
         // kembalikan ke halaman kursus.
         return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan pelajaran ini.');
-        
-        // =================================================================
-        // PERUBAHAN SELESAI DI SINI
-        // =================================================================
     }
 
     public function markLessonAsCompleted(Lesson $lesson)
     {
         $user = Auth::user();
-        // Pastikan user sudah enroll kursus induk dari pelajaran ini
-        // if (!$user->isEnrolled($lesson->course)) {
-        //     return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk menandai progres.');
-        // }
 
         // Tandai semua konten dalam pelajaran ini sebagai selesai juga
         $contentIds = $lesson->contents->pluck('id')->toArray();
         if (!empty($contentIds)) {
-            $user->completedContents()->syncWithoutDetaching(
-                array_fill_keys($contentIds, ['completed' => true, 'completed_at' => now()])
+            $user->contents()->syncWithoutDetaching(
+                array_fill_keys($contentIds, ['status' => 'completed'])
             );
         }
 
-        $user->completedLessons()->syncWithoutDetaching([
-            $lesson->id => ['completed' => true, 'completed_at' => now()]
-        ]);
-
+        $user->lessons()->syncWithoutDetaching([$lesson->id => ['status' => 'completed']]);
 
         return redirect()->back()->with('success', 'Pelajaran berhasil ditandai selesai!');
+    }
+
+    // =================================================================
+    // FUNGSI BARU: Untuk memeriksa dan men-generate sertifikat
+    // =================================================================
+    private function checkAndGenerateCertificate(Course $course, User $user)
+    {
+        if (!$course->certificate_template_id) {
+            return;
+        }
+
+        $progress = $user->courseProgress($course);
+
+        if ($progress >= 100 && $user->areAllGradedItemsMarked($course)) {
+            $existingCertificate = Certificate::where('course_id', $course->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$existingCertificate) {
+                $this->generateCertificate($course, $user);
+            }
+        }
+    }
+
+    private function generateCertificate(Course $course, User $user)
+    {
+        $template = $course->certificateTemplate;
+        if (!$template) {
+            Log::warning("Certificate generation skipped for user {$user->id} in course {$course->id}: No template found.");
+            return;
+        }
+
+        Log::info("Generating certificate for user {$user->id} in course {$course->id}");
+
+        try {
+            $pdf = Pdf::loadView('reports.progress_pdf', [
+                'user' => $user,
+                'course' => $course,
+                'template' => $template,
+            ]);
+
+            $fileName = 'certificate-' . $user->id . '-' . $course->id . '-' . time() . '.pdf';
+            $filePath = 'certificates/' . $fileName;
+
+            Storage::disk('public')->put($filePath, $pdf->output());
+
+            Certificate::create([
+                'user_id' => $user->id,
+                'course_id' => $course->id,
+                'certificate_template_id' => $template->id,
+                'path' => $filePath,
+                'issued_at' => now(),
+            ]);
+            Log::info("Certificate generated successfully for user {$user->id} in course {$course->id}");
+        } catch (\Exception $e) {
+            Log::error("Certificate generation failed for user {$user->id} in course {$course->id}: " . $e->getMessage());
+        }
     }
 
     public function exportCourseProgressPdf(Course $course)

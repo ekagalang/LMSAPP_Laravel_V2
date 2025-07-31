@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\CertificateController;
 
 class ContentController extends Controller
 {
@@ -78,74 +79,25 @@ class ContentController extends Controller
         $user = Auth::user();
         $course = $content->lesson->course;
 
-        // Pastikan user berhak mengakses kursus ini
         $this->authorize('view', $course);
 
         // Tandai konten saat ini sebagai selesai (hanya untuk non-task content)
         if (!in_array($content->type, ['quiz', 'essay'])) {
             $user->completedContents()->syncWithoutDetaching([
-                $content->id => [
-                    'completed' => true,
-                    'completed_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]
+                $content->id => ['completed' => true, 'completed_at' => now()]
             ]);
         }
 
-        // ✅ PERBAIKAN: Refresh ulang setelah marking completion untuk mendapatkan data terbaru
-        $orderedContents = $this->getOrderedContents($course);
-        $unlockedContents = $this->getUnlockedContents($user, $orderedContents);
+        // Cek progres SETELAH menandai konten selesai
+        $progressData = $user->getProgressForCourse($course);
 
-        $currentIndex = $orderedContents->search(function ($item) use ($content) {
-            return $item->id === $content->id;
-        });
+        // Jika progres sudah 100% atau lebih
+        if ($progressData['progress_percentage'] >= 100) {
+            // Panggil metode untuk generate sertifikat
+            CertificateController::generateForUser($course, $user);
 
-        $nextContent = null;
-        if ($currentIndex !== false && ($currentIndex + 1) < $orderedContents->count()) {
-            $nextContent = $orderedContents[$currentIndex + 1];
-        }
-
-        // Jika ada materi selanjutnya, arahkan ke sana.
-        if ($nextContent) {
-            return redirect()->route('contents.show', $nextContent->id)->with('success', 'Materi selesai! Lanjut ke materi berikutnya.');
-        }
-
-        // ✅ FITUR BARU: Cek apakah semua konten dalam kursus sudah diselesaikan
-        $allContents = $this->getOrderedContents($course);
-        $isAllCourseCompleted = true;
-
-        foreach ($allContents as $contentItem) {
-            $isContentCompleted = false;
-
-            if ($contentItem->type === 'quiz' && $contentItem->quiz_id) {
-                $isContentCompleted = $user->quizAttempts()
-                    ->where('quiz_id', $contentItem->quiz_id)
-                    ->where('passed', true)
-                    ->exists();
-            } elseif ($contentItem->type === 'essay') {
-                $isContentCompleted = $user->essaySubmissions()
-                    ->where('content_id', $contentItem->id)
-                    ->exists();
-            } else {
-                $isContentCompleted = $user->completedContents()
-                    ->where('content_id', $contentItem->id)
-                    ->exists();
-            }
-
-            if (!$isContentCompleted) {
-                $isAllCourseCompleted = false;
-                break;
-            }
-        }
-
-        // ✅ JIKA SEMUA KONTEN SELESAI: Mark course completed dan redirect ke dashboard
-        if ($isAllCourseCompleted) {
-            // Mark course sebagai completed
-            $user->courses()->updateExistingPivot($course->id, [
-                'completed_at' => now(),
-                'updated_at' => now()
-            ]);
+            // Tandai kursus sebagai selesai untuk pengguna
+            $user->courses()->updateExistingPivot($course->id, ['completed_at' => now()]);
 
             return redirect()->route('dashboard')->with([
                 'success' => '🎉 Selamat! Anda telah menyelesaikan kursus "' . $course->title . '" dengan sukses!',
@@ -154,8 +106,17 @@ class ContentController extends Controller
             ]);
         }
 
-        // Jika masih ada konten yang belum selesai, kembali ke halaman kursus
-        return redirect()->route('courses.show', $course->id)->with('success', 'Materi selesai! Masih ada beberapa materi yang belum diselesaikan.');
+        // Jika belum 100%, cari konten berikutnya untuk dilanjutkan
+        $orderedContents = $this->getOrderedContents($course);
+        $currentIndex = $orderedContents->search(fn($item) => $item->id === $content->id);
+
+        if ($currentIndex !== false && isset($orderedContents[$currentIndex + 1])) {
+            $nextContent = $orderedContents[$currentIndex + 1];
+            return redirect()->route('contents.show', $nextContent->id)->with('success', 'Materi selesai! Lanjut ke materi berikutnya.');
+        }
+
+        // Jika ini adalah konten terakhir tetapi progres belum 100%
+        return redirect()->route('courses.show', $course->id)->with('success', 'Materi terakhir dalam pelajaran ini telah selesai.');
     }
 
     // ✅ PERBAIKAN UTAMA: Method untuk mendapatkan konten dalam urutan yang benar

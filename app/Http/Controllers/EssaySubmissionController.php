@@ -10,22 +10,6 @@ use Illuminate\Support\Facades\Auth;
 class EssaySubmissionController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request, Content $content)
@@ -35,67 +19,54 @@ class EssaySubmissionController extends Controller
             return back()->with('error', 'Invalid content type.');
         }
 
-        // Validasi request, ubah 'answer' menjadi 'essay_content'
+        // Validasi request
         $request->validate([
             'essay_content' => 'required|string',
         ]);
 
-        // Cek apakah user sudah pernah submit
-        $existingSubmission = EssaySubmission::where('user_id', Auth::id())
-            ->where('content_id', $content->id)
-            ->exists();
+        $user = Auth::user();
 
-        if ($existingSubmission) {
-            return back()->with('error', 'You have already submitted your essay.');
-        }
+        // Menggunakan updateOrCreate untuk menangani jika user mengirim ulang jawaban
+        EssaySubmission::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'content_id' => $content->id,
+            ],
+            [
+                // Sesuaikan nama kolom 'answer' dengan yang ada di database Anda
+                'answer' => $request->input('essay_content'),
+                'status' => 'submitted', // Tambahkan status
+                'score' => null, // Reset skor jika ada pengiriman ulang
+                'feedback' => null, // Reset feedback jika ada pengiriman ulang
+            ]
+        );
 
-        // Simpan submission
-        EssaySubmission::create([
-            'user_id' => Auth::id(),
-            'content_id' => $content->id,
-            // Gunakan input 'essay_content'
-            'answer' => $request->input('essay_content'),
+        // =================================================================
+        // PERUBAHAN UTAMA: Tandai konten sebagai 'completed' untuk pengguna
+        // =================================================================
+        $user->completedContents()->syncWithoutDetaching([
+            $content->id => ['completed' => true, 'completed_at' => now()]
         ]);
 
+
+        // Cek apakah lesson (materi) sekarang sudah selesai
+        $lesson = $content->lesson;
+        if ($lesson) {
+            $allContentsCompleted = $user->hasCompletedAllContentsInLesson($lesson);
+            if ($allContentsCompleted) {
+                $user->lessons()->syncWithoutDetaching([$lesson->id => ['status' => 'completed']]);
+            }
+        }
+        
         return redirect()->route('contents.show', $content)->with('success', 'Essay submitted successfully!');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(EssaySubmission $essaySubmission)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(EssaySubmission $essaySubmission)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, EssaySubmission $essaySubmission)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(EssaySubmission $essaySubmission)
-    {
-        //
-    }
-
     public function showResult(EssaySubmission $submission)
     {
         // Pastikan hanya pengguna yang membuat submission yang bisa melihat hasilnya.
-        // Ini adalah langkah keamanan yang penting.
         if (Auth::id() !== $submission->user_id) {
             abort(403, 'UNAUTHORIZED ACTION');
         }

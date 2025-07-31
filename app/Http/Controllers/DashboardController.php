@@ -12,6 +12,7 @@ use App\Models\QuizAttempt;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
 use App\Models\Announcement;
+use App\Models\Certificate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -45,13 +46,21 @@ class DashboardController extends Controller
 
             // For Participant
             $stats = $this->getParticipantStats($user);
-            return view('dashboard.participant', compact('stats', 'announcements'));
+
+            $completedCertificates = Certificate::where('user_id', $user->id)
+                ->with('course') // Eager load relasi course
+                ->latest('issued_at')
+                ->get();
+            // <-- LOGIKA BARU SELESAI -->
+
+            return view('dashboard.participant', compact('stats', 'announcements', 'completedCertificates'));
         } catch (\Exception $e) {
             Log::error('Dashboard error: ' . $e->getMessage());
 
             // Fallback dengan stats kosong
             $stats = $this->getEmptyStats();
             $announcements = collect(); // Empty collection sebagai fallback
+            $completedCertificates = collect();
 
             if ($user->hasRole('super-admin')) {
                 return view('dashboard.admin', compact('stats', 'announcements'));
@@ -354,9 +363,7 @@ class DashboardController extends Controller
                                 ->exists();
                         } else {
                             // For regular content, check completion table
-                            $isCompleted = $user->completedContents()
-                                ->where('content_id', $content->id)
-                                ->exists();
+                            $isCompleted = $user->completedContents()->where('content_id', $content->id)->exists();
                         }
 
                         if ($isCompleted) {
@@ -385,9 +392,7 @@ class DashboardController extends Controller
                                 ->where('content_id', $content->id)
                                 ->exists();
                         } else {
-                            $isCompleted = $user->completedContents()
-                                ->where('content_id', $content->id)
-                                ->exists();
+                            $isCompleted = $user->completedContents()->where('content_id', $content->id)->exists();
                         }
 
                         if ($isCompleted) {
@@ -487,9 +492,7 @@ class DashboardController extends Controller
                                     ->where('content_id', $content->id)
                                     ->exists();
                             } else {
-                                return !$user->completedContents()
-                                    ->where('content_id', $content->id)
-                                    ->exists();
+                                return !$user->contents()->where('content_id', $content->id)->exists();
                             }
                         });
                     })

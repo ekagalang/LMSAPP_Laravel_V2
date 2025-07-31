@@ -6,9 +6,13 @@ use App\Models\Course;
 use App\Models\User;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
+use App\Models\Certificate; // <-- TAMBAHKAN USE STATEMENT
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // <-- TAMBAHKAN USE STATEMENT
+use Illuminate\Support\Facades\Storage; // <-- TAMBAHKAN USE STATEMENT
+use PDF;
 
 class GradebookController extends Controller
 {
@@ -85,7 +89,6 @@ class GradebookController extends Controller
      */
     public function storeEssayGrade(Request $request, EssaySubmission $submission)
     {
-        // PERBAIKAN: Menggunakan 'grade' sebagai otorisasi, bukan 'update'
         $this->authorize('grade', $submission->content->lesson->course);
 
         $validated = $request->validate([
@@ -93,7 +96,15 @@ class GradebookController extends Controller
             'feedback' => 'nullable|string',
         ]);
 
-        $submission->update($validated + ['graded_at' => now()]);
+        $submission->update($validated + ['graded_at' => now(), 'status' => 'graded']);
+
+        // =================================================================
+        // PERUBAHAN UTAMA: Panggil fungsi pengecekan sertifikat
+        // =================================================================
+        $course = $submission->content->lesson->course;
+        $user = $submission->user;
+        $this->checkAndGenerateCertificate($course, $user);
+        // =================================================================
 
         return redirect()->route('gradebook.user_essays', [
             'course' => $submission->content->lesson->course->id,
@@ -118,4 +129,77 @@ class GradebookController extends Controller
 
         return redirect()->back()->with('success', 'Feedback untuk ' . $user->name . ' berhasil disimpan.');
     }
+
+    // =================================================================
+    // FUNGSI BARU: Untuk memeriksa dan men-generate sertifikat
+    // =================================================================
+    private function checkAndGenerateCertificate(Course $course, User $user)
+    {
+        Log::info("Memulai pengecekan sertifikat untuk user: {$user->id} di course: {$course->id}");
+
+        if (!$course->certificate_template_id) {
+            Log::warning("Pengecekan dihentikan: Course {$course->id} tidak punya template sertifikat.");
+            return;
+        }
+
+        $progress = $user->courseProgress($course);
+        Log::info("Progres user {$user->id}: {$progress}%");
+
+        $allGraded = $user->areAllGradedItemsMarked($course);
+        Log::info("Apakah semua item sudah dinilai? " . ($allGraded ? 'Ya' : 'Tidak'));
+
+        if ($progress >= 100 && $allGraded) {
+            Log::info("SYARAT TERPENUHI: Progres 100% dan semua item sudah dinilai.");
+            $existingCertificate = Certificate::where('course_id', $course->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$existingCertificate) {
+                Log::info("Sertifikat belum ada, memulai proses generate...");
+                $this->generateCertificate($course, $user);
+            } else {
+                Log::info("Sertifikat sudah ada, tidak perlu generate ulang.");
+            }
+        } else {
+            Log::info("SYARAT TIDAK TERPENUHI. Proses generate sertifikat tidak dijalankan.");
+        }
+    }
+
+    private function generateCertificate(Course $course, User $user)
+    {
+        $template = $course->certificateTemplate;
+        if (!$template) {
+            Log::warning("Certificate generation skipped for user {$user->id} in course {$course->id}: No template found.");
+            return;
+        }
+
+        Log::info("Generating certificate for user {$user->id} in course {$course->id}");
+
+        try {
+            // Pastikan view 'reports.progress_pdf' ada dan sesuai
+            // atau ganti dengan view template sertifikat Anda, misal 'certificates.template'
+            $pdf = PDF::loadView('reports.progress_pdf', [
+                'user' => $user,
+                'course' => $course,
+                'template' => $template,
+            ]);
+
+            $fileName = 'certificate-' . $user->id . '-' . $course->id . '-' . time() . '.pdf';
+            $filePath = 'certificates/' . $fileName;
+
+            Storage::disk('public')->put($filePath, $pdf->output());
+
+            Certificate::create([
+                'user_id' => $user->id,
+                'course_id' => $course->id,
+                'certificate_template_id' => $template->id,
+                'path' => $filePath,
+                'issued_at' => now(),
+            ]);
+            Log::info("Certificate generated successfully for user {$user->id} in course {$course->id}");
+        } catch (\Exception $e) {
+            Log::error("Certificate generation failed for user {$user->id} in course {$course->id}: " . $e->getMessage());
+        }
+    }
+    // =================================================================
 }

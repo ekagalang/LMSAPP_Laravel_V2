@@ -301,6 +301,10 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="mt-8">
+                        @include('dashboard.partials.my-certificates', ['completedCertificates' => $completedCertificates])
+                    </div>
                 </div>
 
                 <!-- Sidebar -->

@@ -17,6 +17,7 @@ class Course extends Model
         'objectives',
         'thumbnail',
         'status',
+        'certificate_template_id',
     ];
 
     /**
@@ -70,6 +71,11 @@ class Course extends Model
     public function eventOrganizers()
     {
         return $this->belongsToMany(User::class, 'course_event_organizer');
+    }
+
+    public function contents()
+    {
+        return $this->hasManyThrough(Content::class, Lesson::class)->select('contents.*');
     }
 
     public function getAverageProgress(): int

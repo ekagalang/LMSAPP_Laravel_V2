@@ -270,6 +270,24 @@
                                         @enderror
                                     </div>
 
+                                    <!-- Template Sertifikat -->  
+                                    <div class="group">
+                                        <label for="certificate_template_id" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                                            Template Sertifikat
+                                        </label>
+                                        <select name="certificate_template_id"
+                                                id="certificate_template_id"
+                                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400">
+                                            <option value="">{{ __('-- Tidak Ada Sertifikat --') }}</option>
+                                            @foreach($templates as $template)
+                                                <option value="{{ $template->id }}" {{ (old('certificate_template_id', $course->certificate_template_id) == $template->id) ? 'selected' : '' }}>
+                                                    {{ $template->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
                                     <!-- Course Stats -->
                                     <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-4">
                                         <h4 class="text-indigo-800 font-medium text-sm mb-3 flex items-center">
