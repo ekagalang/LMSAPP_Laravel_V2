@@ -173,7 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chat', [App\Http\Controllers\Api\ChatController::class, 'webIndex'])->name('chat.index');
     Route::get('/chat/{chat}', [App\Http\Controllers\Api\ChatController::class, 'webShow'])->name('chat.show');
     Route::post('/chats/{chat}/messages', [MessageController::class, 'store'])->name('messages.store');
-    Route::post('/chats/{chat}/typing', [MessageController::class, 'typing'])->name('messages.typing');
+    Route::post('/chats/{chat}/typing', [MessageController::class, 'UserTyping'])->name('messages.UserTyping');
 
     // Chat API routes untuk WEB interface (tanpa sanctum!)
      // Chat API routes untuk WEB interface
