@@ -23,7 +23,7 @@ class CoursePeriodController extends Controller
     {
         $this->authorize('update', $course);
 
-        return view('course-periods.create', compact('course'));
+        return view('courses-period.create', compact('course'));
     }
 
     /**
@@ -31,11 +31,13 @@ class CoursePeriodController extends Controller
      */
     public function store(Request $request, Course $course)
     {
+
         $this->authorize('update', $course);
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'start_date' => 'required|date|after_or_equal:today',
+            /* 'start_date' => 'required|date|after_or_equal:today' */
+            'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'description' => 'nullable|string|max:1000',
             'max_participants' => 'nullable|integer|min:1|max:1000',
@@ -145,42 +147,50 @@ class CoursePeriodController extends Controller
     /**
      * Remove the specified course period from storage.
      */
-    public function destroy(Course $course, CoursePeriod $period)
-    {
-        $this->authorize('update', $course);
+    public function destroy(CoursePeriod $period, Course $course)
+{
+    $this->authorize('update', $course);
 
-        // Ensure the period belongs to the course
-        if ($period->course_id !== $course->id) {
-            abort(404, 'Periode tidak ditemukan untuk kursus ini.');
-        }
+    // Ensure the period belongs to the course
+    if ($period->course_id !== $course->id) {
+        abort(404, 'Periode tidak ditemukan untuk kursus ini.');
+    }
 
-        try {
-            DB::beginTransaction();
+    try {
+        DB::beginTransaction();
 
-            // Check if period has enrolled participants
-            $enrolledCount = $period->enrolledUsers()->count();
-            if ($enrolledCount > 0) {
-                return back()->withErrors([
-                    'error' => "Tidak dapat menghapus periode yang memiliki {$enrolledCount} peserta terdaftar. Hapus atau pindahkan peserta terlebih dahulu."
-                ]);
-            }
+        // Check if period has enrolled participants or chats
+        $enrolledCount = $period->enrolledUsers()->count();
+        $chatsCount = $period->chats()->count();
 
-            $periodName = $period->name;
-            $period->delete();
-
-            DB::commit();
-
-            return redirect()
-                ->route('courses.show', $course)
-                ->with('success', "Periode '{$periodName}' berhasil dihapus!");
-        } catch (\Exception $e) {
-            DB::rollBack();
-
+        if ($enrolledCount > 0) {
             return back()->withErrors([
-                'error' => 'Gagal menghapus periode: ' . $e->getMessage()
+                'error' => "Tidak dapat menghapus periode yang memiliki {$enrolledCount} peserta terdaftar. Hapus atau pindahkan peserta terlebih dahulu."
             ]);
         }
+
+        if ($chatsCount > 0) {
+            return back()->withErrors([
+                'error' => "Tidak dapat menghapus periode yang memiliki {$chatsCount} chat aktif. Hapus chat terlebih dahulu."
+            ]);
+        }
+
+        $periodName = $period->name;
+        $period->delete();
+
+        DB::commit();
+
+        return redirect()
+            ->route('courses.show', $course)
+            ->with('success', "Periode '{$periodName}' berhasil dihapus!");
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return back()->withErrors([
+            'error' => 'Gagal menghapus periode: ' . $e->getMessage()
+        ]);
     }
+}
 
     /**
      * Duplicate a course period

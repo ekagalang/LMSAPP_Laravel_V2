@@ -62,10 +62,15 @@ class CourseController extends Controller
 
             'enable_periods' => 'nullable|boolean',
 
+            /* // ✅ UPDATED: Use 'required_with' to ensure start_date and end_date are only required if periods are provided
+                ✅ UPDATED: Use 'after_or_equal:today' to ensure start_date is not in the past
+                ✅ UPDATED: Use 'after' to ensure end_date is after start_date
+                ✅ UPDATED: Use 'required_with' to ensure these fields are only validated if */
             // ✅ UPDATED: Optional periods validation
             'periods' => 'nullable|array',
             'periods.*.name' => 'required_with:periods|string|max:255',
             'periods.*.start_date' => 'required_with:periods|date|after_or_equal:today',
+            // 'periods.*.start_date' => 'required_with:periods|date',
             'periods.*.end_date' => 'required_with:periods|date|after:periods.*.start_date',
             'periods.*.description' => 'nullable|string',
             'periods.*.max_participants' => 'nullable|integer|min:1',

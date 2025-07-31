@@ -169,6 +169,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/course-periods/create/{course}', [CoursePeriodController::class, 'create'])
         ->name('course-periods.create');
 
+    Route::post('/course-periods/create/{course}', [CoursePeriodController::class, 'store'])
+        ->name('course-periods.store');
+
     // NEW: Chat interface routes
     Route::get('/chat', [App\Http\Controllers\Api\ChatController::class, 'webIndex'])->name('chat.index');
     Route::get('/chat/{chat}', [App\Http\Controllers\Api\ChatController::class, 'webShow'])->name('chat.show');

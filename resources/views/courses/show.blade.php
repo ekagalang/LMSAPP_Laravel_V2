@@ -541,7 +541,7 @@
 
                                         @can('update', $course)
                                             <div class="flex items-center space-x-2">
-                                                <a href="{{ route('courses.edit', $period) }}"
+                                                <a a href="{{ route('courses.edit', ['course' => $course->id]) }}"
                                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</a>
                                                 @if(!$period->chats || $period->chats->count() === 0)
                                                     <form action="{{ route('course-periods.destroy', $period) }}" method="POST" class="inline"
