@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Models\Chat;
 use App\Models\CoursePeriod;
 use Illuminate\Http\Request;
