@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <link rel="icon" href="{{ asset('images/favicon.ico') }}" type="image/x-icon">
+
     <title>{{ config('app.name', 'LMS App') }} @hasSection('title') - @yield('title') @endif</title>
 
     
@@ -12,6 +14,8 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
 </head>
 <body class="font-sans antialiased bg-gray-100">
     <div x-data="{ open: false }" class="min-h-screen">
@@ -143,6 +147,11 @@
             {{ $slot }}
         </main>
     </div>
-    @stack('scripts')
+
+        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" xintegrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+        
+        <!-- Summernote JS -->
+        <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+        @stack('scripts')
 </body>
 </html>

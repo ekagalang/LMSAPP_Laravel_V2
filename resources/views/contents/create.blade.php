@@ -182,11 +182,7 @@
                                 <label for="body_text" class="block text-sm font-semibold text-gray-700 mb-3">
                                     <span id="body_label">📝 Isi Konten</span>
                                 </label>
-                                <textarea name="body_text"
-                                          id="body_text"
-                                          rows="8"
-                                          class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
-                                          placeholder="Tulis konten Anda di sini...">{{ old('body_text') }}</textarea>
+                                <x-forms.summernote-editor id="body_text" name="body_text" value="{{ old('body_text') }}" />
                                 <p class="text-sm text-gray-500 mt-2 flex items-center">
                                     <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
@@ -300,8 +296,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
-
     <style>
         .content-type-card input:checked + div {
             @apply border-indigo-500 bg-indigo-50 shadow-lg;
@@ -337,10 +331,6 @@
 
     <script>
         function submitCreateForm() {
-            updateProgressStep(3);
-            if (tinymce.get('body_text')) {
-                tinymce.get('body_text').save();
-            }
             document.getElementById('contentForm').submit();
         }
 
@@ -366,10 +356,7 @@
                 field.classList.add('hidden');
             });
 
-            // Destroy existing TinyMCE if exists
-            if (tinymce.get('body_text')) {
-                tinymce.get('body_text').destroy();
-            }
+            $('#body_text').summernote('destroy');
 
             updateProgressStep(2);
 
@@ -384,22 +371,6 @@
                     document.getElementById('body_label').textContent = '📝 Isi Konten';
                     document.getElementById('body_hint').textContent = 'Gunakan editor untuk memformat teks dengan rich content';
                 }
-
-                // Initialize TinyMCE
-                setTimeout(() => {
-                    tinymce.init({
-                        selector: 'textarea#body_text',
-                        height: 400,
-                        plugins: 'code table lists link image media autosave wordcount fullscreen template codesample',
-                        toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright | indent outdent | bullist numlist | code codesample | table | link image media | fullscreen',
-                        branding: false,
-                        skin: 'oxide',
-                        content_css: 'default',
-                        menubar: false,
-                        statusbar: true,
-                        resize: true,
-                    });
-                }, 100);
 
             } else if (type === 'video') {
                 document.getElementById('video_field').classList.remove('hidden');

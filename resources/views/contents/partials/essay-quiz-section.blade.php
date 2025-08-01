@@ -31,7 +31,7 @@
                 <h3 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Tulis Jawaban Anda:</h3>
                 
                 {{-- Textarea ini akan diubah menjadi editor oleh TinyMCE --}}
-                <textarea name="essay_content" id="essay_editor"></textarea>
+                <x-forms.summernote-editor id="essay_editor" name="essay_content" />
                 
                 <div class="mt-4">
                     <x-primary-button>{{ __('Kirim Jawaban') }}</x-primary-button>
@@ -39,30 +39,6 @@
             </form>
 
             {{-- Skrip ini hanya akan dimuat jika form jawaban ditampilkan --}}
-            @push('scripts')
-                {{-- Memuat library TinyMCE dari CDN --}}
-                <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        if (document.getElementById('essay_editor')) {
-                            tinymce.init({
-                                selector: 'textarea#essay_editor',
-                                plugins: 'code table lists link image media autosave wordcount fullscreen template',
-                                toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | link image media',
-                                branding: false,
-                                menubar: true,
-                                skin: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'oxide-dark' : 'oxide',
-                                content_css: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'default',
-                                setup: function (editor) {
-                                    editor.on('change', function () {
-                                        editor.save(); // Sinkronkan konten ke textarea
-                                    });
-                                }
-                            });
-                        }
-                    });
-                </script>
-            @endpush
         @endif
     </div>
 

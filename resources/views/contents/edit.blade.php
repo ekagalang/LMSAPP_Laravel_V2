@@ -228,9 +228,7 @@
                                 <label for="body_editor" class="block text-sm font-semibold text-gray-700 mb-3">
                                     <span x-text="isType('essay') ? '✍️ Pertanyaan Esai' : '📝 Isi Konten'"></span>
                                 </label>
-                                <textarea name="body_text"
-                                          id="body_editor"
-                                          class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">{{ old('body_text', $content->body) }}</textarea>
+                                <x-forms.summernote-editor id="body_editor" name="body_text" value="{{ old('body_text', $content->body) }}" />
                                 <p class="text-sm text-gray-500 mt-2" x-text="isType('essay') ? 'Tulis pertanyaan yang akan dijawab peserta' : 'Gunakan editor untuk memformat konten'"></p>
                             </div>
                         </div>
@@ -405,7 +403,6 @@
     </div>
 
     @push('scripts')
-    <script src="https://cdn.tiny.cloud/1/wfo9boig39silkud2152anvh7iaqnu9wf4wqh75iudy3mry6/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
     <style>
         .animate-fadeIn {
             animation: fadeIn 0.5s ease-in-out;
@@ -480,30 +477,6 @@
                     this.handleTypeChange(this.content.type);
                 },
 
-                initTinymce() {
-                    if (tinymce.get('body_editor')) tinymce.get('body_editor').destroy();
-                    const textarea = document.getElementById('body_editor');
-                    if (!textarea) return;
-
-                    const initialContent = textarea.value;
-                    tinymce.init({
-                        selector: 'textarea#body_editor',
-                        height: 400,
-                        plugins: 'code table lists link image media autosave wordcount fullscreen template codesample',
-                        toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright | indent outdent | bullist numlist | code codesample | table | link image media | fullscreen',
-                        branding: false,
-                        menubar: false,
-                        statusbar: true,
-                        resize: true,
-                        skin: 'oxide',
-                        setup: (editor) => {
-                            editor.on('init', () => {
-                                editor.setContent(initialContent);
-                            });
-                        }
-                    });
-                },
-
                 isType(type) {
                     return this.content.type === type;
                 },
@@ -521,22 +494,17 @@
                 },
 
                 handleTypeChange(type) {
-                    if (type === 'text' || type === 'essay') {
-                        this.$nextTick(() => {
-                            this.initTinymce();
-                        });
-                    } else {
-                        if (tinymce.get('body_editor')) {
-                            tinymce.get('body_editor').destroy();
+                    // Cukup pastikan editor Summernote dihancurkan jika tidak diperlukan
+                    if (type !== 'text' && type !== 'essay') {
+                         if ($('#body_editor').hasClass('note-editor')) {
+                            $('#body_editor').summernote('destroy');
                         }
                     }
+                    // Inisialisasi akan ditangani oleh komponen Blade
                 },
 
                 submitForm() {
                     if (this.validate()) {
-                        if (tinymce.get('body_editor')) {
-                            tinymce.triggerSave();
-                        }
                         document.getElementById('contentForm').submit();
                     } else {
                         this.formHasErrors = true;

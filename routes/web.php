@@ -22,6 +22,7 @@ use App\Http\Controllers\EventOrganizerController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\EssaySubmissionController;
 use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\ImageUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Kredensial Sertifikat
     Route::get('/certificate/{code}', [CertificateController::class, 'show'])->name('certificate.show');
+
+    // Upload image teks editor
+    Route::post('/images/upload', [ImageUploadController::class, 'store'])->name('images.upload');
 
     // Profile Pengguna
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
