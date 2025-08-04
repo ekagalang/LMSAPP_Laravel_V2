@@ -53,7 +53,8 @@ class User extends Authenticatable
      */
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
+        // PENYESUAIAN: Menambahkan withPivot('feedback') untuk bisa mengambil data feedback
+        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps()->withPivot('feedback');
     }
 
     /**
@@ -641,23 +642,33 @@ public function getAvailableChatUsers($search = null)
      */
     public function isEligibleForCertificate(Course $course): bool
     {
-        // Must be enrolled
+        // 1. Harus terdaftar di kursus
         if (!$this->isEnrolled($course)) {
             return false;
         }
 
-        // Must have 100% progress
+        // 2. Progres harus 100%
         $progress = $this->courseProgress($course);
         if ($progress < 100) {
             return false;
         }
 
-        // All graded items must be marked
+        // 3. Semua item yang perlu dinilai (esai) harus sudah dinilai
         if (!$this->areAllGradedItemsMarked($course)) {
             return false;
         }
+        
+        // 4. PENAMBAHAN: Harus sudah mendapatkan feedback umum dari instruktur
+        $feedback = DB::table('course_user')
+            ->where('user_id', $this->id)
+            ->where('course_id', $course->id)
+            ->value('feedback');
 
-        // Course must have certificate template
+        if (empty($feedback)) {
+            return false;
+        }
+
+        // 5. Kursus harus memiliki template sertifikat
         if (!$course->hasCertificateTemplate()) {
             return false;
         }

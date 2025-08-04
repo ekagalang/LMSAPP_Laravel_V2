@@ -11,6 +11,11 @@ class Certificate extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'user_id',
         'course_id',
@@ -18,10 +23,21 @@ class Certificate extends Model
         'certificate_code',
         'path',
         'issued_at',
+        // PENAMBAHAN: Kolom untuk data diri yang akan diisi peserta
+        'place_of_birth',
+        'date_of_birth',
+        'identity_number',
+        'institution_name',
     ];
 
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
     protected $casts = [
         'issued_at' => 'datetime',
+        'date_of_birth' => 'date', // PENAMBAHAN: Pastikan kolom tanggal lahir di-cast sebagai tanggal
     ];
 
     /**

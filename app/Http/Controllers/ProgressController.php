@@ -34,9 +34,9 @@ class ProgressController extends Controller
         }
 
         // =================================================================
-        // PERUBAHAN UTAMA: Panggil fungsi pengecekan sertifikat
-        // =================================================================
-        $this->checkAndGenerateCertificate($course, $user);
+        // PERUBAHAN UTAMA: Menonaktifkan pemanggilan fungsi pengecekan sertifikat otomatis
+        // Logika ini akan dipindahkan ke tombol manual di dashboard peserta.
+        // $this->checkAndGenerateCertificate($course, $user);
         // =================================================================
 
         // Cari konten berikutnya dalam pelajaran yang sama berdasarkan urutan

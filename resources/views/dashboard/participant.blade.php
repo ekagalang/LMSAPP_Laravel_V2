@@ -247,10 +247,42 @@
                                                 <div class="bg-gradient-to-r from-green-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: {{ $course['progress'] }}%"></div>
                                             </div>
                                         </div>
-                                        <div class="flex justify-end">
-                                            <a href="{{ route('courses.show', $course['id']) }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors">
-                                                {{ $course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan' }}
+                                        <div class="flex justify-between items-center mt-4">
+                                            <a href="{{ route('courses.show', $course['id']) }}" class="text-green-600 hover:underline font-medium text-sm">
+                                                {{ $course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan Belajar' }}
                                             </a>
+                                            
+                                            @php
+                                                // NOTE: Mengambil model Course di dalam loop bisa mempengaruhi performa.
+                                                // Sebaiknya data Course lengkap dikirim dari Controller untuk optimasi.
+                                                $courseModel = \App\Models\Course::find($course['id']);
+                                                if ($courseModel) {
+                                                    $isEligible = Auth::user()->isEligibleForCertificate($courseModel);
+                                                    $hasCertificate = Auth::user()->hasCertificateForCourse($courseModel);
+                                                } else {
+                                                    $isEligible = false;
+                                                    $hasCertificate = false;
+                                                }
+                                            @endphp
+
+                                            @if($isEligible && $courseModel)
+                                                @if($hasCertificate)
+                                                    @php
+                                                        $certificate = Auth::user()->getCertificateForCourse($courseModel);
+                                                    @endphp
+                                                    <a href="{{ route('certificates.download', $certificate) }}" class="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs font-semibold">
+                                                        Unduh Sertifikat
+                                                    </a>
+                                                @else
+                                                    <a href="{{ route('certificates.create', $courseModel) }}" class="px-3 py-1.5 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-xs font-semibold">
+                                                        Cetak Sertifikat
+                                                    </a>
+                                                @endif
+                                            @elseif($course['progress'] >= 100)
+                                                <span class="px-3 py-1.5 bg-gray-400 text-white rounded-md text-xs font-semibold cursor-not-allowed" title="Menunggu penilaian dan feedback dari instruktur">
+                                                    Menunggu Penilaian
+                                                </span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -267,6 +299,22 @@
                                 </a>
                             </div>
                             @endforelse
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-4">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Chat Room</h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <a href="{{ route('chat.index') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors hover-lift">
+                                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                    </svg>
+                                    Chat & Diskusi Periode
+                                </a>
+                            </div>
                         </div>
                     </div>
 

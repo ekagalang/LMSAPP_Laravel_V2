@@ -34,11 +34,11 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
-Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])
-    ->name('certificates.verify');
-
-Route::get('/certificates/download/{code}', [CertificateController::class, 'publicDownload'])
-    ->name('certificates.public-download');
+Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])->name('certificates.verify');
+Route::get('/certificates/download/{code}', [CertificateController::class, 'publicDownload'])->name('certificates.public-download');
+Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create');
+Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate');
+Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store'); 
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
