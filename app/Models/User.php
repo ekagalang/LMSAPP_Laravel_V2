@@ -112,10 +112,11 @@ class User extends Authenticatable
     /**
      * Relasi ke lesson yang sudah diselesaikan
      */
-    public function completedLessons()
+    public function completedLessons(): BelongsToMany
     {
+        // PERBAIKAN: Mengganti 'completed' dengan 'status' sesuai skema database lesson_user
         return $this->belongsToMany(Lesson::class, 'lesson_user')
-            ->withPivot('completed', 'completed_at')
+            ->withPivot('status', 'completed_at')
             ->withTimestamps();
     }
 
@@ -572,7 +573,7 @@ public function getAvailableChatUsers($search = null)
 
         $completedCountInLesson = $this->contents()
             ->where('lesson_id', $lesson->id)
-            ->wherePivot('status', 'completed')
+            ->wherePivot('completed', true)
             ->count();
 
         return $completedCountInLesson >= $totalContentsInLesson;
@@ -583,7 +584,7 @@ public function getAvailableChatUsers($search = null)
      */
     public function hasCompletedLesson(Lesson $lesson): bool
     {
-        return $this->lessons()->where('lesson_id', $lesson->id)->wherePivot('status', 'completed')->exists();
+        return $this->completedLessons()->where('lesson_id', $lesson->id)->wherePivot('status', 'completed')->exists();
     }
 
     // Add these relations and methods to your existing User model (App\Models\User.php)
@@ -658,17 +659,19 @@ public function getAvailableChatUsers($search = null)
             return false;
         }
         
-        // 4. PENAMBAHAN: Harus sudah mendapatkan feedback umum dari instruktur
-        $feedback = DB::table('course_user')
-            ->where('user_id', $this->id)
-            ->where('course_id', $course->id)
-            ->value('feedback');
+        // =================================================================
+        // PERBAIKAN: Mengaktifkan kembali syarat feedback umum dengan metode Eloquent yang lebih andal
+        // =================================================================
+        // Mengambil data pivot dari relasi yang sudah ada
+        $enrollment = $this->courses()->where('course_id', $course->id)->first();
 
-        if (empty($feedback)) {
+        // Memastikan data pendaftaran ada dan kolom feedback pada tabel pivot tidak kosong
+        if (!$enrollment || empty($enrollment->pivot->feedback)) {
             return false;
         }
+        // =================================================================
 
-        // 5. Kursus harus memiliki template sertifikat
+        // 4. Kursus harus memiliki template sertifikat
         if (!$course->hasCertificateTemplate()) {
             return false;
         }
