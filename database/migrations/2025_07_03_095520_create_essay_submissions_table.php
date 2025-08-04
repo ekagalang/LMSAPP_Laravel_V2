@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('content_id')->constrained()->onDelete('cascade'); // Menunjuk ke konten 'esai'
             $table->longText('answer'); // Jawaban dari peserta
+            $table->string('status')->default('submitted'); // Status submission
             $table->unsignedInteger('score')->nullable(); // Skor dari instruktur
             $table->text('feedback')->nullable(); // Feedback dari instruktur
             $table->timestamp('graded_at')->nullable(); // Kapan dinilai

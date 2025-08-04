@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Feedback;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -448,38 +449,74 @@ class User extends Authenticatable
     }
 
     /**
- * Get all active course periods for this user
- */
-public function getActiveCoursePeriods()
-{
-    // Get enrolled course IDs
-    $enrolledCourseIds = $this->courses()->pluck('course_id');
+     * Get all active course periods for this user
+     */
+    public function getActiveCoursePeriods()
+    {
+        // Get enrolled course IDs
+        $enrolledCourseIds = $this->courses()->pluck('course_id');
 
-    // Get instructor course IDs
-    $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
+        // Get instructor course IDs
+        $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
 
-    // Get event organizer course IDs
-    $eventOrganizerCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
+        // Get event organizer course IDs
+        $eventOrganizerCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
 
-    // Merge all course IDs
-    $allCourseIds = $enrolledCourseIds->merge($instructorCourseIds)
-        ->merge($eventOrganizerCourseIds)
-        ->unique();
+        // Merge all course IDs
+        $allCourseIds = $enrolledCourseIds->merge($instructorCourseIds)
+            ->merge($eventOrganizerCourseIds)
+            ->unique();
 
-    // Get active periods for these courses
-    return CoursePeriod::whereIn('course_id', $allCourseIds)
-        ->active()
-        ->pluck('id');
-}
+        // Get active periods for these courses
+        return CoursePeriod::whereIn('course_id', $allCourseIds)
+            ->active()
+            ->pluck('id');
+    }
 
     /**
- * Get available users to chat with
- */
-public function getAvailableChatUsers($search = null)
-{
-    if ($this->hasRole('super-admin')) {
-        // Admin can chat with anyone
-        $query = User::where('id', '!=', $this->id);
+     * Get available users to chat with
+     */
+    public function getAvailableChatUsers($search = null)
+    {
+        if ($this->hasRole('super-admin')) {
+            // Admin can chat with anyone
+            $query = User::where('id', '!=', $this->id);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            return $query->select('id', 'name', 'email')->limit(20)->get();
+        }
+
+        // Get users from common active course periods
+        $activePeriods = $this->getActiveCoursePeriods();
+
+        if ($activePeriods->isEmpty()) {
+            return collect();
+        }
+
+        // Get all users who are enrolled, instructors, or event organizers in the same course periods
+        $courseIds = CoursePeriod::whereIn('id', $activePeriods)->pluck('course_id')->unique();
+
+        $query = User::where('id', '!=', $this->id)
+            ->where(function ($q) use ($courseIds) {
+                // Users enrolled in these courses
+                $q->whereHas('courses', function ($sq) use ($courseIds) {
+                    $sq->whereIn('course_id', $courseIds);
+                })
+                    // Users who are instructors for these courses
+                    ->orWhereHas('taughtCourses', function ($sq) use ($courseIds) {
+                        $sq->whereIn('course_id', $courseIds);
+                    })
+                    // Users who are event organizers for these courses
+                    ->orWhereHas('eventOrganizedCourses', function ($sq) use ($courseIds) {
+                        $sq->whereIn('course_id', $courseIds);
+                    });
+            });
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -491,71 +528,56 @@ public function getAvailableChatUsers($search = null)
         return $query->select('id', 'name', 'email')->limit(20)->get();
     }
 
-    // Get users from common active course periods
-    $activePeriods = $this->getActiveCoursePeriods();
-
-    if ($activePeriods->isEmpty()) {
-        return collect();
-    }
-
-    // Get all users who are enrolled, instructors, or event organizers in the same course periods
-    $courseIds = CoursePeriod::whereIn('id', $activePeriods)->pluck('course_id')->unique();
-
-    $query = User::where('id', '!=', $this->id)
-        ->where(function ($q) use ($courseIds) {
-            // Users enrolled in these courses
-            $q->whereHas('courses', function ($sq) use ($courseIds) {
-                $sq->whereIn('course_id', $courseIds);
-            })
-            // Users who are instructors for these courses
-            ->orWhereHas('taughtCourses', function ($sq) use ($courseIds) {
-                $sq->whereIn('course_id', $courseIds);
-            })
-            // Users who are event organizers for these courses
-            ->orWhereHas('eventOrganizedCourses', function ($sq) use ($courseIds) {
-                $sq->whereIn('course_id', $courseIds);
-            });
-        });
-
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%");
-        });
-    }
-
-    return $query->select('id', 'name', 'email')->limit(20)->get();
-}
-
+    /**
+     * Menghitung progres kursus untuk pengguna ini secara akurat.
+     *
+     * @param Course $course
+     * @return float
+     */
     public function courseProgress(Course $course): float
     {
-        $totalContents = $course->contents()->count();
+        $allContents = $course->contents; // Mengambil semua konten dari relasi
+        $totalContents = $allContents->count();
+
         if ($totalContents === 0) {
             return 0;
         }
 
-        $completedContentsCount = $this->completedContents()
-            ->whereIn('content_id', $course->contents()->pluck('id'))
-            ->wherePivot('completed', true) // Menggunakan wherePivot('completed', true)
-            ->count();
+        $completedCount = 0;
+        foreach ($allContents as $content) {
+            // Gunakan method hasCompletedContent() yang sudah ada
+            // karena method tersebut sudah memeriksa semua jenis konten (biasa, kuis, esai)
+            if ($this->hasCompletedContent($content)) {
+                $completedCount++;
+            }
+        }
 
-        return round(($completedContentsCount / $totalContents) * 100, 2);
+        return round(($completedCount / $totalContents) * 100, 2);
     }
 
+    /**
+     * Cek apakah semua item yang perlu dinilai sudah dinilai
+     * PERBAIKAN: Menggunakan graded_at dan score, bukan status
+     */
     public function areAllGradedItemsMarked(Course $course): bool
     {
         $gradedContentTypes = ['essay'];
         $itemsToGrade = $course->contents()->whereIn('type', $gradedContentTypes)->get();
 
         if ($itemsToGrade->isEmpty()) {
-            return true;
+            return true; // Tidak ada essay, otomatis lolos
         }
 
         foreach ($itemsToGrade as $item) {
             if ($item->type == 'essay') {
                 $submission = $this->essaySubmissions()->where('content_id', $item->id)->first();
-                // Pastikan statusnya 'graded'
-                if (!$submission || $submission->status !== 'graded') {
+
+                // PERBAIKAN: Cek graded_at dan score, bukan status
+                if (
+                    !$submission ||
+                    is_null($submission->graded_at) ||
+                    is_null($submission->score)
+                ) {
                     return false;
                 }
             }
@@ -639,7 +661,8 @@ public function getAvailableChatUsers($search = null)
     }
 
     /**
-     * Check if user is eligible for certificate in a course
+     * Cek apakah user eligible untuk sertifikat
+     * PERBAIKAN: Membuat logika lebih fleksibel
      */
     public function isEligibleForCertificate(Course $course): bool
     {
@@ -658,20 +681,23 @@ public function getAvailableChatUsers($search = null)
         if (!$this->areAllGradedItemsMarked($course)) {
             return false;
         }
-        
-        // =================================================================
-        // PERBAIKAN: Mengaktifkan kembali syarat feedback umum dengan metode Eloquent yang lebih andal
-        // =================================================================
-        // Mengambil data pivot dari relasi yang sudah ada
-        $enrollment = $this->courses()->where('course_id', $course->id)->first();
 
-        // Memastikan data pendaftaran ada dan kolom feedback pada tabel pivot tidak kosong
-        if (!$enrollment || empty($enrollment->pivot->feedback)) {
-            return false;
+        // 4. PERBAIKAN: Feedback dari tabel feedback hanya diperlukan jika ada essay
+        $hasEssays = $course->contents()->where('type', 'essay')->exists();
+
+        if ($hasEssays) {
+            // Jika ada essay, cek apakah semua essay sudah dinilai (sudah dicek di step 3)
+            // DAN minimal ada satu feedback umum dari instruktur
+            $hasFeedback = Feedback::where('course_id', $course->id)
+                ->where('user_id', $this->id)
+                ->exists();
+
+            if (!$hasFeedback) {
+                return false;
+            }
         }
-        // =================================================================
 
-        // 4. Kursus harus memiliki template sertifikat
+        // 5. Kursus harus memiliki template sertifikat
         if (!$course->hasCertificateTemplate()) {
             return false;
         }

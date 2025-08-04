@@ -35,10 +35,9 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])->name('certificates.verify');
+
+// Ini adalah route untuk download dari halaman verifikasi
 Route::get('/certificates/download/{code}', [CertificateController::class, 'publicDownload'])->name('certificates.public-download');
-Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create');
-Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate');
-Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store'); 
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -196,11 +195,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods'])->name('chats.periods');
     });
 
+    Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create');
+    Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate');
+    Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store');
+
     Route::get('/certificates', [CertificateController::class, 'index'])
         ->name('certificates.index');
-
-    Route::get('/certificates/{certificate}', [CertificateController::class, 'show'])
-        ->name('certificates.show');
 
     Route::get('/certificates/{certificate}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
@@ -217,6 +217,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/certificates/{certificate}/regenerate', [CertificateController::class, 'regenerate'])
         ->name('certificates.regenerate');
+    Route::get('/certificates/{certificate}', [CertificateController::class, 'destroy'])
+        ->name('certificates.show');
 
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
         ->name('certificates.destroy');

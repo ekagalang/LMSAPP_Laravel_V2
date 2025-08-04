@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 class CertificateController extends Controller
 {
@@ -185,6 +186,17 @@ class CertificateController extends Controller
     }
 
     /**
+     * Show specific certificate for authenticated user
+     */
+    public function publicShow(Certificate $certificate)
+    {
+
+        $certificate->load(['course', 'user', 'certificateTemplate']);
+
+        return view('certificates.show', compact('certificate'));
+    }
+
+    /**
      * Download certificate PDF
      */
     public function download(Certificate $certificate)
@@ -213,7 +225,7 @@ class CertificateController extends Controller
             return view('certificates.verify-error')->with('error', 'Kode sertifikat tidak valid.');
         }
 
-        return view('certificates.verify', compact('certificate'));
+        return view('certificates.show', compact('certificate'));
     }
 
     /**

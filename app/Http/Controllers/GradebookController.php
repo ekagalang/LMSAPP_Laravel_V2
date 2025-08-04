@@ -80,7 +80,7 @@ class GradebookController extends Controller
             ->whereIn('content_id', $essayContentIds)
             ->orderBy('created_at', 'desc')
             ->get();
-            
+
         return view('gradebook.user_essays', compact('course', 'user', 'submissions'));
     }
 
@@ -96,7 +96,18 @@ class GradebookController extends Controller
             'feedback' => 'nullable|string',
         ]);
 
-        $submission->update($validated + ['graded_at' => now(), 'status' => 'graded']);
+        // PERBAIKAN: Cek apakah kolom 'status' ada sebelum update
+        $updateData = $validated + ['graded_at' => now()];
+
+        try {
+            // Coba update dengan status jika kolom ada
+            $updateData['status'] = 'graded';
+            $submission->update($updateData);
+        } catch (\Exception $e) {
+            // Jika error (kolom status tidak ada), update tanpa status
+            unset($updateData['status']);
+            $submission->update($updateData);
+        }
 
         // =================================================================
         // PERUBAHAN UTAMA: Panggil fungsi pengecekan sertifikat
