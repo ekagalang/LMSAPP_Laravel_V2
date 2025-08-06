@@ -103,7 +103,30 @@ class Certificate extends Model
      */
     public function fileExists()
     {
-        return $this->path && Storage::disk('public')->exists($this->path);
+        if (!$this->path) {
+            return false;
+        }
+
+        // Cek dengan berbagai metode
+        if (\Storage::disk('public')->exists($this->path)) {
+            return true;
+        }
+
+        // Cek dengan path absolut
+        $absolutePath = storage_path('app/public/' . $this->path);
+        if (file_exists($absolutePath)) {
+            return true;
+        }
+
+        // Cek dengan fallback ke certificate_code
+        $fallbackPath = 'certificates/' . $this->certificate_code . '.pdf';
+        if (\Storage::disk('public')->exists($fallbackPath)) {
+            // Update path di database
+            $this->update(['path' => $fallbackPath]);
+            return true;
+        }
+
+        return false;
     }
 
     /**

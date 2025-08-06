@@ -644,19 +644,18 @@ class User extends Authenticatable
      */
     public function hasCertificateForCourse(Course $course): bool
     {
-        return $this->certificates()
-            ->where('course_id', $course->id)
+        return \App\Models\Certificate::where('course_id', $course->id)
+            ->where('user_id', $this->id)
             ->exists();
     }
 
     /**
      * Get certificate for a specific course
      */
-    public function getCertificateForCourse(Course $course)
+    public function getCertificateForCourse(Course $course): ?\App\Models\Certificate
     {
-        return $this->certificates()
-            ->where('course_id', $course->id)
-            ->with(['certificateTemplate'])
+        return \App\Models\Certificate::where('course_id', $course->id)
+            ->where('user_id', $this->id)
             ->first();
     }
 
@@ -666,42 +665,29 @@ class User extends Authenticatable
      */
     public function isEligibleForCertificate(Course $course): bool
     {
-        // 1. Harus terdaftar di kursus
-        if (!$this->isEnrolled($course)) {
+        // Check if course has certificate template
+        if (!$course->certificate_template_id) {
             return false;
         }
 
-        // 2. Progres harus 100%
+        // Check if enrolled
+        if (!$this->courses()->where('course_id', $course->id)->exists()) {
+            return false;
+        }
+
+        // Check progress 100%
         $progress = $this->courseProgress($course);
         if ($progress < 100) {
             return false;
         }
 
-        // 3. Semua item yang perlu dinilai (esai) harus sudah dinilai
+        // Check all graded items completed
         if (!$this->areAllGradedItemsMarked($course)) {
-            return false;
-        }
-
-        // 4. PERBAIKAN: Feedback dari tabel feedback hanya diperlukan jika ada essay
-        $hasEssays = $course->contents()->where('type', 'essay')->exists();
-
-        if ($hasEssays) {
-            // Jika ada essay, cek apakah semua essay sudah dinilai (sudah dicek di step 3)
-            // DAN minimal ada satu feedback umum dari instruktur
-            $hasFeedback = Feedback::where('course_id', $course->id)
-                ->where('user_id', $this->id)
-                ->exists();
-
-            if (!$hasFeedback) {
-                return false;
-            }
-        }
-
-        // 5. Kursus harus memiliki template sertifikat
-        if (!$course->hasCertificateTemplate()) {
             return false;
         }
 
         return true;
     }
+
+    
 }

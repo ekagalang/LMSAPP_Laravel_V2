@@ -251,43 +251,69 @@
                                             <a href="{{ route('courses.show', $course['id']) }}" class="text-green-600 hover:underline font-medium text-sm">
                                                 {{ $course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan Belajar' }}
                                             </a>
+                                            
+                                            @php
+                                                // Improved logic dengan error handling
+                                                $courseModel = \App\Models\Course::find($course['id']);
+                                                $showCertificateButton = false;
+                                                $certificateButtonType = null;
+                                                $certificate = null;
+                                                
+                                                if ($courseModel && $courseModel->certificate_template_id) {
+                                                    try {
+                                                        $isEligible = Auth::user()->isEligibleForCertificate($courseModel);
+                                                        $hasCertificate = Auth::user()->hasCertificateForCourse($courseModel);
+                                                        
+                                                        if ($isEligible) {
+                                                            $showCertificateButton = true;
+                                                            if ($hasCertificate) {
+                                                                $certificateButtonType = 'download';
+                                                                $certificate = Auth::user()->getCertificateForCourse($courseModel);
+                                                            } else {
+                                                                $certificateButtonType = 'generate';
+                                                            }
+                                                        } elseif ($course['progress'] >= 100) {
+                                                            $showCertificateButton = true;
+                                                            $certificateButtonType = 'waiting';
+                                                        }
+                                                    } catch (\Exception $e) {
+                                                        // Fallback jika ada error
+                                                        $showCertificateButton = false;
+                                                    }
+                                                }
+                                            @endphp
 
-         @php
-    // Ambil semua variabel yang dibutuhkan di awal
-    $courseModel = \App\Models\Course::find($course['id']);
-    if ($courseModel) {
-        // Definisikan $isEligible dan $hasCertificate di sini
-        $isEligible = Auth::user()->isEligibleForCertificate($courseModel);
-        $hasCertificate = Auth::user()->hasCertificateForCourse($courseModel);
-    } else {
-        // Fallback jika course tidak ditemukan
-        $isEligible = false;
-        $hasCertificate = false;
-    }
-@endphp
-
-{{-- Sekarang gunakan struktur if-elseif-endif yang benar --}}
-@if($isEligible && $courseModel)
-    @if($hasCertificate)
-        {{-- Jika sudah punya sertifikat, tampilkan tombol Unduh --}}
-        @php
-            $certificate = Auth::user()->getCertificateForCourse($courseModel);
-        @endphp
-        <a href="{{ route('certificates.download', $certificate) }}" class="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs font-semibold">
-            Unduh Sertifikat
-        </a>
-    @else
-        {{-- Jika layak tapi belum punya sertifikat, tampilkan tombol Cetak --}}
-        <a href="{{ route('certificates.create', $courseModel) }}" class="px-3 py-1.5 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-xs font-semibold">
-            Cetak Sertifikat
-        </a>
-    @endif
-@elseif($course['progress'] >= 100)
-    {{-- Jika progress 100% tapi belum layak (eligible), tampilkan status menunggu --}}
-    <span class="px-3 py-1.5 bg-gray-400 text-white rounded-md text-xs font-semibold cursor-not-allowed" title="Menunggu penilaian dan feedback dari instruktur">
-        Menunggu Penilaian
-    </span>
-@endif
+                                            {{-- Enhanced Certificate Buttons --}}
+                                            @if($showCertificateButton)
+                                                @if($certificateButtonType === 'download')
+                                                    {{-- Sudah punya sertifikat - tombol download + view --}}
+                                                    <div class="flex gap-1">
+                                                        <a href="{{ route('certificates.download', $certificate) }}" 
+                                                        class="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs font-semibold transition-colors duration-200"
+                                                        title="Download certificate">
+                                                            📥 Unduh
+                                                        </a>
+                                                        <a href="{{ route('certificates.show', $certificate) }}" 
+                                                        class="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-semibold transition-colors duration-200"
+                                                        title="View certificate">
+                                                            👁️ Lihat
+                                                        </a>
+                                                    </div>
+                                                @elseif($certificateButtonType === 'generate')
+                                                    {{-- Eligible tapi belum generate --}}
+                                                    <a href="{{ route('certificates.create', $courseModel) }}" 
+                                                    class="px-3 py-1.5 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-xs font-semibold transition-colors duration-200"
+                                                    title="Generate your certificate">
+                                                        🎓 Cetak Sertifikat
+                                                    </a>
+                                                @elseif($certificateButtonType === 'waiting')
+                                                    {{-- Progress 100% tapi belum eligible --}}
+                                                    <span class="px-3 py-1.5 bg-gray-400 text-white rounded-md text-xs font-semibold cursor-not-allowed" 
+                                                        title="Menunggu penilaian dari instruktur">
+                                                        ⏳ Menunggu Penilaian
+                                                    </span>
+                                                @endif
+                                            @endif
                                         </div>
                                     </div>
                                 </div>

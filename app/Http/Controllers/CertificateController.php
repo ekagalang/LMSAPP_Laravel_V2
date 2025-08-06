@@ -80,13 +80,14 @@ class CertificateController extends Controller
             ]);
 
             // Generate PDF menggunakan view render
-            $pdf = Pdf::loadView('certificates.render', compact('certificate'))
+            $pdf = Pdf::loadView('certificates.template-render', compact('certificate'))
                 ->setPaper('a4', 'landscape')
                 ->setOptions([
                     'dpi' => 150,
                     'defaultFont' => 'times',
                     'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => true,
+                    'isRemoteEnabled' => false, // PENTING: ubah ke false
+                    'isPhpEnabled' => true,
                 ]);
 
             $certificatesDir = 'certificates';
