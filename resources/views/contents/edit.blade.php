@@ -314,7 +314,7 @@
                                         </span>
                                         <span class="text-gray-500"> atau drag & drop</span>
                                     </label>
-                                    <p class="text-sm text-gray-500 mt-2">Maksimal 10MB</p>
+                                    <p class="text-sm text-gray-500 mt-2">Maksimal 100MB</p>
                                 </div>
                             </div>
                         </div>

@@ -332,7 +332,7 @@ class ContentController extends Controller
             'description' => 'nullable|string',
             'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay', 'zoom'])],
             'order' => 'nullable|integer',
-            'file_upload' => 'nullable|file|max:10240',
+            'file_upload' => 'nullable|file|max:102400',
         ];
 
         // Tentukan aturan validasi dan sumber data 'body' berdasarkan tipe konten
