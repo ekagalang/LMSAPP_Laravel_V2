@@ -223,15 +223,188 @@
                             </h3>
                         </div>
 
-                        <div x-show="isType('text') || isType('essay')" x-cloak class="animate-fadeIn">
+                        <div x-show="isType('text')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                                 <label for="body_editor" class="block text-sm font-semibold text-gray-700 mb-3">
-                                    <span x-text="isType('essay') ? '✍️ Pertanyaan Esai' : '📝 Isi Konten'"></span>
+                                    📝 Isi Konten
                                 </label>
-                                <x-forms.summernote-editor id="body_editor" name="body_text" value="{{ old('body_text', $content->body) }}" />
-                                <p class="text-sm text-gray-500 mt-2" x-text="isType('essay') ? 'Tulis pertanyaan yang akan dijawab peserta' : 'Gunakan editor untuk memformat konten'"></p>
+                                <p class="text-xs text-gray-600 mb-4">Gunakan editor untuk memformat teks dengan rich content</p>
+                                
+                                <x-forms.summernote-editor 
+                                    id="body_editor" 
+                                    name="body_text" 
+                                    :value="old('body_text', $content->body ?? '')" 
+                                />
+                                @error('body_text')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
+
+                        <div x-show="isType('essay')" x-cloak class="animate-fadeIn" x-data="essayQuestionsManager()">
+    <div class="space-y-6">
+        {{-- Info Box --}}
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                        ✍️
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Essay Assignment</h3>
+                    <p class="text-sm text-gray-600 mt-1">Buat beberapa pertanyaan essay dengan bobot nilai berbeda</p>
+                </div>
+            </div>
+        </div>
+
+        {{-- Existing Questions (hanya tampil info, belum bisa edit) --}}
+        @if($content->exists && $content->essayQuestions && $content->essayQuestions->count() > 0)
+            <div class="space-y-4">
+                <h4 class="font-semibold text-gray-900 flex items-center">
+                    <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-2 text-xs">
+                        {{ $content->essayQuestions->count() }}
+                    </div>
+                    Pertanyaan yang Sudah Ada
+                </h4>
+                @foreach($content->essayQuestions as $index => $question)
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
+                                Soal {{ $index + 1 }}
+                            </span>
+                            <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                {{ $question->max_score }} poin
+                            </span>
+                        </div>
+                        <div class="text-sm text-gray-700 leading-relaxed">
+                            {!! nl2br(e($question->question)) !!}
+                        </div>
+                    </div>
+                @endforeach
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-800">
+                        <strong>💡 Info:</strong> Pertanyaan di atas sudah tersimpan. 
+                        Gunakan form di bawah untuk menambah pertanyaan baru.
+                    </p>
+                </div>
+            </div>
+        @endif
+
+        {{-- Form untuk menambah questions baru --}}
+        <div class="border border-gray-200 rounded-lg">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <h4 class="font-semibold text-gray-900 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    @if($content->exists && $content->essayQuestions && $content->essayQuestions->count() > 0)
+                        Tambah Pertanyaan Baru
+                    @else  
+                        Pertanyaan Essay
+                    @endif
+                </h4>
+            </div>
+
+            <div class="p-6 space-y-6">
+                {{-- Questions Container --}}
+                <template x-for="(question, index) in questions" :key="index">
+                    <div class="question-item border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div class="flex justify-between items-center mb-4">
+                            <h5 class="font-medium text-gray-700 flex items-center">
+                                <span class="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs mr-2" 
+                                      x-text="index + 1"></span>
+                                <span x-text="'Pertanyaan ' + (index + 1)"></span>
+                            </h5>
+                            <button type="button" 
+                                    @click="removeQuestion(index)"
+                                    x-show="questions.length > 1"
+                                    class="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded hover:bg-red-50">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Pertanyaan <span class="text-red-500">*</span>
+                                </label>
+                                <textarea 
+                                    x-model="question.text"
+                                    :name="'questions[' + index + '][text]'"
+                                    rows="4"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                    placeholder="Tulis pertanyaan essay yang akan dijawab oleh peserta..."
+                                    required
+                                ></textarea>
+                            </div>
+                            
+                            <div class="w-40">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Skor Maksimal <span class="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    x-model="question.max_score"
+                                    :name="'questions[' + index + '][max_score]'"
+                                    min="1" 
+                                    max="1000"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                    required
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- Add Question & Summary --}}
+                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <button type="button" 
+                            @click="addQuestion()"
+                            class="inline-flex items-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Tambah Pertanyaan
+                    </button>
+                    
+                    <div class="text-right">
+                        <p class="text-sm text-gray-600">
+                            Pertanyaan Baru: <span x-text="questions.length" class="font-semibold"></span>
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            Total Skor Baru: <span x-text="totalScore" class="font-semibold text-green-600"></span> poin
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Legacy Support --}}
+        @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <h4 class="font-medium text-yellow-800 mb-1">Essay Lama Terdeteksi</h4>
+                        <p class="text-sm text-yellow-700 mb-3">
+                            Content ini masih menggunakan sistem essay lama. 
+                            Pertanyaan lama: "{{ Str::limit(strip_tags($content->body), 100) }}"
+                        </p>
+                        <p class="text-xs text-yellow-600">
+                            Gunakan form di atas untuk membuat multiple questions. Sistem akan menggunakan yang baru.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
 
                         <div x-show="isType('video')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
@@ -244,6 +417,9 @@
                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all duration-300"
                                        placeholder="https://www.youtube.com/watch?v=...">
                                 <p class="text-sm text-gray-500 mt-2">Masukkan URL lengkap video dari YouTube atau Vimeo</p>
+                                @error('body_video')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
 
                                 <div x-show="content.body && content.body.includes('youtube')" class="mt-4">
                                     <div class="bg-white rounded-lg p-4 border">
@@ -601,6 +777,43 @@
                 }
             }
         }
+
+        function essayQuestionsManager() {
+    return {
+        questions: [
+            { text: '', max_score: 100 }
+        ],
+        
+        get totalScore() {
+            return this.questions.reduce((total, q) => total + parseInt(q.max_score || 0), 0);
+        },
+        
+        addQuestion() {
+            this.questions.push({ text: '', max_score: 100 });
+            console.log('Question added, total:', this.questions.length);
+        },
+        
+        removeQuestion(index) {
+            if (this.questions.length > 1) {
+                this.questions.splice(index, 1);
+                console.log('Question removed, total:', this.questions.length);
+            }
+        },
+
+        init() {
+            console.log('Essay Questions Manager initialized');
+            
+            // Jika edit content lama tanpa questions, load dari body
+            @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
+                this.questions = [{ text: @json(strip_tags($content->body)), max_score: 100 }];
+                console.log('Loaded legacy question from body');
+            @else
+                this.questions = [{ text: '', max_score: 100 }];
+                console.log('Started with empty question');
+            @endif
+        }
+    }
+}
     </script>
     @endpush
 </x-app-layout>

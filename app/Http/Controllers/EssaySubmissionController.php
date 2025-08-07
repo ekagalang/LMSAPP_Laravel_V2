@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Content;
 use App\Models\EssaySubmission;
+use App\Models\EssayAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EssaySubmissionController extends Controller
 {
@@ -14,51 +16,88 @@ class EssaySubmissionController extends Controller
      */
     public function store(Request $request, Content $content)
     {
-        // Pastikan konten adalah esai
         if ($content->type !== 'essay') {
             return back()->with('error', 'Invalid content type.');
         }
 
-        // Validasi request
-        $request->validate([
-            'essay_content' => 'required|string',
-        ]);
-
         $user = Auth::user();
+        $questions = $content->essayQuestions;
+        
+        if ($questions->count() > 0) {
+            // NEW SYSTEM: Multiple questions
+            $rules = [];
+            foreach ($questions as $question) {
+                $rules["answer_{$question->id}"] = 'required|string';
+            }
+            $request->validate($rules);
 
-        // Menggunakan updateOrCreate untuk menangani jika user mengirim ulang jawaban
-        EssaySubmission::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'content_id' => $content->id,
-            ],
-            [
-                // Sesuaikan nama kolom 'answer' dengan yang ada di database Anda
+            DB::transaction(function () use ($request, $content, $user, $questions) {
+                $submission = EssaySubmission::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'content_id' => $content->id,
+                    ],
+                    [
+                        'status' => 'submitted',
+                        'graded_at' => null,
+                    ]
+                );
+
+                // Hapus jawaban lama
+                $submission->answers()->delete();
+
+                // Simpan jawaban baru
+                foreach ($questions as $question) {
+                    EssayAnswer::create([
+                        'submission_id' => $submission->id,
+                        'question_id' => $question->id,
+                        'answer' => $request->input("answer_{$question->id}"),
+                    ]);
+                }
+            });
+        } else {
+            // OLD SYSTEM: Backward compatibility
+            $request->validate([
+                'essay_content' => 'required|string',
+            ]);
+
+            $submission = EssaySubmission::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'content_id' => $content->id,
+                ],
+                [
+                    'status' => 'submitted',
+                    'graded_at' => null,
+                ]
+            );
+
+            $submission->answers()->delete();
+            EssayAnswer::create([
+                'submission_id' => $submission->id,
+                'question_id' => null,
                 'answer' => $request->input('essay_content'),
-                'status' => 'submitted', // Tambahkan status
-                'score' => null, // Reset skor jika ada pengiriman ulang
-                'feedback' => null, // Reset feedback jika ada pengiriman ulang
-            ]
-        );
+            ]);
+        }
 
-        // =================================================================
-        // PERUBAHAN UTAMA: Tandai konten sebagai 'completed' untuk pengguna
-        // =================================================================
+        // Mark as completed
         $user->completedContents()->syncWithoutDetaching([
             $content->id => ['completed' => true, 'completed_at' => now()]
         ]);
 
-
-        // Cek apakah lesson (materi) sekarang sudah selesai
+        // Check lesson completion
         $lesson = $content->lesson;
-        if ($lesson) {
+        if ($lesson && method_exists($user, 'hasCompletedAllContentsInLesson')) {
             $allContentsCompleted = $user->hasCompletedAllContentsInLesson($lesson);
             if ($allContentsCompleted) {
-                $user->lessons()->syncWithoutDetaching([$lesson->id => ['status' => 'completed']]);
+                $user->lessons()->syncWithoutDetaching([
+                    $lesson->id => ['status' => 'completed']
+                ]);
             }
         }
         
-        return redirect()->route('contents.show', $content)->with('success', 'Essay submitted successfully!');
+        return redirect()->route('contents.show', $content)
+                        ->with('success', 'Essay submitted successfully!');
     }
 
     /**
@@ -66,15 +105,19 @@ class EssaySubmissionController extends Controller
      */
     public function showResult(EssaySubmission $submission)
     {
-        // Pastikan hanya pengguna yang membuat submission yang bisa melihat hasilnya.
         if (Auth::id() !== $submission->user_id) {
             abort(403, 'UNAUTHORIZED ACTION');
         }
 
-        // Muat relasi yang diperlukan untuk ditampilkan di view
-        $submission->load('content.lesson.course', 'user');
+        $submission->load([
+            'content.lesson.course',
+            'content.essayQuestions' => function ($query) {
+                $query->orderBy('order');
+            },
+            'answers.question',
+            'user'
+        ]);
 
-        // Tampilkan halaman hasil
         return view('essays.result', compact('submission'));
     }
 }

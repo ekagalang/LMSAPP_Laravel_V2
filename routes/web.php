@@ -23,6 +23,7 @@ use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\EssaySubmissionController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ImageUploadController;
+use App\Http\Controllers\EssayQuestionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -108,6 +109,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
     Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
+
+    Route::post('/contents/{content}/essay-questions', [EssayQuestionController::class, 'store'])
+        ->name('essay.questions.store');
+     
+    Route::delete('/essay-questions/{question}', [EssayQuestionController::class, 'destroy'])
+        ->name('essay.questions.destroy');
+        
+    Route::put('/contents/{content}/essay-questions/order', [EssayQuestionController::class, 'updateOrder'])
+        ->name('essay.questions.update-order');
+
+    Route::put('/essay-questions/{question}', [EssayQuestionController::class, 'update'])
+     ->name('essay.questions.update');
 
     // Route untuk Forum Diskusi
     Route::get('/courses/{course}/discussions', [App\Http\Controllers\DiscussionController::class, 'index'])->name('courses.discussions.index');

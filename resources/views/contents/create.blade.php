@@ -192,6 +192,112 @@
                             </div>
                         </div>
 
+                        <div id="essay_questions_field" class="content-field hidden">
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100" x-data="essayQuestionsManager()">
+                                <div class="flex items-start mb-6">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                                            ✍️
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h3 class="text-lg font-semibold text-gray-900">Essay Assignment</h3>
+                                        <p class="text-sm text-gray-600 mt-1">Buat beberapa pertanyaan essay dengan bobot nilai berbeda</p>
+                                    </div>
+                                </div>
+
+                                {{-- Questions Container --}}
+                                <div class="space-y-4">
+                                    <template x-for="(question, index) in questions" :key="index">
+                                        <div class="border border-gray-200 rounded-lg p-4 bg-white">
+                                            <div class="flex justify-between items-center mb-4">
+                                                <h5 class="font-medium text-gray-700 flex items-center">
+                                                    <span class="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs mr-2" 
+                                                        x-text="index + 1"></span>
+                                                    <span x-text="'Pertanyaan ' + (index + 1)"></span>
+                                                </h5>
+                                                <button type="button" 
+                                                        @click="removeQuestion(index)"
+                                                        x-show="questions.length > 1"
+                                                        class="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50">
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        Pertanyaan <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <textarea 
+                                                        x-model="question.text"
+                                                        :name="'questions[' + index + '][text]'"
+                                                        rows="4"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                        placeholder="Tulis pertanyaan essay..."
+                                                        required
+                                                    ></textarea>
+                                                </div>
+                                                
+                                                <div class="w-40">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        Skor Maksimal <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <input 
+                                                        type="number" 
+                                                        x-model="question.max_score"
+                                                        :name="'questions[' + index + '][max_score]'"
+                                                        min="1" 
+                                                        max="1000"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                                        <button type="button" 
+                                                @click="addQuestion()"
+                                                class="inline-flex items-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            </svg>
+                                            Tambah Pertanyaan
+                                        </button>
+                                        
+                                        <div class="text-sm text-gray-600">
+                                            Total: <span x-text="questions.length" class="font-semibold"></span> soal, 
+                                            <span x-text="totalScore" class="font-semibold text-green-600"></span> poin
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <script>
+                                    function essayQuestionsManager() {
+                                        return {
+                                            questions: [{ text: '', max_score: 100 }],
+                                            
+                                            get totalScore() {
+                                                return this.questions.reduce((total, q) => total + parseInt(q.max_score || 0), 0);
+                                            },
+                                            
+                                            addQuestion() {
+                                                this.questions.push({ text: '', max_score: 100 });
+                                            },
+                                            
+                                            removeQuestion(index) {
+                                                if (this.questions.length > 1) {
+                                                    this.questions.splice(index, 1);
+                                                }
+                                            }
+                                        }
+                                    }
+                                </script>
+                            </div>
+                        </div>
+
                         <div id="video_field" class="content-field hidden">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
                                 <label for="body_video" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -356,29 +462,47 @@
                 field.classList.add('hidden');
             });
 
-            $('#body_text').summernote('destroy');
+            // Destroy existing Summernote editor
+            if ($('#body_text').hasClass('note-editor')) {
+                $('#body_text').summernote('destroy');
+            }
 
             updateProgressStep(2);
 
-            if (type === 'text' || type === 'essay') {
+            if (type === 'text') {
                 document.getElementById('body_field').classList.remove('hidden');
+                document.getElementById('body_label').textContent = '📝 Isi Konten';
+                document.getElementById('body_hint').textContent = 'Gunakan editor untuk memformat teks dengan rich content';
+                
+                // Initialize summernote for text
+                setTimeout(() => {
+                    $('#body_text').summernote({
+                        height: 300,
+                        toolbar: [
+                            ['style', ['style']],
+                            ['font', ['bold', 'underline', 'clear']],
+                            ['fontname', ['fontname']],
+                            ['color', ['color']],
+                            ['para', ['ul', 'ol', 'paragraph']],
+                            ['table', ['table']],
+                            ['insert', ['link', 'picture', 'video']],
+                            ['view', ['fullscreen', 'help']]
+                        ]
+                    });
+                }, 100);
 
-                // Update labels based on type
-                if (type === 'essay') {
-                    document.getElementById('body_label').textContent = '✍️ Pertanyaan Esai';
-                    document.getElementById('body_hint').textContent = 'Tulis pertanyaan esai yang akan dijawab oleh peserta';
-                } else {
-                    document.getElementById('body_label').textContent = '📝 Isi Konten';
-                    document.getElementById('body_hint').textContent = 'Gunakan editor untuk memformat teks dengan rich content';
-                }
-
+            } else if (type === 'essay') {
+                // Show essay questions field instead of body field
+                document.getElementById('essay_questions_field').classList.remove('hidden');
+                
             } else if (type === 'video') {
                 document.getElementById('video_field').classList.remove('hidden');
             } else if (type === 'document' || type === 'image') {
                 document.getElementById('file_upload_field').classList.remove('hidden');
             } else if (type === 'quiz') {
                 document.getElementById('quiz_form_fields').classList.remove('hidden');
-                // Load quiz form if needed
+            } else if (type === 'zoom') {
+                document.getElementById('zoom_field').classList.remove('hidden');
             }
         }
 
