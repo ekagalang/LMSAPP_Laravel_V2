@@ -190,12 +190,10 @@
                             @endforeach
                         </div>
 
-                        <!-- Pagination Info (if needed) -->
-                        @if(method_exists($courses, 'links'))
-                            <div class="mt-12">
-                                {{ $courses->links() }}
-                            </div>
-                        @endif
+                        <!-- Pagination -->
+                        <div class="mt-12">
+                            {{ $courses->links() }}
+                        </div>
                     @endif
                 </div>
             </div>
