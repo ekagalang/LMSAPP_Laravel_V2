@@ -146,9 +146,9 @@ class Course extends Model
      */
     public function getAllUsers()
     {
-        $enrolled = $this->enrolledUsers()->pluck('user_id');
-        $instructors = $this->instructors()->pluck('user_id');
-        $eventOrganizers = $this->eventOrganizers()->pluck('user_id');
+        $enrolled = $this->enrolledUsers()->pluck('users.id');
+        $instructors = $this->instructors()->pluck('users.id');
+        $eventOrganizers = $this->eventOrganizers()->pluck('users.id');
 
         $allUserIds = $enrolled->merge($instructors)->merge($eventOrganizers)->unique();
 
@@ -160,9 +160,9 @@ class Course extends Model
      */
     public function hasUser($userId): bool
     {
-        return  $this->enrolledUsers()->where('user_id', $userId)->exists() ||
-                $this->instructors()->where('user_id', $userId)->exists() ||
-                $this->eventOrganizers()->where('user_id', $userId)->exists();
+        return  $this->enrolledUsers()->where('users.id', $userId)->exists() ||
+                $this->instructors()->where('users.id', $userId)->exists() ||
+                $this->eventOrganizers()->where('users.id', $userId)->exists();
     }
 
     /**
