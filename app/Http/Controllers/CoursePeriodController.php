@@ -91,7 +91,7 @@ class CoursePeriodController extends Controller
             abort(404, 'Periode tidak ditemukan untuk kursus ini.');
         }
 
-        return view('course-periods.edit', compact('course', 'period'));
+        return view('courses-period.edit', compact('course', 'period'));
     }
 
     /**
