@@ -50,4 +50,17 @@ class CourseTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_guest_cannot_access_course_content(): void
+    {
+        $instructor = User::factory()->create();
+        $course = Course::factory()->create(['status' => 'published']);
+        $course->instructors()->attach($instructor->id);
+        $lesson = Lesson::factory()->for($course)->create(['order' => 1]);
+        $content = Content::factory()->for($lesson)->create(['order' => 1]);
+
+        $response = $this->get(route('contents.show', $content));
+
+        $response->assertRedirect(route('login'));
+    }
 }
