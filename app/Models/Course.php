@@ -11,7 +11,6 @@ class Course extends Model
     use HasFactory, Duplicateable; // Gunakan Trait
 
     protected $fillable = [
-        'user_id',
         'title',
         'description',
         'objectives',
