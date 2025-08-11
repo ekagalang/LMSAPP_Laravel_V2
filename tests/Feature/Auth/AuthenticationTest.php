@@ -34,10 +34,17 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->post('/login', [
+        $response = $this->from('/login')->post('/login', [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHasErrors('email');
+        $this->assertSame(
+            trans('auth.failed'),
+            session('errors')->get('email')[0]
+        );
 
         $this->assertGuest();
     }
