@@ -524,7 +524,8 @@ class CourseController extends Controller
 
         try {
             $newCourse = $course->duplicate();
-            return redirect()->route('courses.index')->with('success', 'Course "' . $course->title . '" has been duplicated successfully.');
+            return redirect()->route('courses.index')
+                ->with('success', "Course \"{$course->title}\" has been duplicated successfully.");
         } catch (\Exception $e) {
             return redirect()->route('courses.index')->with('error', 'Failed to duplicate course. Please try again.');
         }
