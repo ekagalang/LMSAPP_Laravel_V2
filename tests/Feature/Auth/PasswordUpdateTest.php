@@ -48,4 +48,21 @@ class PasswordUpdateTest extends TestCase
             ->assertSessionHasErrorsIn('updatePassword', 'current_password')
             ->assertRedirect('/profile');
     }
+
+    public function test_guests_cannot_update_password(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+        $this->post('/logout');
+
+        $response = $this->put('/password', [
+            'current_password' => 'password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+        $response->assertRedirect('/login');
+        $this->assertGuest();
+    }
 }
