@@ -35,7 +35,7 @@ class CourseController extends Controller
             });
         }
 
-        $courses = $query->with('instructors')->latest()->get();
+        $courses = $query->with('instructors')->latest()->paginate(10);
 
         return view('courses.index', compact('courses'));
     }
