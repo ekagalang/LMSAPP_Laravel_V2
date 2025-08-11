@@ -5,21 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
-use App\Models\CoursePeriod;
 use App\Models\CertificateTemplate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Requests\StoreCourseRequest;
+use App\Services\CourseService;
 use PDF;
 use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
-    public function __construct()
+    protected CourseService $courseService;
+
+    public function __construct(CourseService $courseService)
     {
         $this->middleware('auth')->except('show');
+        $this->courseService = $courseService;
     }
 
     public function index(Request $request)
@@ -47,39 +49,11 @@ class CourseController extends Controller
         return view('courses.create', compact('templates')); // Kirim ke view
     }
 
-    public function store(Request $request)
+    public function store(StoreCourseRequest $request)
     {
         $this->authorize('create', Course::class);
 
-        // Enhanced validation including periods
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'objectives' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'status' => 'required|in:draft,published',
-            'certificate_template_id' => 'nullable|exists:certificate_templates,id',
-
-            'enable_periods' => 'nullable|boolean',
-
-            /* // ✅ UPDATED: Use 'required_with' to ensure start_date and end_date are only required if periods are provided
-                ✅ UPDATED: Use 'after_or_equal:today' to ensure start_date is not in the past
-                ✅ UPDATED: Use 'after' to ensure end_date is after start_date
-                ✅ UPDATED: Use 'required_with' to ensure these fields are only validated if */
-            // ✅ UPDATED: Optional periods validation
-            'periods' => 'nullable|array',
-            'periods.*.name' => 'required_with:periods|string|max:255',
-            'periods.*.start_date' => 'required_with:periods|date|after_or_equal:today',
-            // 'periods.*.start_date' => 'required_with:periods|date',
-            'periods.*.end_date' => 'required_with:periods|date|after:periods.*.start_date',
-            'periods.*.description' => 'nullable|string',
-            'periods.*.max_participants' => 'nullable|integer|min:1',
-
-            // ✅ UPDATED: Default period optional
-            'create_default_period' => 'nullable|boolean',
-            'default_start_date' => 'required_if:create_default_period,true|nullable|date|after_or_equal:today',
-            'default_end_date' => 'required_if:create_default_period,true|nullable|date|after:default_start_date',
-        ]);
+        $validatedData = $request->validated();
 
         try {
             DB::beginTransaction(); // ← DB sudah di-import di atas
@@ -102,15 +76,12 @@ class CourseController extends Controller
             $course->instructors()->attach(Auth::id());
 
             if ($request->boolean('enable_periods')) {
-                // Hanya buat periode jika fitur periode diaktifkan
                 if (
                     $request->boolean('create_default_period') ||
-                    (isset($validatedData['periods']) && is_array($validatedData['periods']) && count($validatedData['periods']) > 0)
+                    (!empty($validatedData['periods']) && is_array($validatedData['periods']) && count($validatedData['periods']) > 0)
                 ) {
-                    $this->createCoursePeriods($course, $request, $validatedData);
+                    $this->courseService->createCoursePeriods($course, $validatedData);
                 }
-                // Jika enable_periods true tapi tidak ada periode yang dibuat,
-                // kita bisa biarkan kosong atau buat default, tergantung requirement
             }
 
             DB::commit();
@@ -128,47 +99,6 @@ class CourseController extends Controller
         }
     }
 
-    /**
-     * Handle course periods creation
-     */
-    private function createCoursePeriods(Course $course, Request $request, array $validatedData)
-    {
-        // Option 1: Create default period
-        if ($request->boolean('create_default_period')) {
-            $startDate = Carbon::parse($validatedData['default_start_date']);
-            $course->periods()->create([
-                'name' => $course->title . ' - Periode 1',
-                'start_date' => $startDate,
-                'end_date' => Carbon::parse($validatedData['default_end_date']),
-                'status' => $startDate->isToday() || $startDate->isPast() ? 'active' : 'upcoming',
-            ]);
-        }
-
-        // Option 2: Create custom periods
-        if (isset($validatedData['periods']) && is_array($validatedData['periods']) && count($validatedData['periods']) > 0) {
-            foreach ($validatedData['periods'] as $periodData) {
-                $startDate = Carbon::parse($periodData['start_date']);
-                $course->periods()->create([
-                    'name' => $periodData['name'],
-                    'start_date' => $startDate,
-                    'end_date' => Carbon::parse($periodData['end_date']),
-                    'status' => $startDate->isToday() || $startDate->isPast() ? 'active' : 'upcoming',
-                    'description' => $periodData['description'] ?? null,
-                    'max_participants' => $periodData['max_participants'] ?? null,
-                ]);
-            }
-        }
-
-        // Fallback: Create default open period if none created
-        // if ($course->periods()->count() === 0) {
-        //     $course->periods()->create([
-        //         'name' => $course->title . ' - Default Period',
-        //         'start_date' => now(),
-        //         'end_date' => now()->addYear(),
-        //         'status' => 'active',
-        //     ]);
-        // }
-    }
 
     public function show(Course $course)
     {
