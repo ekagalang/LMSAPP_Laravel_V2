@@ -216,7 +216,7 @@ class User extends Authenticatable
      */
     public function isEventOrganizerFor(Course $course): bool
     {
-        return $this->hasRole('event-organizer');
+        return $course->eventOrganizers()->where('user_id', $this->id)->exists();
     }
 
     /**
