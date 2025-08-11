@@ -33,7 +33,11 @@ class CoursePolicy
      */
     public function view(User $user, Course $course): bool
     {
-        if ($user->can('manage own courses') || $user->can('manage all courses')) {
+        if ($user->can('manage all courses')) {
+            return true;
+        }
+
+        if ($user->can('manage own courses') && $course->instructors->contains($user)) {
             return true;
         }
 
