@@ -8,6 +8,8 @@ use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class CourseTest extends TestCase
 {
@@ -49,5 +51,42 @@ class CourseTest extends TestCase
         $response = $this->actingAs($user)->get(route('contents.show', $content));
 
         $response->assertOk();
+    }
+
+    public function test_course_can_be_updated_via_endpoint(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Permission::create(['name' => 'manage all courses']);
+        $user = User::factory()->create();
+        $user->givePermissionTo('manage all courses');
+
+        $course = Course::factory()->create();
+
+        $data = [
+            'title' => 'Updated Course',
+            'description' => 'Updated description',
+            'objectives' => 'Updated objectives',
+            'status' => 'published',
+        ];
+
+        $response = $this->actingAs($user)->patch(route('courses.update', $course), $data);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('courses', array_merge(['id' => $course->id], $data));
+    }
+
+    public function test_course_can_be_deleted_via_endpoint(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Permission::create(['name' => 'manage all courses']);
+        $user = User::factory()->create();
+        $user->givePermissionTo('manage all courses');
+
+        $course = Course::factory()->create();
+
+        $response = $this->actingAs($user)->delete(route('courses.destroy', $course));
+
+        $response->assertRedirect();
+        $this->assertModelMissing($course);
     }
 }
