@@ -663,7 +663,7 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-green-900">Tambahkan Instruktur</h4>
-                                        <p class="text-sm text-green-700">{{ $availableInstructors->count() }} instruktur tersedia</p>
+                                        <p class="text-sm text-green-700">{{ $availableInstructors->total() }} instruktur tersedia</p>
                                     </div>
                                 </div>
 
@@ -691,7 +691,12 @@
                                             </div>
                                         @endforelse
                                     </div>
-                                    @if($availableInstructors->isNotEmpty())
+                                    @if($availableInstructors->hasPages())
+                                        <div class="mt-4">
+                                            {{ $availableInstructors->links() }}
+                                        </div>
+                                    @endif
+                                    @if($availableInstructors->total() > 0)
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -819,7 +824,7 @@
                             selectedUnenrollUsers: [],
                             searchTermEnroll: '',
                             searchTermUnenroll: '',
-                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants) }},
+                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants->items()) }},
                             enrolledParticipantsData: {{ Js::from($course->enrolledUsers) }},
                             get filteredUnEnrolledParticipants() {
                                 if (this.searchTermEnroll === '') return this.unEnrolledParticipantsData;
@@ -927,7 +932,7 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-emerald-900">Daftarkan Peserta</h4>
-                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->count() }} calon peserta tersedia</p>
+                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->total() }} calon peserta tersedia</p>
                                     </div>
                                 </div>
 
@@ -974,6 +979,12 @@
                                             </div>
                                         </template>
                                     </div>
+
+                                    @if($unEnrolledParticipants->hasPages())
+                                        <div class="mt-4">
+                                            {{ $unEnrolledParticipants->links() }}
+                                        </div>
+                                    @endif
 
                                     <button type="submit" x-bind:disabled="selectedEnrollUsers.length === 0"
                                             :class="selectedEnrollUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"

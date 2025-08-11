@@ -200,14 +200,14 @@ class CourseController extends Controller
 
         $availableInstructors = User::role('instructor')
             ->whereNotIn('id', $course->instructors->pluck('id'))
-            ->get();
+            ->paginate(10, ['*'], 'instructors_page');
 
         $unEnrolledParticipants = User::role('participant')
             ->whereDoesntHave('courses', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
             })
             ->orderBy('name')
-            ->get();
+            ->paginate(10, ['*'], 'participants_page');
 
         $availableOrganizers = User::role('event-organizer')
             ->whereNotIn('id', $course->eventOrganizers->pluck('id'))
