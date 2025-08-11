@@ -79,7 +79,7 @@ class CoursePolicy
      */
     public function update(User $user, Course $course): bool
     {
-        return $user->can('manage own courses') && $course->instructors->contains($user);
+        return $user->can('manage all courses');
     }
 
     /**
@@ -87,7 +87,7 @@ class CoursePolicy
      */
     public function delete(User $user, Course $course): bool
     {
-        return $user->can('manage own courses') && $course->instructors->contains($user);
+        return $user->can('manage all courses');
     }
 
     /**
