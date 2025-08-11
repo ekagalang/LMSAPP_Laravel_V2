@@ -97,28 +97,30 @@ class User extends Authenticatable
         return $this->completedContents();
     }
 
-    public function getProgressForCourse(Course $course): array
+    public function getProgressForCourse($course)
     {
-        $progressPercentage = $this->courseProgress($course);
-        $totalContents = $course->contents()->count();
-        $completedContents = round(($progressPercentage / 100) * $totalContents);
+        $totalLessons = $course->lessons()->count();
+        if ($totalLessons === 0) {
+            return ['progress_percentage' => 100, 'completed_lessons' => 0, 'total_lessons' => 0];
+        }
+
+        $completedLessons = $this->progress()->whereHas('lesson', function ($query) use ($course) {
+            $query->where('course_id', $course->id);
+        })->where('completed', true)->count();
 
         return [
-            'total_contents' => $totalContents,
-            'completed_contents' => $completedContents,
-            'progress_percentage' => $progressPercentage,
+            'progress_percentage' => round(($completedLessons / $totalLessons) * 100),
+            'completed_lessons' => $completedLessons,
+            'total_lessons' => $totalLessons,
         ];
     }
 
     /**
      * Relasi ke lesson yang sudah diselesaikan
      */
-    public function completedLessons(): BelongsToMany
+    public function completedLessons()
     {
-        // PERBAIKAN: Mengganti 'completed' dengan 'status' sesuai skema database lesson_user
-        return $this->belongsToMany(Lesson::class, 'lesson_user')
-            ->withPivot('status', 'completed_at')
-            ->withTimestamps();
+        return $this->belongsToMany(Lesson::class, 'progress')->wherePivot('completed', true);
     }
 
     /**
@@ -689,5 +691,8 @@ class User extends Authenticatable
         return true;
     }
 
-    
+    public function progress()
+    {
+        return $this->hasMany(Progress::class);
+    }
 }

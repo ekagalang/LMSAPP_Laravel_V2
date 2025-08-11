@@ -9,8 +9,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
@@ -35,18 +37,33 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
 
-        $user->assignRole('participant');
+            // Ensure participant role exists before assigning
+            $participantRole = Role::firstOrCreate([
+                'name' => 'participant',
+                'guard_name' => 'web'
+            ]);
 
-        event(new Registered($user));
+            $user->assignRole('participant');
 
-        Auth::login($user);
+            event(new Registered($user));
 
-        return redirect(route('dashboard', absolute: false));
+            Auth::login($user);
+
+            return redirect(route('dashboard', absolute: false));
+
+        } catch (\Exception $e) {
+            Log::error('Registration failed: ' . $e->getMessage());
+            
+            return back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->withErrors(['registration' => 'Registration failed. Please try again.']);
+        }
     }
 }

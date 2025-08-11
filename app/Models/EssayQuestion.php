@@ -13,20 +13,14 @@ class EssayQuestion extends Model
         'content_id',
         'question',
         'order',
-        'max_score'
+        'max_score',
     ];
 
-    /**
-     * Relasi ke Content
-     */
     public function content()
     {
         return $this->belongsTo(Content::class);
     }
 
-    /**
-     * Relasi ke EssayAnswer
-     */
     public function answers()
     {
         return $this->hasMany(EssayAnswer::class, 'question_id');

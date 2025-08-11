@@ -114,28 +114,4 @@ class Content extends Model
         // Menggunakan thumbnail kualitas tinggi
         return $videoId ? 'https://img.youtube.com/vi/' . $videoId . '/hqdefault.jpg' : null;
     }
-
-    public function essayQuestions()
-    {
-        return $this->hasMany(EssayQuestion::class)->orderBy('order');
-    }
-
-    /**
-     * Check apakah content ini adalah essay dengan multiple questions
-     */
-    public function hasMultipleQuestions()
-    {
-        return $this->type === 'essay' && $this->essayQuestions()->count() > 0;
-    }
-
-    /**
-     * Get total max score untuk essay content
-     */
-    public function getEssayMaxScoreAttribute()
-    {
-        if ($this->type !== 'essay') {
-            return 0;
-        }
-        return $this->essayQuestions->sum('max_score') ?: 100;
-    }
 }

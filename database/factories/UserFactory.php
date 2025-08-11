@@ -41,4 +41,20 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Create user with specific role
+     */
+    public function withRole(string $role): static
+    {
+        return $this->afterCreating(function ($user) use ($role) {
+            if (class_exists(\Spatie\Permission\Models\Role::class)) {
+                $roleModel = \Spatie\Permission\Models\Role::firstOrCreate([
+                    'name' => $role,
+                    'guard_name' => 'web'
+                ]);
+                $user->assignRole($role);
+            }
+        });
+    }
 }

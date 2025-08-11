@@ -10,7 +10,6 @@ use App\Models\Option;
 use App\Models\User;
 use App\Models\Course;
 use App\Models\Certificate;
-use App\Models\EssayQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -37,12 +36,27 @@ class ContentController extends Controller
             return redirect()->back()->with('error', 'Anda harus menyelesaikan materi sebelumnya terlebih dahulu.');
         }
 
-        // TAMBAH load untuk essayQuestions
-        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions');
+        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options');
 
         if ($user->hasRole(['super-admin', 'instructor'])) {
             $unlockedContents = $orderedContents;
         }
+
+        // =================================================================
+        // PERBAIKAN: Hapus blok ini untuk mencegah konten selesai otomatis saat dikunjungi
+        /*
+        if ($user->hasRole('participant') && !in_array($content->type, ['quiz', 'essay'])) {
+            $user->completedContents()->syncWithoutDetaching([
+                $content->id => [
+                    'completed' => true,
+                    'completed_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            ]);
+        }
+        */
+        // =================================================================
 
         $hasPassedQuizBefore = false;
         if ($content->type === 'quiz' && $content->quiz) {
@@ -54,7 +68,10 @@ class ContentController extends Controller
             }
         }
 
+        // =================================================================
+        // PERBAIKAN: Kirim juga $orderedContents ke view
         return view('contents.show', compact('content', 'course', 'unlockedContents', 'hasPassedQuizBefore', 'orderedContents'));
+        // =================================================================
     }
 
     /**
@@ -298,8 +315,7 @@ class ContentController extends Controller
     public function edit(Lesson $lesson, Content $content)
     {
         $this->authorize('update', $lesson->course);
-        // TAMBAH load essayQuestions
-        $content->load(['quiz.questions.options', 'essayQuestions']);
+        $content->load(['quiz.questions.options']);
         return view('contents.edit', compact('lesson', 'content'));
     }
 
@@ -319,18 +335,11 @@ class ContentController extends Controller
             'file_upload' => 'nullable|file|max:102400',
         ];
 
-        // PERBAIKAN: Validasi untuk essay questions (hanya jika ada questions)
-        if ($request->input('type') === 'essay' && $request->has('questions')) {
-            $rules['questions'] = 'required|array|min:1';
-            $rules['questions.*.text'] = 'required|string';
-            $rules['questions.*.max_score'] = 'required|integer|min:1|max:1000';
-        }
-
         // Tentukan aturan validasi dan sumber data 'body' berdasarkan tipe konten
         $bodySource = null;
         switch ($request->input('type')) {
             case 'text':
-            case 'essay': // PERBAIKAN: essay tetap bisa pakai body_text untuk backward compatibility
+            case 'essay':
                 $rules['body_text'] = 'nullable|string';
                 $bodySource = 'body_text';
                 break;
@@ -359,7 +368,7 @@ class ContentController extends Controller
             $content->lesson_id = $lesson->id;
             $content->fill($validated);
 
-            // PERBAIKAN: Secara eksplisit atur kolom 'body' dari sumber yang benar
+            // Secara eksplisit atur kolom 'body' dari sumber yang benar
             if ($bodySource) {
                 $content->body = $request->input($bodySource);
             } elseif ($validated['type'] === 'zoom') {
@@ -377,11 +386,13 @@ class ContentController extends Controller
                 $content->file_path = $request->file('file_upload')->store('content_files', 'public');
             }
 
-            // Set order dengan lebih hati-hati
+            // ✅ PERBAIKAN: Set order dengan lebih hati-hati
             if (!$content->exists) {
+                // Untuk content baru, ambil order terakhir dalam lesson ini
                 $lastOrder = $lesson->contents()->max('order') ?? 0;
                 $content->order = $lastOrder + 1;
             } else {
+                // Untuk content yang sudah ada, gunakan order dari request atau yang sudah ada
                 $content->order = $request->input('order', $content->order ?? 1);
             }
 
@@ -396,16 +407,6 @@ class ContentController extends Controller
             }
 
             $content->save();
-
-            // PERBAIKAN: Handle essay questions HANYA jika ada questions data
-            if ($validated['type'] === 'essay' && $request->has('questions') && !empty($validated['questions'])) {
-                $this->saveEssayQuestions($content, $validated['questions']);
-                
-                // PERBAIKAN: Jika menggunakan system baru (questions), kosongkan body
-                $content->body = null;
-                $content->save();
-            }
-
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -413,20 +414,6 @@ class ContentController extends Controller
         }
 
         return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil disimpan.');
-    }
-    private function saveEssayQuestions($content, $questionsData)
-    {
-        // Hapus questions lama jika edit
-        $content->essayQuestions()->delete();
-
-        // Simpan questions baru
-        foreach ($questionsData as $index => $questionData) {
-            $content->essayQuestions()->create([
-                'question' => $questionData['text'],
-                'max_score' => $questionData['max_score'],
-                'order' => $index + 1,
-            ]);
-        }
     }
 
     private function saveQuiz(array $quizData, Lesson $lesson, ?int $quizId): Quiz
