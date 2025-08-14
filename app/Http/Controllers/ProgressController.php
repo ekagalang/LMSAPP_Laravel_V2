@@ -48,7 +48,7 @@ class ProgressController extends Controller
         // Jika ada konten berikutnya, arahkan ke sana
         if ($nextContent) {
             return redirect()->route('contents.show', ['content' => $nextContent->id])
-                   ->with('success', 'Lanjut ke konten berikutnya!');
+                ->with('success', 'Lanjut ke konten berikutnya!');
         }
 
         // Jika tidak ada konten berikutnya (konten terakhir dalam pelajaran),
@@ -62,7 +62,7 @@ class ProgressController extends Controller
         }
 
         if ($allLessonsCompleted) {
-             return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan seluruh kursus ini.');
+            return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan seluruh kursus ini.');
         }
 
         // Jika ini adalah konten terakhir dari pelajaran, tapi masih ada pelajaran lain,
@@ -194,41 +194,28 @@ class ProgressController extends Controller
 
     public function exportCourseProgressPdf(Course $course)
     {
-        // 1. Ambil semua peserta dan semua konten kursus dengan efisien
+        // 1. Ambil semua peserta dan lessons
         $participants = $course->enrolledUsers()->orderBy('name')->get();
         $lessons = $course->lessons()->with(['contents' => function ($query) {
             $query->orderBy('order');
         }])->orderBy('order')->get();
 
-        // Buat koleksi datar dari semua ID konten untuk kursus ini
-        $allContentIds = $lessons->pluck('contents.*.id')->flatten()->unique();
-
-        // 2. Ambil semua data penyelesaian untuk kursus ini dalam satu query
-        // Kuncinya adalah string "user_id-content_id" untuk pencarian cepat
-        $completionsLookup = DB::table('content_user')
-            ->whereIn('user_id', $participants->pluck('id'))
-            ->whereIn('content_id', $allContentIds)
-            ->where('completed', true)
-            ->get()
-            ->keyBy(fn($item) => $item->user_id . '-' . $item->content_id);
-
-        // 3. Siapkan struktur data yang mendetail untuk dikirim ke view
+        // 2. Siapkan data progress yang akurat
         $participantsProgress = [];
-        $totalContentsCount = $allContentIds->count();
 
         foreach ($participants as $participant) {
-            $completedCount = 0;
-            $detailedLessons = [];
+            // USE THE SAME METHOD AS WEB DISPLAY
+            $progressData = $participant->getProgressForCourse($course);
 
+            // Get detailed lesson progress
+            $detailedLessons = [];
             foreach ($lessons as $lesson) {
                 $contentsWithStatus = [];
                 foreach ($lesson->contents as $content) {
-                    $isCompleted = $completionsLookup->has($participant->id . '-' . $content->id);
-                    if ($isCompleted) {
-                        $completedCount++;
-                    }
+                    $isCompleted = $participant->hasCompletedContent($content);
                     $contentsWithStatus[] = (object)[
                         'title' => $content->title,
+                        'type' => $content->type,
                         'is_completed' => $isCompleted,
                     ];
                 }
@@ -238,11 +225,33 @@ class ProgressController extends Controller
                 ];
             }
 
+            // Get quiz scores
+            $quizScores = $participant->quizAttempts()
+                ->whereHas('quiz.lesson.course', function ($query) use ($course) {
+                    $query->where('id', $course->id);
+                })
+                ->where('passed', true)
+                ->with('quiz.questions')
+                ->get();
+
+            // Get essay scores  
+            $essayScores = $participant->essaySubmissions()
+                ->whereHas('content.lesson.course', function ($query) use ($course) {
+                    $query->where('id', $course->id);
+                })
+                ->whereNotNull('score')
+                ->with('content')
+                ->get();
+
             $participantsProgress[] = (object)[
                 'name' => $participant->name,
                 'email' => $participant->email,
-                'progressPercentage' => $totalContentsCount > 0 ? round(($completedCount / $totalContentsCount) * 100) : 0,
+                'progressPercentage' => $progressData['progress_percentage'], // Use web calculation  
+                'completed_count' => $progressData['completed_count'],
+                'total_count' => $progressData['total_count'],
                 'lessons' => $detailedLessons,
+                'quiz_scores' => $quizScores,
+                'essay_scores' => $essayScores,
             ];
         }
 

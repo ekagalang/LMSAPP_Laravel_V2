@@ -237,17 +237,20 @@
                                     @enderror
                                 </div>
 
-                                <div class="mt-4">
-                                    <x-input-label for="certificate_template_id" :value="__('Certificate Template (Optional)')" />
-                                    <select name="certificate_template_id" id="certificate_template_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
-                                        <option value="">{{ __('-- No Certificate --') }}</option>
+                                <div class="mb-4">
+                                    <label for="certificate_template_id" class="block text-sm font-medium text-gray-700">
+                                        Certificate Template (Optional)
+                                    </label>
+                                    <select name="certificate_template_id" id="certificate_template_id" 
+                                            class="mt-1 block w-full rounded-md border-gray-300">
+                                        <option value="">No Certificate</option>
                                         @foreach($templates as $template)
-                                            <option value="{{ $template->id }}" {{ old('certificate_template_id') == $template->id ? 'selected' : '' }}>
+                                            <option value="{{ $template->id }}" 
+                                                    @if(old('certificate_template_id', $course->certificate_template_id ?? '') == $template->id) selected @endif>
                                                 {{ $template->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <x-input-error :messages="$errors->get('certificate_template_id')" class="mt-2" />
                                 </div>
                                 </div>
                             </div>

@@ -55,6 +55,10 @@ class CourseController extends Controller
 
         $validatedData = $request->validated();
 
+        $request->validate([
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id',
+        ]);
+
         try {
             DB::beginTransaction(); // ← DB sudah di-import di atas
 
@@ -70,6 +74,7 @@ class CourseController extends Controller
                 'objectives' => $validatedData['objectives'],
                 'thumbnail' => $validatedData['thumbnail'] ?? null,
                 'status' => $validatedData['status'],
+                'certificate_template_id' => $validatedData['certificate_template_id'] ?? null,
             ]);
 
             // Assign creator as instructor
@@ -164,9 +169,7 @@ class CourseController extends Controller
             'thumbnail' => 'nullable|image|max:2048',
             'status' => 'required|in:draft,published',
             'clear_thumbnail' => 'nullable|boolean',
-            'certificate_template_id' => 'nullable|exists:certificate_templates,id', // <-- VALIDASI UNTUK TEMPLATE
-
-            // ... (validasi periode tetap sama)
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id',
             'enable_periods' => 'nullable|boolean',
             'periods_to_delete' => 'nullable|array',
             'periods_to_delete.*' => 'exists:course_periods,id',
@@ -310,7 +313,7 @@ class CourseController extends Controller
             $searchTerm = $request->search;
             $enrolledUsersQuery->where(function ($query) use ($searchTerm) {
                 $query->where('name', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
 
@@ -403,19 +406,63 @@ class CourseController extends Controller
     {
         $this->authorize('viewProgress', $course);
 
-        $course->load('lessons.contents', 'enrolledUsers.completedContents');
+        $course->load('lessons.contents', 'enrolledUsers');
+
+        // Get all contents for this course
         $allContents = $course->lessons->flatMap(fn($l) => $l->contents);
         $totalContentCount = $allContents->count();
         $allContentIds = $allContents->pluck('id');
 
-        $participantsProgress = $course->enrolledUsers->map(function ($participant) use ($allContentIds, $totalContentCount) {
-            $completedCount = $participant->completedContents->whereIn('id', $allContentIds)->count();
-            $progressPercentage = $totalContentCount > 0 ? round(($completedCount / $totalContentCount) * 100) : 0;
+        $participantsProgress = $course->enrolledUsers->map(function ($participant) use ($course, $totalContentCount, $allContentIds) {
+
+            // USE THE SAME PROGRESS CALCULATION AS WEB DISPLAY
+            $progressData = $participant->getProgressForCourse($course);
+
+            // Get quiz scores for this participant
+            $quizScores = $participant->quizAttempts()
+                ->whereHas('quiz.lesson.course', function ($query) use ($course) {
+                    $query->where('id', $course->id);
+                })
+                ->where('passed', true)
+                ->with('quiz.questions')
+                ->get()
+                ->map(function ($attempt) {
+                    return [
+                        'quiz_title' => $attempt->quiz->title,
+                        'score' => $attempt->score,
+                        'max_score' => $attempt->quiz->questions->count(),
+                        'percentage' => $attempt->quiz->questions->count() > 0
+                            ? round(($attempt->score / $attempt->quiz->questions->count()) * 100, 2)
+                            : 0
+                    ];
+                });
+
+            // Get essay scores for this participant  
+            $essayScores = $participant->essaySubmissions()
+                ->whereHas('content.lesson.course', function ($query) use ($course) {
+                    $query->where('id', $course->id);
+                })
+                ->whereNotNull('score')
+                ->with('content')
+                ->get()
+                ->map(function ($submission) {
+                    return [
+                        'essay_title' => $submission->content->title,
+                        'score' => $submission->score,
+                        'percentage' => $submission->score
+                    ];
+                });
 
             return [
                 'name' => $participant->name,
                 'email' => $participant->email,
-                'progress_percentage' => $progressPercentage,
+                'progress_percentage' => $progressData['progress_percentage'], // Use web calculation
+                'completed_count' => $progressData['completed_count'],
+                'total_count' => $progressData['total_count'],
+                'quiz_scores' => $quizScores,
+                'essay_scores' => $essayScores,
+                'quiz_average' => $quizScores->avg('percentage') ?? 0,
+                'essay_average' => $essayScores->avg('percentage') ?? 0,
             ];
         });
 

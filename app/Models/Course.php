@@ -40,7 +40,7 @@ class Course extends Model
         return $this->belongsToMany(User::class, 'course_instructor');
     }
 
-     // Relasi ke Lesson (satu kursus punya banyak pelajaran)
+    // Relasi ke Lesson (satu kursus punya banyak pelajaran)
     public function lessons()
     {
         return $this->hasMany(Lesson::class)->orderBy('order');
@@ -113,8 +113,8 @@ class Course extends Model
     public function activePeriod()
     {
         return $this->hasOne(CoursePeriod::class)->where('status', 'active')
-                    ->where('start_date', '<=', now())
-                    ->where('end_date', '>=', now());
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now());
     }
 
     /**
@@ -135,9 +135,9 @@ class Course extends Model
     public function hasActivePeriod(): bool
     {
         return $this->periods()->where('status', 'active')
-                               ->where('start_date', '<=', now())
-                               ->where('end_date', '>=', now())
-                               ->exists();
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->exists();
     }
 
     /**
@@ -160,8 +160,8 @@ class Course extends Model
     public function hasUser($userId): bool
     {
         return  $this->enrolledUsers()->where('users.id', $userId)->exists() ||
-                $this->instructors()->where('users.id', $userId)->exists() ||
-                $this->eventOrganizers()->where('users.id', $userId)->exists();
+            $this->instructors()->where('users.id', $userId)->exists() ||
+            $this->eventOrganizers()->where('users.id', $userId)->exists();
     }
 
     /**
