@@ -112,15 +112,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/contents/{content}/essay-questions', [EssayQuestionController::class, 'store'])
         ->name('essay.questions.store');
-     
+
     Route::delete('/essay-questions/{question}', [EssayQuestionController::class, 'destroy'])
         ->name('essay.questions.destroy');
-        
+
     Route::put('/contents/{content}/essay-questions/order', [EssayQuestionController::class, 'updateOrder'])
         ->name('essay.questions.update-order');
 
     Route::put('/essay-questions/{question}', [EssayQuestionController::class, 'update'])
-     ->name('essay.questions.update');
+        ->name('essay.questions.update');
 
     // Route untuk Forum Diskusi
     Route::get('/courses/{course}/discussions', [App\Http\Controllers\DiscussionController::class, 'index'])->name('courses.discussions.index');
@@ -201,7 +201,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chats/{chat}/typing', [MessageController::class, 'UserTyping'])->name('messages.UserTyping');
 
     // Chat API routes untuk WEB interface (tanpa sanctum!)
-     // Chat API routes untuk WEB interface
+    // Chat API routes untuk WEB interface
     Route::middleware('force.json')->group(function () {
         Route::post('/chats', [App\Http\Controllers\Api\ChatController::class, 'store'])->name('chats.store');
         Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers'])->name('chats.users');
@@ -237,4 +237,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('certificates.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

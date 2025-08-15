@@ -37,7 +37,8 @@ class AnnouncementController extends Controller
             'content' => 'required|string',
             'level' => 'required|in:info,success,warning,danger',
             'target_roles' => 'nullable|array',
-            'target_roles.*' => 'string|in:participant,instructor,event-organizer,super-admin',
+            // ✅ FIX: Add 'all' as valid option
+            'target_roles.*' => 'string|in:participant,instructor,event-organizer,super-admin,all',
             'published_at' => 'nullable|date',
             'expires_at' => 'nullable|date|after:published_at',
             'is_active' => 'boolean',
@@ -45,6 +46,13 @@ class AnnouncementController extends Controller
 
         $validated['user_id'] = Auth::id();
         $validated['is_active'] = $request->boolean('is_active', true);
+
+        // ✅ FIX: Handle "all users" selection properly
+        if (in_array('all', $request->input('target_roles', []))) {
+            $validated['target_roles'] = null; // null means all users
+        } else {
+            $validated['target_roles'] = $request->input('target_roles');
+        }
 
         Announcement::create($validated);
 
@@ -97,13 +105,21 @@ class AnnouncementController extends Controller
             'content' => 'required|string',
             'level' => 'required|in:info,success,warning,danger',
             'target_roles' => 'nullable|array',
-            'target_roles.*' => 'string|in:participant,instructor,event-organizer,super-admin',
+            // ✅ FIX: Add 'all' as valid option
+            'target_roles.*' => 'string|in:participant,instructor,event-organizer,super-admin,all',
             'published_at' => 'nullable|date',
             'expires_at' => 'nullable|date|after:published_at',
             'is_active' => 'boolean',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
+
+        // ✅ FIX: Handle "all users" selection properly
+        if (in_array('all', $request->input('target_roles', []))) {
+            $validated['target_roles'] = null; // null means all users
+        } else {
+            $validated['target_roles'] = $request->input('target_roles');
+        }
 
         $announcement->update($validated);
 

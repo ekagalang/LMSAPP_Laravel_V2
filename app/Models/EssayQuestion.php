@@ -2,13 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class EssayQuestion extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'content_id',
         'question',
@@ -16,17 +13,16 @@ class EssayQuestion extends Model
         'max_score'
     ];
 
-    /**
-     * Relasi ke Content
-     */
+    protected $casts = [
+        'order' => 'integer',
+        'max_score' => 'integer'
+    ];
+
     public function content()
     {
         return $this->belongsTo(Content::class);
     }
 
-    /**
-     * Relasi ke EssayAnswer
-     */
     public function answers()
     {
         return $this->hasMany(EssayAnswer::class, 'question_id');

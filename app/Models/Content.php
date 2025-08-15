@@ -32,13 +32,13 @@ class Content extends Model
      * @var array
      */
     protected $duplicateRelations = ['quiz'];
-    
+
     /**
      * Define which attribute contains a file to be duplicated.
      * @var string
      */
     protected $replicateFile = 'file_path';
-    
+
     /**
      * Relasi ke Lesson
      */
@@ -70,7 +70,7 @@ class Content extends Model
     {
         return $this->completers()->where('user_id', $userId)->wherePivot('completed', true)->exists();
     }
-    
+
     /**
      * Relasi ke pengumpulan esai
      */
@@ -117,7 +117,7 @@ class Content extends Model
 
     public function essayQuestions()
     {
-        return $this->hasMany(EssayQuestion::class)->orderBy('order');
+        return $this->hasMany(EssayQuestion::class);
     }
 
     /**

@@ -24,7 +24,7 @@ class EssaySubmission extends Model
     /**
      * Mendapatkan pengguna yang mengirimkan esai.
      */
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -32,9 +32,14 @@ class EssaySubmission extends Model
     /**
      * Mendapatkan konten esai yang terkait.
      */
-    public function content(): BelongsTo
+    public function content()
     {
         return $this->belongsTo(Content::class);
+    }
+
+    public function essayAnswers()
+    {
+        return $this->hasMany(EssayAnswer::class, 'submission_id');
     }
 
     /**
@@ -45,12 +50,13 @@ class EssaySubmission extends Model
         return $this->hasMany(EssayAnswer::class, 'submission_id');
     }
 
+
     /**
      * Hitung total skor dari semua jawaban
      */
     public function getTotalScoreAttribute()
     {
-        return $this->answers->sum('score');
+        return $this->answers()->whereNotNull('score')->avg('score') ?? 0;
     }
 
     /**
@@ -67,16 +73,21 @@ class EssaySubmission extends Model
     public function getIsFullyGradedAttribute()
     {
         if ($this->answers->count() === 0) return false;
-        return $this->answers->whereNull('score')->count() === 0;
+
+        $totalQuestions = $this->content->essayQuestions()->count();
+        $gradedAnswers = $this->answers()->whereNotNull('score')->count();
+
+        return $gradedAnswers === $totalQuestions;
     }
 
     /**
      * Accessor untuk backward compatibility - total skor
-     */
+     
     public function getScoreAttribute()
     {
         return $this->total_score;
     }
+     */
 
     /**
      * Accessor untuk backward compatibility - feedback gabungan

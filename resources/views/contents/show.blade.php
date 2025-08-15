@@ -586,20 +586,6 @@
 
             <!-- Mobile Bottom Navigation -->
             <div class="lg:hidden">
-                <div class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-medium">Progress:</span>
-                        <span class="text-xs font-bold">{{ $currentIndex + 1 }} / {{ $allContents->count() }}</span>
-                    </div>
-                    <div class="w-full bg-white/20 rounded-full h-1.5">
-                        <div class="bg-gradient-to-r from-yellow-300 to-green-300 h-1.5 rounded-full transition-all duration-500"
-                             style="width: {{ (($currentIndex + 1) / $allContents->count()) * 100 }}%"></div>
-                    </div>
-                    <div class="text-center mt-1">
-                        <span class="text-xs text-indigo-100">{{ round((($currentIndex + 1) / $allContents->count()) * 100) }}% selesai</span>
-                    </div>
-                </div>
-
                 <div class="px-4 py-3">
                     <div class="flex items-center space-x-3">
                         @if ($previousContent)
@@ -663,12 +649,7 @@
                             @endif
                         </div>
 
-                        <a href="{{ route('courses.show', $course->id) }}"
-                           class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                            </svg>
-                        </a>
+                        
                     </div>
                 </div>
             </div>

@@ -295,22 +295,45 @@ class CourseController extends Controller
         return redirect()->back()->with('success', 'Akses peserta berhasil dicabut.');
     }
 
-    public function showProgress(Request $request, Course $course)
+    public function showProgress(Course $course, Request $request)
     {
         $this->authorize('viewProgress', $course);
+
         $user = Auth::user();
 
-        $instructorCourses = Course::query()
-            ->whereHas('instructors', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })
-            ->orderBy('title')
-            ->get();
+        // ✅ FIX: Update query logic untuk course dropdown
+        // Include courses untuk Event Organizers
+        if ($user->hasRole('super-admin')) {
+            // Super admin bisa lihat semua courses
+            $instructorCourses = Course::with('instructors')->get();
+        } elseif ($user->hasRole('event-organizer')) {
+            // ✅ FIX: Event Organizer bisa lihat courses yang mereka kelola
+            $instructorCourses = $user->eventOrganizedCourses()
+                ->with('instructors')
+                ->orderBy('title')
+                ->get();
+        } elseif ($user->hasRole('instructor')) {
+            // Instructor hanya bisa lihat courses yang mereka ajar
+            $instructorCourses = $user->taughtCourses()
+                ->with('instructors')
+                ->orderBy('title')
+                ->get();
+        } else {
+            // Default: empty collection untuk roles lain
+            $instructorCourses = collect();
+        }
 
+        // ✅ FIX: Ensure current course is included in dropdown
+        if (!$instructorCourses->contains('id', $course->id)) {
+            // If current course is not in the list, add it
+            $instructorCourses->push($course);
+        }
+
+        // Search functionality tetap sama
         $enrolledUsersQuery = $course->enrolledUsers();
 
-        if ($request->has('search') && $request->search != '') {
-            $searchTerm = $request->search;
+        if ($request->filled('search')) {
+            $searchTerm = $request->input('search');
             $enrolledUsersQuery->where(function ($query) use ($searchTerm) {
                 $query->where('name', 'like', '%' . $searchTerm . '%')
                     ->orWhere('email', 'like', '%' . $searchTerm . '%');
@@ -319,13 +342,10 @@ class CourseController extends Controller
 
         $enrolledUsers = $enrolledUsersQuery->get();
 
-        // ✅ PERBAIKAN: Gunakan method getProgressForCourse dari model User untuk setiap peserta
+        // Progress calculation tetap sama
         $participantsProgress = $enrolledUsers->map(function ($participant) use ($course) {
-            // Panggil fungsi yang sudah kita perbaiki di model User
             $progressData = $participant->getProgressForCourse($course);
 
-            // Logika untuk 'last_position' masih sama, namun ini mungkin tidak 100% akurat
-            // karena hanya memeriksa konten biasa. Untuk saat ini kita biarkan.
             $lastCompletedContent = $participant->completedContents
                 ->where('lesson.course_id', $course->id)
                 ->sortByDesc('pivot.completed_at')
@@ -411,9 +431,8 @@ class CourseController extends Controller
         // Get all contents for this course
         $allContents = $course->lessons->flatMap(fn($l) => $l->contents);
         $totalContentCount = $allContents->count();
-        $allContentIds = $allContents->pluck('id');
 
-        $participantsProgress = $course->enrolledUsers->map(function ($participant) use ($course, $totalContentCount, $allContentIds) {
+        $participantsProgress = $course->enrolledUsers->map(function ($participant) use ($course) {
 
             // USE THE SAME PROGRESS CALCULATION AS WEB DISPLAY
             $progressData = $participant->getProgressForCourse($course);
@@ -437,26 +456,36 @@ class CourseController extends Controller
                     ];
                 });
 
-            // Get essay scores for this participant  
-            $essayScores = $participant->essaySubmissions()
+            // ✅ FIX: Essay scores using new schema
+            $essayScores = collect();
+
+            $essaySubmissions = $participant->essaySubmissions()
                 ->whereHas('content.lesson.course', function ($query) use ($course) {
                     $query->where('id', $course->id);
                 })
-                ->whereNotNull('score')
-                ->with('content')
-                ->get()
-                ->map(function ($submission) {
-                    return [
+                ->with(['content', 'answers'])
+                ->get();
+
+            foreach ($essaySubmissions as $submission) {
+                $answersWithScores = $submission->answers()->whereNotNull('score')->get();
+
+                if ($answersWithScores->count() > 0) {
+                    $averageScore = $answersWithScores->avg('score');
+                    $totalQuestions = $submission->content->essayQuestions()->count();
+                    $gradedQuestions = $answersWithScores->count();
+
+                    $essayScores->push([
                         'essay_title' => $submission->content->title,
-                        'score' => $submission->score,
-                        'percentage' => $submission->score
-                    ];
-                });
+                        'score' => round($averageScore, 2),
+                        'percentage' => round($averageScore, 2)
+                    ]);
+                }
+            }
 
             return [
                 'name' => $participant->name,
                 'email' => $participant->email,
-                'progress_percentage' => $progressData['progress_percentage'], // Use web calculation
+                'progress_percentage' => $progressData['progress_percentage'],
                 'completed_count' => $progressData['completed_count'],
                 'total_count' => $progressData['total_count'],
                 'quiz_scores' => $quizScores,

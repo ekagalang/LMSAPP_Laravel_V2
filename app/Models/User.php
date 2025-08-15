@@ -99,14 +99,37 @@ class User extends Authenticatable
 
     public function getProgressForCourse(Course $course): array
     {
-        $progressPercentage = $this->courseProgress($course);
-        $totalContents = $course->contents()->count();
-        $completedContents = round(($progressPercentage / 100) * $totalContents);
+        // Get all contents from all lessons in this course
+        $allContents = collect();
+        foreach ($course->lessons as $lesson) {
+            $allContents = $allContents->merge($lesson->contents);
+        }
+
+        $totalContents = $allContents->count();
+
+        if ($totalContents === 0) {
+            return [
+                'progress_percentage' => 0,
+                'completed_count' => 0,
+                'total_count' => 0,
+                'completed_contents' => 0 // For backward compatibility
+            ];
+        }
+
+        $completedCount = 0;
+        foreach ($allContents as $content) {
+            if ($this->hasCompletedContent($content)) {
+                $completedCount++;
+            }
+        }
+
+        $progressPercentage = round(($completedCount / $totalContents) * 100, 2);
 
         return [
-            'total_contents' => $totalContents,
-            'completed_contents' => $completedContents,
             'progress_percentage' => $progressPercentage,
+            'completed_count' => $completedCount,
+            'total_count' => $totalContents,
+            'completed_contents' => $completedCount // For backward compatibility
         ];
     }
 
@@ -334,21 +357,37 @@ class User extends Authenticatable
     public function hasCompletedContent(Content $content): bool
     {
         if ($content->type === 'quiz' && $content->quiz_id) {
+            // Untuk quiz: cek apakah ada attempt yang passed
             return $this->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
                 ->where('passed', true)
                 ->exists();
-        }
-
-        if ($content->type === 'essay') {
-            return $this->essaySubmissions()
+        } elseif ($content->type === 'essay') {
+            // ✅ FIX: Untuk essay dengan sistem baru - cek submission saja untuk sekarang
+            // Nanti bisa diganti ke "harus dinilai semua" jika diperlukan
+            $submission = $this->essaySubmissions()
                 ->where('content_id', $content->id)
-                ->exists();
-        }
+                ->first();
 
-        return $this->completedContents()
-            ->where('content_id', $content->id)
-            ->exists();
+            if (!$submission) {
+                return false; // Belum submit
+            }
+
+            // Check if has answers (submitted)
+            $totalAnswers = $submission->answers()->count();
+
+            // Essay dianggap complete jika sudah ada jawaban (submitted)
+            // Alternative: bisa diganti ke "semua pertanyaan sudah dinilai" jika diperlukan
+            return $totalAnswers > 0;
+        } else {
+            // Untuk konten biasa: cek tabel pivot completion
+            return $this->completedContents()->where('content_id', $content->id)->exists();
+        }
+    }
+
+    public function essayAnswers()
+    {
+        return $this->hasManyThrough(EssayAnswer::class, EssaySubmission::class, 'user_id', 'submission_id');
     }
 
     /**
@@ -572,12 +611,20 @@ class User extends Authenticatable
             if ($item->type == 'essay') {
                 $submission = $this->essaySubmissions()->where('content_id', $item->id)->first();
 
-                // PERBAIKAN: Cek graded_at dan score, bukan status
-                if (
-                    !$submission ||
-                    is_null($submission->graded_at) ||
-                    is_null($submission->score)
-                ) {
+                if (!$submission) {
+                    return false; // Belum submit
+                }
+
+                // ✅ FIX: Check essay_answers instead of essay_submissions
+                $totalQuestions = $item->essayQuestions()->count();
+                if ($totalQuestions === 0) {
+                    continue; // Skip if no questions
+                }
+
+                $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+
+                // Essay dianggap selesai jika semua pertanyaan sudah dinilai
+                if ($gradedAnswers < $totalQuestions) {
                     return false;
                 }
             }
@@ -688,6 +735,4 @@ class User extends Authenticatable
 
         return true;
     }
-
-    
 }

@@ -194,80 +194,205 @@ class ProgressController extends Controller
 
     public function exportCourseProgressPdf(Course $course)
     {
-        // 1. Ambil semua peserta dan lessons
-        $participants = $course->enrolledUsers()->orderBy('name')->get();
-        $lessons = $course->lessons()->with(['contents' => function ($query) {
-            $query->orderBy('order');
-        }])->orderBy('order')->get();
+        try {
+            $participants = $course->enrolledUsers()->orderBy('name')->get();
+            $lessons = $course->lessons()->with(['contents' => function ($query) {
+                $query->orderBy('order');
+            }])->orderBy('order')->get();
 
-        // 2. Siapkan data progress yang akurat
-        $participantsProgress = [];
+            $participantsProgress = [];
 
-        foreach ($participants as $participant) {
-            // USE THE SAME METHOD AS WEB DISPLAY
-            $progressData = $participant->getProgressForCourse($course);
+            foreach ($participants as $participant) {
+                $progressData = $participant->getProgressForCourse($course);
 
-            // Get detailed lesson progress
-            $detailedLessons = [];
-            foreach ($lessons as $lesson) {
-                $contentsWithStatus = [];
-                foreach ($lesson->contents as $content) {
-                    $isCompleted = $participant->hasCompletedContent($content);
-                    $contentsWithStatus[] = (object)[
-                        'title' => $content->title,
-                        'type' => $content->type,
-                        'is_completed' => $isCompleted,
-                    ];
+                // ===== QUIZ SCORES (WORKING) =====
+                $quizScores = $participant->quizAttempts()
+                    ->whereHas('quiz.lesson.course', function ($query) use ($course) {
+                        $query->where('id', $course->id);
+                    })
+                    ->where('passed', true)
+                    ->with('quiz.questions')
+                    ->get()
+                    ->map(function ($attempt) {
+                        $totalQuestions = $attempt->quiz->questions->count();
+                        return [
+                            'quiz_title' => $attempt->quiz->title,
+                            'score' => $attempt->score,
+                            'max_score' => $totalQuestions,
+                            'percentage' => $totalQuestions > 0 ? round(($attempt->score / $totalQuestions) * 100, 2) : 0
+                        ];
+                    });
+
+                // ===== ESSAY SCORES DEBUG =====
+                \Log::info('=== ESSAY DEBUG START ===', [
+                    'participant_id' => $participant->id,
+                    'participant_name' => $participant->name,
+                    'course_id' => $course->id
+                ]);
+
+                // Step 1: Check essay submissions
+                $essaySubmissions = $participant->essaySubmissions()
+                    ->whereHas('content.lesson.course', function ($query) use ($course) {
+                        $query->where('id', $course->id);
+                    })
+                    ->with(['content', 'answers'])
+                    ->get();
+
+                \Log::info('Essay Submissions Found', [
+                    'count' => $essaySubmissions->count(),
+                    'submissions' => $essaySubmissions->map(function ($sub) {
+                        return [
+                            'id' => $sub->id,
+                            'content_id' => $sub->content_id,
+                            'content_title' => $sub->content->title ?? 'No title',
+                            'answers_count' => $sub->answers->count(),
+                            'answers_with_score' => $sub->answers->whereNotNull('score')->count(),
+                            'answers_detail' => $sub->answers->map(function ($ans) {
+                                return [
+                                    'id' => $ans->id,
+                                    'score' => $ans->score,
+                                    'question_id' => $ans->question_id,
+                                    'has_answer' => !empty($ans->answer)
+                                ];
+                            })
+                        ];
+                    })
+                ]);
+
+                // Step 2: Check essay content in course
+                $essayContents = $course->lessons()
+                    ->with('contents')
+                    ->get()
+                    ->flatMap(function ($lesson) {
+                        return $lesson->contents->where('type', 'essay');
+                    });
+
+                \Log::info('Essay Contents in Course', [
+                    'count' => $essayContents->count(),
+                    'contents' => $essayContents->map(function ($content) {
+                        return [
+                            'id' => $content->id,
+                            'title' => $content->title,
+                            'questions_count' => $content->essayQuestions()->count()
+                        ];
+                    })
+                ]);
+
+                // Step 3: Build essay scores
+                $essayScores = collect();
+
+                foreach ($essaySubmissions as $submission) {
+                    $answersWithScores = $submission->answers()->whereNotNull('score')->get();
+
+                    \Log::info('Processing Submission', [
+                        'submission_id' => $submission->id,
+                        'content_title' => $submission->content->title,
+                        'total_answers' => $submission->answers->count(),
+                        'graded_answers' => $answersWithScores->count(),
+                        'answers_detail' => $answersWithScores->map(function ($ans) {
+                            return ['score' => $ans->score, 'question_id' => $ans->question_id];
+                        })
+                    ]);
+
+                    if ($answersWithScores->count() > 0) {
+                        $averageScore = $answersWithScores->avg('score');
+
+                        $essayScores->push([
+                            'essay_title' => $submission->content->title,
+                            'score' => round($averageScore, 2),
+                            'percentage' => round($averageScore, 2)
+                        ]);
+
+                        \Log::info('Essay Score Added', [
+                            'title' => $submission->content->title,
+                            'average_score' => $averageScore
+                        ]);
+                    } else {
+                        \Log::info('No graded answers found for submission', [
+                            'submission_id' => $submission->id,
+                            'content_title' => $submission->content->title
+                        ]);
+                    }
                 }
-                $detailedLessons[] = (object)[
-                    'title' => $lesson->title,
-                    'contents' => $contentsWithStatus,
+
+                \Log::info('Final Essay Scores', [
+                    'count' => $essayScores->count(),
+                    'scores' => $essayScores->toArray()
+                ]);
+
+                \Log::info('=== ESSAY DEBUG END ===');
+
+                $participantsProgress[] = (object)[
+                    'name' => $participant->name,
+                    'email' => $participant->email,
+                    'progress_percentage' => $progressData['progress_percentage'],
+                    'completed_count' => $progressData['completed_count'],
+                    'total_count' => $progressData['total_count'],
+                    'quiz_scores' => $quizScores,
+                    'essay_scores' => $essayScores,
+                    'quiz_average' => $quizScores->avg('percentage') ?? 0,
+                    'essay_average' => $essayScores->avg('percentage') ?? 0,
                 ];
             }
 
-            // Get quiz scores
-            $quizScores = $participant->quizAttempts()
-                ->whereHas('quiz.lesson.course', function ($query) use ($course) {
-                    $query->where('id', $course->id);
-                })
-                ->where('passed', true)
-                ->with('quiz.questions')
-                ->get();
+            $totalContentCount = 0;
+            foreach ($lessons as $lesson) {
+                $totalContentCount += $lesson->contents->count();
+            }
 
-            // Get essay scores  
-            $essayScores = $participant->essaySubmissions()
-                ->whereHas('content.lesson.course', function ($query) use ($course) {
-                    $query->where('id', $course->id);
-                })
-                ->whereNotNull('score')
-                ->with('content')
-                ->get();
+            $data = [
+                'course' => $course,
+                'participantsProgress' => collect($participantsProgress),
+                'date' => now()->translatedFormat('d F Y'),
+                'total_content_count' => $totalContentCount
+            ];
 
-            $participantsProgress[] = (object)[
-                'name' => $participant->name,
-                'email' => $participant->email,
-                'progressPercentage' => $progressData['progress_percentage'], // Use web calculation  
-                'completed_count' => $progressData['completed_count'],
-                'total_count' => $progressData['total_count'],
-                'lessons' => $detailedLessons,
-                'quiz_scores' => $quizScores,
-                'essay_scores' => $essayScores,
+            $pdf = Pdf::loadView('reports.progress_pdf', $data);
+            $pdf->setPaper('a4', 'portrait');
+
+            $fileName = 'laporan-progres-lengkap-' . Str::slug($course->title) . '.pdf';
+
+            return $pdf->download($fileName);
+        } catch (\Exception $e) {
+            \Log::error('PDF Export Error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->with('error', 'Error generating PDF: ' . $e->getMessage());
+        }
+    }
+
+
+
+    public function debugEssayScores(Course $course, User $participant)
+    {
+        // Debug essay submissions
+        $submissions = $participant->essaySubmissions()
+            ->whereHas('content.lesson.course', function ($query) use ($course) {
+                $query->where('id', $course->id);
+            })
+            ->with(['content.essayQuestions', 'essayAnswers'])
+            ->get();
+
+        $debug = [];
+        foreach ($submissions as $submission) {
+            $debug[] = [
+                'submission_id' => $submission->id,
+                'content_title' => $submission->content->title,
+                'total_questions' => $submission->content->essayQuestions->count(),
+                'total_answers' => $submission->essayAnswers->count(),
+                'graded_answers' => $submission->essayAnswers->whereNotNull('score')->count(),
+                'answers_detail' => $submission->essayAnswers->map(function ($answer) {
+                    return [
+                        'question_id' => $answer->question_id,
+                        'score' => $answer->score,
+                        'has_score' => !is_null($answer->score)
+                    ];
+                })
             ];
         }
 
-        // 4. Siapkan data akhir untuk view PDF
-        $data = [
-            'course' => $course,
-            'participantsProgress' => $participantsProgress,
-            'date' => now()->translatedFormat('d F Y'),
-        ];
-
-        // 5. Buat dan unduh PDF
-        $pdf = Pdf::loadView('reports.progress_pdf', $data);
-        $pdf->setPaper('a4', 'portrait');
-
-        $fileName = 'laporan-progres-lengkap-' . Str::slug($course->title) . '.pdf';
-
-        return $pdf->download($fileName);
+        return $debug;
     }
 }
