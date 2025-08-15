@@ -95,11 +95,11 @@
                 </div>
             </div>
 
-            <div x-data="{ currentTab: 'essays' }" class="bg-white overflow-hidden shadow-lg rounded-2xl border border-gray-200">
+            <div x-data="{ activeTab: 'essays' }" class="bg-white overflow-hidden shadow-lg rounded-2xl border border-gray-200">
                 {{-- Enhanced Tab Navigation --}}
                 <div class="border-b border-gray-200 bg-gray-50">
                     <nav class="flex px-6" aria-label="Tabs">
-                        <button @click="currentTab = 'essays'" :class="{'border-indigo-500 text-indigo-600 bg-white': currentTab === 'essays', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': currentTab !== 'essays'}" class="relative whitespace-nowrap py-4 px-6 border-b-2 font-semibold text-sm transition-all duration-200 rounded-t-lg">
+                        <button @click="activeTab = 'essays'" :class="{'border-indigo-500 text-indigo-600 bg-white': activeTab === 'essays', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'essays'}" class="relative whitespace-nowrap py-4 px-6 border-b-2 font-semibold text-sm transition-all duration-200 rounded-t-lg">
                             <div class="flex items-center space-x-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -107,7 +107,7 @@
                                 <span>Penilaian Esai</span>
                             </div>
                         </button>
-                        <button @click="currentTab = 'feedback'" :class="{'border-indigo-500 text-indigo-600 bg-white': currentTab === 'feedback', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': currentTab !== 'feedback'}" class="relative whitespace-nowrap py-4 px-6 border-b-2 font-semibold text-sm transition-all duration-200 rounded-t-lg">
+                        <button @click="activeTab = 'feedback'" :class="{'border-indigo-500 text-indigo-600 bg-white': activeTab === 'feedback', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'feedback'}" class="relative whitespace-nowrap py-4 px-6 border-b-2 font-semibold text-sm transition-all duration-200 rounded-t-lg">
                             <div class="flex items-center space-x-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
@@ -119,57 +119,280 @@
                 </div>
 
                 {{-- Enhanced Essays Tab Content --}}
-                <div x-show="currentTab === 'essays'" class="p-8">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-3">
-                            <h3 class="text-2xl font-bold text-gray-900">Daftar Peserta</h3>
-                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                                {{ $participantsWithEssays->count() }} Peserta
-                            </span>
-                        </div>
-                    </div>
-                    
-                    @if ($participantsWithEssays->isEmpty())
-                        <div class="text-center py-16">
-                            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
+                <div x-show="activeTab === 'essays'" x-transition>
+                    <div class="p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center space-x-3">
+                                <h3 class="text-2xl font-bold text-gray-900">Daftar Peserta</h3>
+                                <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                                    {{ $participantsWithEssays->count() }} Peserta
+                                </span>
                             </div>
-                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Belum Ada Esai</h4>
-                            <p class="text-gray-500 max-w-md mx-auto">Tidak ada peserta yang cocok dengan pencarian atau belum ada yang mengumpulkan esai untuk kursus ini.</p>
                         </div>
-                    @else
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            @foreach ($participantsWithEssays as $participant)
-                                <a href="{{ route('gradebook.user_essays', ['course' => $course, 'user' => $participant]) }}" class="group block p-6 bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl hover:shadow-lg hover:border-indigo-300 transition-all duration-200 transform hover:-translate-y-1">
-                                    <div class="flex items-start space-x-4">
-                                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-                                            <span class="font-bold text-white text-lg">
-                                                {{ strtoupper(substr($participant->name, 0, 1)) }}
-                                            </span>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-200 truncate">
-                                                {{ $participant->name }}
-                                            </p>
-                                            <p class="text-sm text-gray-500 truncate mt-1">{{ $participant->email }}</p>
-                                            <div class="flex items-center mt-3 text-xs text-indigo-600">
-                                                <span>Lihat esai</span>
-                                                <svg class="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                                </svg>
+                        
+                        @if($participantsWithEssays->count() > 0)
+                            <div class="space-y-6">
+                                @foreach($participantsWithEssays as $participant)
+                                    @php
+                                        $essayContentIds = $course->lessons()->with('contents')
+                                            ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
+                                        $submissions = $participant->essaySubmissions()
+                                            ->whereIn('content_id', $essayContentIds)
+                                            ->with(['content', 'content.essayQuestions'])
+                                            ->get();
+                                    @endphp
+                                    
+                                    <div class="border border-gray-200 rounded-xl p-6 bg-gradient-to-br from-gray-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200">
+                                        <div class="flex items-center justify-between mb-6">
+                                            <div class="flex items-center space-x-4">
+                                                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
+                                                    <span class="font-bold text-white text-lg">
+                                                        {{ strtoupper(substr($participant->name, 0, 1)) }}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-lg font-semibold text-gray-900">{{ $participant->name }}</h3>
+                                                    <p class="text-sm text-gray-600">{{ $participant->email }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                @php
+                                                    $totalEssays = $submissions->count();
+                                                    $fullyGradedEssays = 0;
+                                                    $pendingQuestions = 0;
+                                                    $totalScore = 0;
+                                                    $maxTotalScore = 0;
+                                                    
+                                                    foreach($submissions as $submission) {
+                                                        $questions = $submission->content->essayQuestions;
+                                                        $totalQuestions = $questions->count();
+                                                        
+                                                        if ($totalQuestions > 0) {
+                                                            // New multi-question system
+                                                            $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+                                                            
+                                                            if ($gradedAnswers >= $totalQuestions) {
+                                                                $fullyGradedEssays++;
+                                                                // Calculate scores for this submission
+                                                                $submissionScore = $submission->answers()->sum('score');
+                                                                $submissionMaxScore = $questions->sum('max_score');
+                                                                $totalScore += $submissionScore;
+                                                                $maxTotalScore += $submissionMaxScore;
+                                                            } else {
+                                                                $pendingQuestions += ($totalQuestions - $gradedAnswers);
+                                                            }
+                                                        } else {
+                                                            // Old single-question system
+                                                            $hasScore = $submission->answers()->whereNotNull('score')->count() > 0;
+                                                            if ($hasScore) {
+                                                                $fullyGradedEssays++;
+                                                                $score = $submission->answers()->first()?->score ?? 0;
+                                                                $totalScore += $score;
+                                                                $maxTotalScore += 100; // Default max score for old system
+                                                            } else {
+                                                                $pendingQuestions++;
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    $averagePercentage = $maxTotalScore > 0 ? round(($totalScore / $maxTotalScore) * 100, 1) : 0;
+                                                @endphp
+                                                
+                                                <div class="space-y-2">
+                                                    <div class="flex space-x-2">
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            {{ $fullyGradedEssays }}/{{ $totalEssays }} Essays Complete
+                                                        </span>
+                                                        @if($pendingQuestions > 0)
+                                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                                {{ $pendingQuestions }} Questions Pending
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                    @if($fullyGradedEssays > 0)
+                                                        <div class="text-right">
+                                                            <span class="text-sm text-gray-600">Total Score: </span>
+                                                            <span class="font-semibold text-gray-900">{{ $totalScore }}/{{ $maxTotalScore }}</span>
+                                                            <span class="text-sm font-medium text-{{ $averagePercentage >= 70 ? 'green' : ($averagePercentage >= 60 ? 'yellow' : 'red') }}-600">
+                                                                ({{ $averagePercentage }}%)
+                                                            </span>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
+                                        
+                                        {{-- Essay Submissions List --}}
+                                        <div class="space-y-4">
+                                            @foreach($submissions as $submission)
+                                                @php
+                                                    $questions = $submission->content->essayQuestions;
+                                                    $totalQuestions = $questions->count();
+                                                    $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+                                                    $isFullyGraded = $totalQuestions > 0 ? ($gradedAnswers >= $totalQuestions) : ($submission->answers()->whereNotNull('score')->count() > 0);
+                                                    
+                                                    // Calculate submission score
+                                                    $submissionScore = 0;
+                                                    $submissionMaxScore = 0;
+                                                    if ($totalQuestions > 0) {
+                                                        $submissionScore = $submission->answers()->sum('score');
+                                                        $submissionMaxScore = $questions->sum('max_score');
+                                                    } else {
+                                                        $submissionScore = $submission->answers()->first()?->score ?? 0;
+                                                        $submissionMaxScore = 100;
+                                                    }
+                                                @endphp
+                                                
+                                                <div class="flex items-center justify-between p-5 {{ $isFullyGraded ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200' }} border rounded-lg transition-all duration-200 hover:shadow-sm">
+                                                    <div class="flex-1">
+                                                        <div class="flex items-center space-x-3 mb-2">
+                                                            <h4 class="font-medium text-gray-900">{{ $submission->content->title }}</h4>
+                                                            @if($isFullyGraded)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                    ✅ Complete
+                                                                </span>
+                                                            @else
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                    ⏳ Needs Grading
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center space-x-6 text-sm">
+                                                            <span class="text-gray-600">
+                                                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                                </svg>
+                                                                Submitted: {{ $submission->created_at->format('d M Y') }}
+                                                            </span>
+                                                            
+                                                            @if($totalQuestions > 0)
+                                                                <span class="text-{{ $isFullyGraded ? 'green' : 'yellow' }}-600 font-medium">
+                                                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                                    </svg>
+                                                                    Questions: {{ $gradedAnswers }}/{{ $totalQuestions }} graded
+                                                                </span>
+                                                            @else
+                                                                <span class="text-blue-600 font-medium">
+                                                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                                                    </svg>
+                                                                    Old System Essay
+                                                                </span>
+                                                            @endif
+                                                            
+                                                            @if($isFullyGraded)
+                                                                <span class="text-gray-700 font-medium">
+                                                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                                    </svg>
+                                                                    Score: {{ $submissionScore }}/{{ $submissionMaxScore }}
+                                                                    @if($submissionMaxScore > 0)
+                                                                        ({{ round(($submissionScore / $submissionMaxScore) * 100, 1) }}%)
+                                                                    @endif
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="flex items-center space-x-3">
+                                                        {{-- Action Button --}}
+                                                        @if($totalQuestions > 1)
+                                                            {{-- Multi-question essay - use detailed grading --}}
+                                                            <a href="{{ route('gradebook.essay-detail', $submission) }}" 
+                                                               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                                </svg>
+                                                                <span>Grade {{ $totalQuestions }} Questions</span>
+                                                            </a>
+                                                        @else
+                                                            {{-- Single question or old system - use quick grading --}}
+                                                            <button onclick="openQuickGradeModal({{ $submission->id }}, '{{ addslashes($submission->content->title) }}', '{{ addslashes($participant->name) }}')" 
+                                                                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                                </svg>
+                                                                <span>Quick Grade</span>
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     </div>
-                                </a>
-                            @endforeach
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-16">
+                                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="text-lg font-semibold text-gray-900 mb-2">No Essay Submissions</h4>
+                                <p class="text-gray-500 max-w-md mx-auto">No students have submitted essays yet.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Quick Grade Modal for single question essays --}}
+                <div id="quickGradeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+                    <div class="flex items-center justify-center min-h-screen p-4">
+                        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                            <div class="p-6">
+                                <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Grade Essay</h3>
+                                <p class="text-sm text-gray-600 mb-4">
+                                    <span id="studentName"></span> - <span id="essayTitle"></span>
+                                </p>
+                                
+                                <form id="quickGradeForm" action="" method="POST">
+                                    @csrf
+                                    <div class="mb-4">
+                                        <label for="score" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Nilai (0-100)
+                                        </label>
+                                        <input type="number" 
+                                               id="score" 
+                                               name="score" 
+                                               min="0" 
+                                               max="100" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                               required>
+                                    </div>
+                                    
+                                    <div class="mb-6">
+                                        <label for="feedback" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Feedback (opsional)
+                                        </label>
+                                        <textarea id="feedback" 
+                                                  name="feedback" 
+                                                  rows="3" 
+                                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                  placeholder="Berikan feedback untuk mahasiswa..."></textarea>
+                                    </div>
+                                    
+                                    <div class="flex justify-end space-x-3">
+                                        <button type="button" 
+                                                onclick="closeQuickGradeModal()" 
+                                                class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                                            Batal
+                                        </button>
+                                        <button type="submit" 
+                                                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                                            Simpan Nilai
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                    @endif
+                    </div>
                 </div>
 
                 {{-- Enhanced Feedback Tab Content --}}
-                <div x-show="currentTab === 'feedback'" x-cloak class="p-8">
+                <div x-show="activeTab === 'feedback'" x-cloak class="p-8">
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center space-x-3">
                             <h3 class="text-2xl font-bold text-gray-900">Feedback Umum</h3>
@@ -254,4 +477,99 @@
             </div>
         </div>
     </div>
+
+    {{-- JavaScript untuk Quick Grade Modal --}}
+    <script>
+    function openQuickGradeModal(submissionId, essayTitle, studentName) {
+        document.getElementById('quickGradeModal').classList.remove('hidden');
+        document.getElementById('studentName').textContent = studentName;
+        document.getElementById('essayTitle').textContent = essayTitle;
+        
+        // Set form action URL
+        const form = document.getElementById('quickGradeForm');
+        form.action = `/essay-submissions/${submissionId}/grade`;
+        
+        // Reset form
+        form.reset();
+        
+        // Focus on score input
+        document.getElementById('score').focus();
+    }
+
+    function closeQuickGradeModal() {
+        document.getElementById('quickGradeModal').classList.add('hidden');
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('quickGradeModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeQuickGradeModal();
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeQuickGradeModal();
+        }
+    });
+
+    // Handle form submission
+    document.getElementById('quickGradeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        
+        // Show loading state
+        submitButton.textContent = 'Menyimpan...';
+        submitButton.disabled = true;
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'mb-4 p-4 text-sm text-green-700 bg-green-100 rounded-lg';
+                alertDiv.textContent = data.message || 'Nilai berhasil disimpan!';
+                
+                const container = document.querySelector('.max-w-7xl.mx-auto.sm\\:px-6.lg\\:px-8');
+                container.insertBefore(alertDiv, container.firstChild);
+                
+                // Close modal
+                closeQuickGradeModal();
+                
+                // Refresh page after short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.message || 'Terjadi kesalahan');
+            }
+        })
+        .catch(error => {
+            // Show error message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg';
+            alertDiv.textContent = 'Error: ' + error.message;
+            
+            const container = document.querySelector('.max-w-7xl.mx-auto.sm\\:px-6.lg\\:px-8');
+            container.insertBefore(alertDiv, container.firstChild);
+        })
+        .finally(() => {
+            // Reset button state
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
+        });
+    });
+    </script>
 </x-app-layout>

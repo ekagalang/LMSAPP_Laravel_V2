@@ -170,6 +170,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/courses/{course}/gradebook/essays/user/{user}', [GradebookController::class, 'showUserEssays'])->name('gradebook.user_essays');
         Route::post('/essay-submissions/{submission}/grade', [GradebookController::class, 'storeEssayGrade'])->name('gradebook.storeEssayGrade');
         Route::post('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'storeFeedback'])->name('gradebook.storeFeedback');
+
+        Route::post('/essay-submissions/{submission}/grade-multi', [GradebookController::class, 'storeMultiQuestionGrade'])
+            ->name('gradebook.store-multi-grade');
+
+        Route::get('/essay-submissions/{submission}/detail', [GradebookController::class, 'showEssayDetail'])
+            ->name('gradebook.essay-detail');
     });
 
     Route::get('/essay-submissions/{submission}/result', [EssaySubmissionController::class, 'showResult'])->name('essays.result');

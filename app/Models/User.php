@@ -357,14 +357,13 @@ class User extends Authenticatable
     public function hasCompletedContent(Content $content): bool
     {
         if ($content->type === 'quiz' && $content->quiz_id) {
-            // Untuk quiz: cek apakah ada attempt yang passed
+            // Quiz logic unchanged
             return $this->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
                 ->where('passed', true)
                 ->exists();
         } elseif ($content->type === 'essay') {
-            // ✅ FIX: Untuk essay dengan sistem baru - cek submission saja untuk sekarang
-            // Nanti bisa diganti ke "harus dinilai semua" jika diperlukan
+            // ✅ FIXED ESSAY LOGIC
             $submission = $this->essaySubmissions()
                 ->where('content_id', $content->id)
                 ->first();
@@ -373,14 +372,18 @@ class User extends Authenticatable
                 return false; // Belum submit
             }
 
-            // Check if has answers (submitted)
-            $totalAnswers = $submission->answers()->count();
+            $totalQuestions = $content->essayQuestions()->count();
 
-            // Essay dianggap complete jika sudah ada jawaban (submitted)
-            // Alternative: bisa diganti ke "semua pertanyaan sudah dinilai" jika diperlukan
-            return $totalAnswers > 0;
+            if ($totalQuestions === 0) {
+                // Old system or no questions defined - fallback to simple submission check
+                return $submission->answers()->count() > 0;
+            }
+
+            // New system - check all questions are graded
+            $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+            return $gradedAnswers >= $totalQuestions;
         } else {
-            // Untuk konten biasa: cek tabel pivot completion
+            // Regular content unchanged
             return $this->completedContents()->where('content_id', $content->id)->exists();
         }
     }
@@ -604,7 +607,7 @@ class User extends Authenticatable
         $itemsToGrade = $course->contents()->whereIn('type', $gradedContentTypes)->get();
 
         if ($itemsToGrade->isEmpty()) {
-            return true; // Tidak ada essay, otomatis lolos
+            return true;
         }
 
         foreach ($itemsToGrade as $item) {
@@ -615,15 +618,18 @@ class User extends Authenticatable
                     return false; // Belum submit
                 }
 
-                // ✅ FIX: Check essay_answers instead of essay_submissions
                 $totalQuestions = $item->essayQuestions()->count();
+
                 if ($totalQuestions === 0) {
-                    continue; // Skip if no questions
+                    // Old system - check if has any answer
+                    if ($submission->answers()->count() === 0) {
+                        return false;
+                    }
+                    continue;
                 }
 
+                // New system - check all questions graded
                 $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
-
-                // Essay dianggap selesai jika semua pertanyaan sudah dinilai
                 if ($gradedAnswers < $totalQuestions) {
                     return false;
                 }
@@ -734,5 +740,87 @@ class User extends Authenticatable
         }
 
         return true;
+    }
+
+    public function getContentStatus(Content $content): string
+    {
+        if ($content->type === 'quiz' && $content->quiz_id) {
+            $passedAttempt = $this->quizAttempts()
+                ->where('quiz_id', $content->quiz_id)
+                ->where('passed', true)
+                ->exists();
+
+            if ($passedAttempt) {
+                return 'completed';
+            }
+
+            $hasAttempt = $this->quizAttempts()
+                ->where('quiz_id', $content->quiz_id)
+                ->exists();
+
+            return $hasAttempt ? 'failed' : 'not_started';
+        } elseif ($content->type === 'essay') {
+            $submission = $this->essaySubmissions()
+                ->where('content_id', $content->id)
+                ->first();
+
+            if (!$submission) {
+                return 'not_started';
+            }
+
+            $totalQuestions = $content->essayQuestions()->count();
+
+            if ($totalQuestions === 0) {
+                return $submission->answers()->count() > 0 ? 'completed' : 'not_started';
+            }
+
+            $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+
+            if ($gradedAnswers >= $totalQuestions) {
+                return 'completed';
+            } elseif ($submission->answers()->count() > 0) {
+                return 'pending_grade';
+            } else {
+                return 'not_started';
+            }
+        } else {
+            return $this->completedContents()->where('content_id', $content->id)->exists()
+                ? 'completed'
+                : 'not_started';
+        }
+    }
+
+    public function getContentStatusText(Content $content): string
+    {
+        $status = $this->getContentStatus($content);
+
+        switch ($status) {
+            case 'completed':
+                return 'Selesai';
+            case 'pending_grade':
+                return 'Menunggu Penilaian';
+            case 'failed':
+                return 'Belum Lulus';
+            case 'not_started':
+            default:
+                return 'Belum Dimulai';
+        }
+    }
+
+    public function getContentStatusBadgeClass(Content $content): string
+    {
+        $status = $this->getContentStatus($content);
+
+        switch ($status) {
+            case 'completed':
+                return 'bg-green-100 text-green-800';
+            case 'pending_grade':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'failed':
+                return 'bg-red-100 text-red-800';
+            case 'not_started':
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
     }
 }

@@ -39,7 +39,7 @@ class GradebookController extends Controller
             $searchTerm = $request->search;
             $participantsQuery->where(function ($query) use ($searchTerm) {
                 $query->where('name', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
         $participants = $participantsQuery->with(['feedback' => function ($query) use ($course) {
@@ -56,7 +56,7 @@ class GradebookController extends Controller
             $searchTerm = $request->input('search');
             $participantsWithEssaysQuery->where(function ($query) use ($searchTerm) {
                 $query->where('name', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
         $participantsWithEssays = $participantsWithEssaysQuery->get();
@@ -134,5 +134,64 @@ class GradebookController extends Controller
         );
 
         return redirect()->back()->with('success', 'Feedback untuk ' . $user->name . ' berhasil disimpan.');
+    }
+
+    public function storeMultiQuestionGrade(Request $request, EssaySubmission $submission)
+    {
+        $this->authorize('grade', $submission->content->lesson->course);
+
+        $scores = $request->input('scores', []);
+        $feedbacks = $request->input('feedback', []);
+
+        $gradedCount = 0;
+
+        DB::transaction(function () use ($scores, $feedbacks, $submission, &$gradedCount) {
+            foreach ($scores as $answerId => $score) {
+                if ($score !== null && $score !== '') {
+                    $answer = \App\Models\EssayAnswer::where('id', $answerId)
+                        ->where('submission_id', $submission->id)
+                        ->first();
+
+                    if ($answer) {
+                        $answer->update([
+                            'score' => (int) $score,
+                            'feedback' => $feedbacks[$answerId] ?? null,
+                        ]);
+                        $gradedCount++;
+                    }
+                }
+            }
+
+            // Update submission graded_at if all questions are graded
+            $totalQuestions = $submission->content->essayQuestions()->count();
+            $currentGradedAnswers = $submission->answers()->whereNotNull('score')->count();
+
+            if ($currentGradedAnswers >= $totalQuestions) {
+                $submission->update([
+                    'graded_at' => now(),
+                    'status' => 'graded'
+                ]);
+            }
+        });
+
+        $message = "Berhasil menyimpan {$gradedCount} nilai.";
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    public function showEssayDetail(EssaySubmission $submission)
+    {
+        $this->authorize('grade', $submission->content->lesson->course);
+
+        // Load relationships
+        $submission->load([
+            'content.essayQuestions' => function ($query) {
+                $query->orderBy('order');
+            },
+            'answers.question',
+            'user'
+        ]);
+
+        return view('gradebook.essay_detail', compact('submission'));
     }
 }

@@ -1,7 +1,8 @@
 <x-app-layout>
     {{-- Atribut id dan data-* sudah ditambahkan kembali di sini --}}
     <div id="chat-container" data-chat-id="{{ $chat->id }}" data-user-id="{{ auth()->id() }}" class="flex flex-col h-[85vh] max-w-4xl mx-auto my-8 bg-white rounded-lg shadow-xl overflow-hidden border border-gray-200">
-        
+        <x-chat-navigation>
+        </x-chat-navigation>
         {{-- Header Chat --}}
         <div class="p-4 border-b border-gray-200">
             <h3 class="text-xl font-bold text-gray-800">{{ $chat->getDisplayName() }}</h3>

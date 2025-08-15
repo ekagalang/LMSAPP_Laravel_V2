@@ -119,73 +119,70 @@
                         <div class="p-8">
                             @forelse ($lesson->contents as $content)
                                 @php
-                                    $isCompleted = $completedContentsMap->has($content->id);
+                                    // Enhanced status logic
+                                    $contentStatus = $participant->getContentStatus($content);
+                                    $statusText = $participant->getContentStatusText($content);
+                                    $badgeClass = $participant->getContentStatusBadgeClass($content);
+                                    $isCompleted = ($contentStatus === 'completed');
                                 @endphp
                                 
-                                <div class="flex items-center justify-between p-4 rounded-xl mb-3 last:mb-0 border-2 transition-all duration-200 hover:shadow-md {{ $isCompleted ? 'bg-green-50 border-green-200 hover:bg-green-100' : 'bg-red-50 border-red-200 hover:bg-red-100' }}">
+                                <div class="flex items-center justify-between p-4 rounded-xl mb-3 last:mb-0 border-2 transition-all duration-200 hover:shadow-md {{ $isCompleted ?
+                                    'bg-green-50 border-green-200 hover:bg-green-100' : 
+                                    ($contentStatus === 'pending_grade' ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100') 
+                                }}">
+                                    
                                     <div class="flex items-center space-x-4">
-                                        <div class="flex-shrink-0">
-                                            @if($isCompleted)
-                                                <div class="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-                                                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                                    </svg>
-                                                </div>
-                                            @else
-                                                <div class="h-10 w-10 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
-                                                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                                                    </svg>
-                                                </div>
-                                            @endif
+                                        {{-- Content Type Icon --}}
+                                        <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ $isCompleted ? 'bg-green-100 text-green-600' : ($contentStatus === 'pending_grade' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-600') }}">
+                                            @switch($content->type)
+                                                @case('video') 🎥 @break
+                                                @case('document') 📄 @break
+                                                @case('quiz') 🧠 @break
+                                                @case('essay') ✍️ @break
+                                                @default 📝
+                                            @endswitch
                                         </div>
-                                        <div>
-                                            <h4 class="text-lg font-semibold text-gray-900">{{ $content->title }}</h4>
-                                            <p class="text-sm text-gray-600">
-                                                @if($isCompleted)
-                                                    <span class="flex items-center">
-                                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                                        </svg>
-                                                        Materi telah diselesaikan
-                                                    </span>
-                                                @else
-                                                    <span class="flex items-center">
-                                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                                        </svg>
-                                                        Belum diselesaikan
-                                                    </span>
-                                                @endif
-                                            </p>
+                                        
+                                        {{-- Content Info --}}
+                                        <div class="flex-1">
+                                            <h4 class="font-semibold text-gray-900">{{ $content->title }}</h4>
+                                            <p class="text-sm text-gray-600 capitalize">{{ ucfirst($content->type) }}</p>
+                                            
+                                            {{-- Enhanced Essay Progress Info --}}
+                                            @if($content->type === 'essay' && $contentStatus === 'pending_grade')
+                                                @php
+                                                    $submission = $participant->essaySubmissions()->where('content_id', $content->id)->first();
+                                                    $totalQuestions = $content->essayQuestions()->count();
+                                                    $gradedAnswers = $submission ? $submission->answers()->whereNotNull('score')->count() : 0;
+                                                @endphp
+                                                <p class="text-xs text-yellow-600 mt-1">
+                                                    Dinilai: {{ $gradedAnswers }}/{{ $totalQuestions }} pertanyaan
+                                                </p>
+                                            @endif
                                         </div>
                                     </div>
                                     
-                                    <div class="flex-shrink-0">
-                                        @if($isCompleted)
-                                            <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
-                                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                                </svg>
-                                                Selesai
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg">
-                                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"></path>
-                                                </svg>
-                                                Belum Selesai
-                                            </span>
-                                        @endif
+                                    {{-- Enhanced Status Badge --}}
+                                    <div class="flex items-center space-x-3">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $badgeClass }}">
+                                            {{ $statusText }}
+                                        </span>
+                                        
+                                        {{-- Action Button --}}
+                                        <a href="{{ route('contents.show', $content) }}" 
+                                        class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                            @if($contentStatus === 'completed')
+                                                Review
+                                            @elseif($contentStatus === 'pending_grade')
+                                                Lihat Status
+                                            @else
+                                                Lihat
+                                            @endif
+                                        </a>
                                     </div>
                                 </div>
                             @empty
-                                <div class="text-center py-8">
-                                    <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <p class="text-gray-500 text-lg">Tidak ada materi dalam pelajaran ini</p>
-                                </div>
+                                <p class="text-gray-500 text-center py-8">Tidak ada konten dalam pelajaran ini.</p>
                             @endforelse
                         </div>
                     </div>
