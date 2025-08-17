@@ -436,6 +436,12 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function coursePeriods()
+    {
+        return $this->belongsToMany(CoursePeriod::class, 'course_period_participants', 'user_id', 'course_period_id')
+            ->withTimestamps();
+    }
+
     public function activeChats()
     {
         return $this->chats()->wherePivot('is_active', true);
@@ -460,7 +466,7 @@ class User extends Authenticatable
             return false;
         }
 
-        // ✅ FIXED: Admin can always chat with anyone
+        // Admin can always chat with anyone
         if ($this->hasRole('super-admin') || $targetUser->hasRole('super-admin')) {
             return true;
         }
@@ -472,52 +478,15 @@ class User extends Authenticatable
                 return false;
             }
 
-            // ✅ FIXED: Both users must be related to this course period OR one is admin
+            // Both users must be in this course period
             $thisUserInCourse = $this->isInCoursePeriod($coursePeriod);
             $targetUserInCourse = $targetUser->isInCoursePeriod($coursePeriod);
 
             return $thisUserInCourse && $targetUserInCourse;
         }
 
-        // ✅ FIXED: For general chat, allow if users share any course OR one is high-level role
-
-        // Instructors and EOs can chat with anyone in their courses
-        if ($this->hasRole(['instructor', 'event-organizer']) || $targetUser->hasRole(['instructor', 'event-organizer'])) {
-            // Check if they share any course
-            $sharedCourses = $this->getSharedCoursePeriods($targetUser);
-            if ($sharedCourses->isNotEmpty()) {
-                return true;
-            }
-
-            // Allow instructor/EO to chat with participants in their courses
-            if ($this->hasRole(['instructor', 'event-organizer'])) {
-                $myCourseIds = collect();
-                $myCourseIds = $myCourseIds->merge($this->taughtCourses()->pluck('course_id'));
-                $myCourseIds = $myCourseIds->merge($this->eventOrganizedCourses()->pluck('course_id'));
-
-                $targetInMyCourses = $targetUser->courses()->whereIn('course_id', $myCourseIds)->exists();
-                if ($targetInMyCourses) {
-                    return true;
-                }
-            }
-
-            if ($targetUser->hasRole(['instructor', 'event-organizer'])) {
-                $targetCourseIds = collect();
-                $targetCourseIds = $targetCourseIds->merge($targetUser->taughtCourses()->pluck('course_id'));
-                $targetCourseIds = $targetCourseIds->merge($targetUser->eventOrganizedCourses()->pluck('course_id'));
-
-                $thisInTargetCourses = $this->courses()->whereIn('course_id', $targetCourseIds)->exists();
-                if ($thisInTargetCourses) {
-                    return true;
-                }
-            }
-        }
-
-        // For participants, use existing logic
-        if (method_exists($this, 'hasCommonActivePeriods')) {
-            return $this->hasCommonActivePeriods($targetUser);
-        }
-
+        // For general chat, allow if users share any course OR one is high-level role
+        // Check if they share any course
         $sharedCourses = $this->getSharedCoursePeriods($targetUser);
         return $sharedCourses->isNotEmpty();
     }
@@ -871,101 +840,100 @@ class User extends Authenticatable
     /**
      * Check if user is related to a course period (as participant, instructor, or organizer)
      */
-    public function isInCoursePeriod(\App\Models\CoursePeriod $coursePeriod): bool
+    public function isInCoursePeriod($coursePeriod): bool
     {
-        // Check as participant (using existing relationship)
-        if ($coursePeriod->course->enrolledUsers()->where('user_id', $this->id)->exists()) {
+        if (!$coursePeriod) {
+            return false;
+        }
+
+        // Convert to model if ID is passed
+        if (is_numeric($coursePeriod)) {
+            $coursePeriod = \App\Models\CoursePeriod::find($coursePeriod);
+            if (!$coursePeriod) {
+                return false;
+            }
+        }
+
+        // Admin always has access
+        if ($this->hasRole('super-admin')) {
             return true;
         }
 
-        // Check as instructor (using existing relationship)
-        if ($coursePeriod->course->instructors()->where('user_id', $this->id)->exists()) {
-            return true;
+        // Check if user is instructor of this course
+        if ($this->hasRole('instructor')) {
+            $isInstructor = $coursePeriod->course->instructors()->where('user_id', $this->id)->exists();
+            if ($isInstructor) {
+                return true;
+            }
         }
 
-        // Check as event organizer (using existing relationship)
-        if ($coursePeriod->course->eventOrganizers()->where('user_id', $this->id)->exists()) {
-            return true;
+        // Check if user is event organizer of this course
+        if ($this->hasRole('event-organizer')) {
+            $isEventOrganizer = $coursePeriod->course->eventOrganizers()->where('user_id', $this->id)->exists();
+            if ($isEventOrganizer) {
+                return true;
+            }
         }
 
-        return false;
+        // Check if user is participant in this course period
+        $isParticipant = $coursePeriod->participants()->where('user_id', $this->id)->exists();
+        return $isParticipant;
     }
+
 
     /**
      * Get shared course periods with another user
      */
-    public function getSharedCoursePeriods(User $targetUser)
+    public function getSharedCoursePeriods(User $otherUser)
     {
-        // Get this user's course periods using existing relationships
-        $thisUserCourses = collect();
+        $myCoursePeriods = $this->getAccessibleCoursePeriods()->pluck('id');
+        $otherCoursePeriods = $otherUser->getAccessibleCoursePeriods()->pluck('id');
 
-        // As participant (using existing courses relationship)
-        $enrolledCourseIds = $this->courses()->pluck('course_id');
+        $sharedIds = $myCoursePeriods->intersect($otherCoursePeriods);
 
-        // As instructor (using existing taughtCourses relationship)
-        $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
-
-        // As event organizer (using existing eventOrganizedCourses relationship)
-        $organizerCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
-
-        $thisUserCourses = $enrolledCourseIds->merge($instructorCourseIds)->merge($organizerCourseIds)->unique();
-
-        // Get target user's course periods using existing relationships
-        $targetUserCourses = collect();
-
-        // As participant
-        $targetEnrolledCourseIds = $targetUser->courses()->pluck('course_id');
-
-        // As instructor
-        $targetInstructorCourseIds = $targetUser->taughtCourses()->pluck('course_id');
-
-        // As event organizer
-        $targetOrganizerCourseIds = $targetUser->eventOrganizedCourses()->pluck('course_id');
-
-        $targetUserCourses = $targetEnrolledCourseIds->merge($targetInstructorCourseIds)->merge($targetOrganizerCourseIds)->unique();
-
-        // Find shared course IDs
-        $sharedCourseIds = $thisUserCourses->intersect($targetUserCourses);
-
-        // Get active course periods for shared courses
-        return \App\Models\CoursePeriod::whereIn('course_id', $sharedCourseIds)
-            ->where('status', 'active')
-            ->get();
+        return \App\Models\CoursePeriod::whereIn('id', $sharedIds)->with('course')->get();
     }
-
 
     /**
      * Check if user has access to course periods (for chat creation)
      */
     public function getAccessibleCoursePeriods()
     {
+        // Admin can see all course periods
         if ($this->hasRole('super-admin')) {
-            return \App\Models\CoursePeriod::with('course')->get(); // Tidak filter status untuk admin
+            return \App\Models\CoursePeriod::with('course')->get();
         }
 
-        $courseIds = collect();
+        $coursePeriodIds = collect();
 
-        // As participant (using existing courses relationship)
-        $enrolledCourseIds = $this->courses()->pluck('course_id');
-        $courseIds = $courseIds->merge($enrolledCourseIds);
+        // Get course periods where user is instructor
+        if ($this->hasRole('instructor')) {
+            $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
+            $instructorPeriods = \App\Models\CoursePeriod::whereIn('course_id', $instructorCourseIds)->pluck('id');
+            $coursePeriodIds = $coursePeriodIds->merge($instructorPeriods);
+        }
 
-        // As instructor (using existing taughtCourses relationship)
-        $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
-        $courseIds = $courseIds->merge($instructorCourseIds);
+        // Get course periods where user is event organizer
+        if ($this->hasRole('event-organizer')) {
+            $eoCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
+            $eoPeriods = \App\Models\CoursePeriod::whereIn('course_id', $eoCourseIds)->pluck('id');
+            $coursePeriodIds = $coursePeriodIds->merge($eoPeriods);
+        }
 
-        // As event organizer (using existing eventOrganizedCourses relationship)
-        $organizerCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
-        $courseIds = $courseIds->merge($organizerCourseIds);
+        // Get course periods where user is participant
+        // ✅ FIXED: Use correct relationship
+        if ($this->hasRole('participant')) {
+            // Assuming participants are enrolled in courses, then check active periods for those courses
+            $enrolledCourseIds = $this->courses()->pluck('course_id');
+            $participantPeriods = \App\Models\CoursePeriod::whereIn('course_id', $enrolledCourseIds)->pluck('id');
+            $coursePeriodIds = $coursePeriodIds->merge($participantPeriods);
+        }
 
-        // ✅ FIXED: Jangan filter status 'active' saja, karena mungkin belum ada yang active
-        return \App\Models\CoursePeriod::whereIn('course_id', $courseIds->unique())
-            ->whereIn('status', ['active', 'upcoming']) // Include upcoming
+        // Return unique course periods
+        return \App\Models\CoursePeriod::whereIn('id', $coursePeriodIds->unique())
             ->with('course')
-            ->orderBy('start_date', 'desc')
             ->get();
     }
-
-
 
     public function getAvailableUsersForChat($coursePeriodId = null, $search = null)
     {

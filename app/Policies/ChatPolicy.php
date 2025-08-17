@@ -32,28 +32,20 @@ class ChatPolicy
 
     public function create(User $user): bool
     {
-        // ✅ FIXED: Allow multiple roles to create chats
-
-        // Super admin can always create chats
+        // Admin can always create chats
         if ($user->hasRole('super-admin')) {
             return true;
         }
 
-        // Instructors can create chats
-        if ($user->hasRole('instructor')) {
+        // Instructors and event organizers can create chats
+        if ($user->hasRole(['instructor', 'event-organizer'])) {
             return true;
         }
 
-        // Event organizers can create chats
-        if ($user->hasRole('event-organizer')) {
-            return true;
-        }
-
-        // Participants can create chats if they have access to course periods
+        // Participants can create direct chats but may be restricted for group chats
+        // This can be further customized based on business rules
         if ($user->hasRole('participant')) {
-            // ✅ FIXED: Use existing method instead of coursePeriods()
-            $accessiblePeriods = $user->getAccessibleCoursePeriods();
-            return $accessiblePeriods->isNotEmpty();
+            return true; // Allow for now, can be restricted later
         }
 
         return false;
@@ -149,7 +141,31 @@ class ChatPolicy
             return true;
         }
 
-        // ✅ FIXED: Use User method instead of manual checks
-        return $user->isInCoursePeriod($coursePeriod);
+        // ✅ FIXED: Allow instructors to create chat in their courses
+        if ($user->hasRole('instructor')) {
+            // Check if user is instructor of this course
+            $isInstructor = $coursePeriod->course->instructors()->where('user_id', $user->id)->exists();
+            if ($isInstructor) {
+                return true;
+            }
+        }
+
+        // ✅ FIXED: Allow event organizers to create chat in their courses  
+        if ($user->hasRole('event-organizer')) {
+            // Check if user is event organizer of this course
+            $isEventOrganizer = $coursePeriod->course->eventOrganizers()->where('user_id', $user->id)->exists();
+            if ($isEventOrganizer) {
+                return true;
+            }
+        }
+
+        // ✅ FIXED: Check if user is participant in this course period
+        // This covers students and other participants
+        $isParticipant = $coursePeriod->participants()->where('user_id', $user->id)->exists();
+        if ($isParticipant) {
+            return true;
+        }
+
+        return false;
     }
 }

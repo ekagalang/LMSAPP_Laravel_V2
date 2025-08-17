@@ -8,7 +8,8 @@
                 <!-- ✅ PERBAIKAN: Komponen Notifikasi Fungsional -->
                 <a href="{{ route('announcements.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 17h5l-1.5-1.5A2 2 0 0118 14v-3a6 6 0 10-12 0v3a2 2 0 01-.5 1.5L4 17h5m6 0v1a3 3 0 11-6 0v-1" />
                     </svg>
                     {{-- ✅ PERBAIKAN: Panggil sebagai properti, bukan metode --}}
                     @if(Auth::user()->unread_announcements_count > 0)

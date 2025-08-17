@@ -8,7 +8,8 @@
                 <!-- ✅ PERBAIKAN: Komponen Notifikasi Fungsional -->
                 <a href="{{ route('announcements.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5V9a5 5 0 00-10 0v8l-5-5h5m0 0V9a5 5 0 0110 0v8.293l5 4.707"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 17h5l-1.5-1.5A2 2 0 0118 14v-3a6 6 0 10-12 0v3a2 2 0 01-.5 1.5L4 17h5m6 0v1a3 3 0 11-6 0v-1" />
                     </svg>
                     {{-- ✅ PERBAIKAN: Panggil sebagai properti, bukan metode --}}
                     @if(Auth::user()->unread_announcements_count > 0)
@@ -455,9 +456,6 @@
                                 </svg>
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Kursus</h3>
                                 <p class="text-gray-600 mb-4">Anda belum terdaftar di kursus manapun.</p>
-                                <a href="{{ route('welcome') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition">
-                                    Jelajahi Kursus
-                                </a>
                             </div>
                             @endforelse
                         </div>
@@ -587,13 +585,6 @@
                             <h3 class="text-lg font-medium text-gray-900">Aksi Cepat</h3>
                         </div>
                         <div class="p-6 space-y-3">
-                            <a href="{{ route('welcome') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors hover-lift">
-                                <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                                Jelajahi Kursus Baru
-                            </a>
-
                             @if($stats['courses']['total'] > 0)
                             <div class="flex items-center w-full px-4 py-3 text-left text-sm font-medium bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
                                 <svg class="w-5 h-5 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

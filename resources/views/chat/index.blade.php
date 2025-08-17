@@ -28,28 +28,12 @@
     <div class="h-[calc(100vh-8rem)] flex" id="chat-app" data-user-id="{{ auth()->id() }}">
         {{-- Sidebar - Chat List --}}
         <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
-            {{-- Header dengan Search --}}
-            <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <!-- Search Bar -->
-                <div class="relative">
-                    <input type="text" id="searchInput" placeholder="Search conversations..." 
-                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                    <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </div>
-            </div>
-
             {{-- Filter Tabs --}}
             <div class="flex border-b border-gray-200 bg-gray-50">
-                <button class="flex-1 px-4 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600 bg-white" id="allChatsTab">
+                <div class="flex-1 px-4 py-3 text-sm text-center font-medium text-blue-600 border-b-2 border-blue-600 bg-white">
                     All Chats
                     <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs">{{ $chats->count() }}</span>
-                </button>
-                <button class="flex-1 px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700" id="unreadTab">
-                    Unread
-                    <span class="ml-2 px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs" id="unreadCount">0</span>
-                </button>
+                </div>
             </div>
 
             {{-- Chat List --}}
@@ -159,23 +143,7 @@
                         </div>
                         
                         {{-- Chat Actions --}}
-                        <div class="flex items-center space-x-2">
-                            <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                                </svg>
-                            </button>
-                            <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                </svg>
-                            </button>
-                            <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                                </svg>
-                            </button>
-                        </div>
+                        
                     </div>
                 </div>
 
@@ -193,11 +161,6 @@
                 {{-- Message Input --}}
                 <div class="p-4 border-t border-gray-200 bg-white" id="messageInput">
                     <div class="flex items-end space-x-3">
-                        <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                            </svg>
-                        </button>
                         <div class="flex-1">
                             <textarea id="messageTextarea" 
                                       placeholder="Type your message..." 
@@ -381,29 +344,76 @@
 
         // Select chat function
         function selectChat(chatId) {
-            // Update UI
-            document.querySelectorAll('.chat-item').forEach(item => {
-                item.classList.remove('active', 'bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
-                item.classList.add('hover:bg-gray-50');
-            });
+        // Update UI - Reset semua chat items ke state normal
+        document.querySelectorAll('.chat-item').forEach(item => {
+            item.classList.remove('active', 'bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
+            item.classList.add('hover:bg-gray-50');
             
-            const selectedItem = document.querySelector(`[data-chat-id="${chatId}"]`);
-            if (selectedItem) {
-                selectedItem.classList.add('active', 'bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
-                selectedItem.classList.remove('hover:bg-gray-50');
+            // ✅ FIXED: Reset text colors ke default
+            const nameElement = item.querySelector('p.text-sm.font-semibold');
+            const timeElement = item.querySelector('span.text-xs');
+            const messageElement = item.querySelector('p.text-sm:not(.font-semibold)');
+            const metaElement = item.querySelector('span.text-xs:not(:first-child)');
+            
+            if (nameElement) {
+                nameElement.classList.remove('text-white');
+                nameElement.classList.add('text-gray-900');
             }
-            
-            currentChatId = chatId;
-            
-            // Load chat messages
-            loadChatMessages(chatId);
-            
-            // Restart polling for new chat
-            if (messagesPollingInterval) {
-                clearInterval(messagesPollingInterval);
+            if (timeElement) {
+                timeElement.classList.remove('text-white', 'opacity-75');
+                timeElement.classList.add('text-gray-500');
             }
-            startMessagesPolling();
+            if (messageElement) {
+                messageElement.classList.remove('text-white', 'opacity-75');
+                messageElement.classList.add('text-gray-600');
+            }
+            if (metaElement) {
+                metaElement.classList.remove('text-white', 'opacity-75');
+                metaElement.classList.add('text-gray-500');
+            }
+        });
+    
+    // Apply active state ke chat yang dipilih
+    const selectedItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+    if (selectedItem) {
+        selectedItem.classList.add('active', 'bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
+        selectedItem.classList.remove('hover:bg-gray-50');
+        
+        // ✅ FIXED: Set text colors untuk active state
+        const nameElement = selectedItem.querySelector('p.text-sm.font-semibold');
+        const timeElement = selectedItem.querySelector('span.text-xs');
+        const messageElement = selectedItem.querySelector('p.text-sm:not(.font-semibold)');
+        const metaElement = selectedItem.querySelector('span.text-xs:not(:first-child)');
+        
+        if (nameElement) {
+            nameElement.classList.remove('text-gray-900');
+            nameElement.classList.add('text-white');
         }
+        if (timeElement) {
+            timeElement.classList.remove('text-gray-500');
+            timeElement.classList.add('text-white', 'opacity-75');
+        }
+        if (messageElement) {
+            messageElement.classList.remove('text-gray-600');
+            messageElement.classList.add('text-white', 'opacity-75');
+        }
+        if (metaElement) {
+            metaElement.classList.remove('text-gray-500');
+            metaElement.classList.add('text-white', 'opacity-75');
+        }
+    }
+    
+    currentChatId = chatId;
+    
+    // Load chat messages
+    loadChatMessages(chatId);
+    
+    // Restart polling for new chat
+    if (messagesPollingInterval) {
+        clearInterval(messagesPollingInterval);
+    }
+    startMessagesPolling();
+}
 
         // Load chat messages
         async function loadChatMessages(chatId) {
@@ -790,56 +800,147 @@
             }
         }
 
-        // Create new chat
-        async function createNewChat(formData) {
-            try {
-                const participants = Array.from(formData.getAll('participants[]'));
-                const error = document.getElementById('participantsError');
-                if (error) {
-                    error.classList.add('hidden');
-                    error.textContent = '';
-                }
-                
-                if (participants.length === 0) {
-                    if (error) {
-                        error.textContent = 'Please select at least one participant.';
-                        error.classList.remove('hidden');
-                    }
-                    return;
-                }
+        async function createChat() {
+    const form = document.getElementById('createChatForm');
+    const formData = new FormData(form);
+    const sendBtn = document.getElementById('sendCreateChat');
 
-                const response = await fetch('/chats', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        type: formData.get('type'),
-                        course_period_id: formData.get('course_period_id') || null,
-                        participant_ids: participants,
-                        name: formData.get('title') || null
-                    })
+    try {
+        sendBtn.disabled = true;
+
+        // ✅ FIXED: Collect selected participants
+        const selectedParticipants = Array.from(
+            document.querySelectorAll('input[name="participant_ids[]"]:checked')
+        ).map(checkbox => parseInt(checkbox.value));
+
+        // ✅ FIXED: Remove current user from participants list if present
+        // Backend akan handle current user inclusion secara otomatis
+        const currentUserId = {{ auth()->id() }}; // Assuming you have access to current user ID
+        const participantIds = selectedParticipants.filter(id => id !== currentUserId);
+
+        // ✅ VALIDATION: Pastikan ada minimal 1 participant selain current user
+        if (participantIds.length === 0) {
+            alert('Please select at least one participant to chat with.');
+            sendBtn.disabled = false;
+            return;
+        }
+
+        const chatData = {
+            type: formData.get('type'),
+            participant_ids: participantIds, // ✅ FIXED: Tidak include current user
+            name: formData.get('name') || null,
+            course_period_id: formData.get('course_period_id') || null
+        };
+
+        console.log('Creating chat with data:', chatData);
+
+        const response = await fetch('/chats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(chatData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log('Chat created successfully:', data);
+            
+            // Close modal
+            document.getElementById('createChatModal').classList.add('hidden');
+            
+            // Reset form
+            document.getElementById('createChatForm').reset();
+            
+            // Reload page to show new chat
+            window.location.reload();
+        } else {
+            console.error('Chat creation failed:', data);
+            
+            if (data.errors) {
+                let errorMessage = 'Validation errors:\n';
+                Object.keys(data.errors).forEach(field => {
+                    errorMessage += `${field}: ${data.errors[field].join(', ')}\n`;
                 });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Close modal
-                    document.getElementById('newChatModal').classList.add('hidden');
-                    document.getElementById('createChatForm').reset();
-                    
-                    // Reload page to show new chat
-                    window.location.reload();
-                } else {
-                    throw new Error(data.message || 'Failed to create chat');
-                }
-            } catch (error) {
-                console.error('Error creating chat:', error);
-                alert('Failed to create chat: ' + error.message);
+                alert(errorMessage);
+            } else {
+                alert(data.message || 'Failed to create chat');
             }
         }
+    } catch (error) {
+        console.error('Error creating chat:', error);
+        alert('Failed to create chat. Please try again.');
+    } finally {
+        sendBtn.disabled = false;
+    }
+}
+
+        // Create new chat
+        async function createNewChat(formData) {
+    try {
+        const participants = Array.from(formData.getAll('participants[]')).map(id => parseInt(id)); // ✅ FIXED: Convert to integers
+        const error = document.getElementById('participantsError');
+        if (error) {
+            error.classList.add('hidden');
+            error.textContent = '';
+        }
+        
+        if (participants.length === 0) {
+            if (error) {
+                error.textContent = 'Please select at least one participant.';
+                error.classList.remove('hidden');
+            }
+            return;
+        }
+
+        // ✅ FIXED: Remove current user from participants if present
+        const currentUserId = {{ auth()->id() }};
+        const filteredParticipants = participants.filter(id => id !== currentUserId);
+
+        // ✅ VALIDATION: Ensure at least 1 participant besides current user
+        if (filteredParticipants.length === 0) {
+            if (error) {
+                error.textContent = 'Please select at least one participant to chat with.';
+                error.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const response = await fetch('/chats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                type: formData.get('type'),
+                course_period_id: formData.get('course_period_id') || null,
+                participant_ids: filteredParticipants, // ✅ FIXED: Use filtered participants
+                name: formData.get('title') || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Close modal
+            document.getElementById('newChatModal').classList.add('hidden');
+            document.getElementById('createChatForm').reset();
+            
+            // Reload page to show new chat
+            window.location.reload();
+        } else {
+            throw new Error(data.message || 'Failed to create chat');
+        }
+    } catch (error) {
+        console.error('Error creating chat:', error);
+        alert('Failed to create chat: ' + error.message);
+    }
+}
 
         // Clean up on page unload
         window.addEventListener('beforeunload', () => {

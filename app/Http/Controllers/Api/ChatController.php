@@ -182,23 +182,41 @@ class ChatController extends Controller
             \Log::info('Chat created successfully with ID: ' . $chat->id);
 
             // Prepare participants
-            $participants = collect($request->participant_ids);
+            $participants = collect($request->participant_ids)
+                ->map(function ($id) {
+                    return (int) $id; // Pastikan semua ID adalah integer
+                })
+                ->unique() // Remove duplicates dari input
+                ->filter(); // Remove empty values
+
+            // ✅ FIXED: Pastikan current user selalu included tanpa duplicate
             if (!$participants->contains(auth()->id())) {
                 $participants->push(auth()->id());
             }
 
-            \Log::info('Participants to add:', $participants->toArray());
+            \Log::info('Final participants after deduplication:', $participants->toArray());
 
-            // Add participants
+            // ✅ IMPROVED: Add participants dengan duplicate check
             foreach ($participants->unique() as $userId) {
-                \Log::info('Adding participant: ' . $userId);
+                \Log::info('Processing participant: ' . $userId);
 
+                // Check if user is already a participant (untuk safety)
+                $existingParticipant = $chat->participants()
+                    ->where('user_id', $userId)
+                    ->first();
+
+                if ($existingParticipant) {
+                    \Log::info('User ' . $userId . ' is already a participant, skipping');
+                    continue;
+                }
+
+                \Log::info('Adding new participant: ' . $userId);
                 $chat->participants()->attach($userId, [
                     'joined_at' => now(),
                     'is_active' => true
                 ]);
             }
-
+            // Add participants
             \Log::info('All participants added successfully');
 
             DB::commit();

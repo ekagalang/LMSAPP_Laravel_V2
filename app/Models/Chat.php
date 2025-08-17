@@ -221,7 +221,7 @@ class Chat extends Model
     protected static function boot()
     {
         parent::boot();
-
+        /*
         // When a chat is created, add creator as participant if not already added
         static::created(function ($chat) {
             if (!$chat->hasParticipant($chat->created_by)) {
@@ -230,5 +230,6 @@ class Chat extends Model
                 ]);
             }
         });
+        */
     }
 }
