@@ -37,7 +37,7 @@ class CourseController extends Controller
             });
         }
 
-        $courses = $query->with('instructors')->latest()->paginate(10);
+        $courses = $query->with('instructors')->latest()->get();
 
         return view('courses.index', compact('courses'));
     }
@@ -135,17 +135,19 @@ class CourseController extends Controller
 
         $availableInstructors = User::role('instructor')
             ->whereNotIn('id', $course->instructors->pluck('id'))
-            ->paginate(10, ['*'], 'instructors_page');
+            ->orderBy('name')
+            ->get();
 
         $unEnrolledParticipants = User::role('participant')
             ->whereDoesntHave('courses', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
             })
             ->orderBy('name')
-            ->paginate(10, ['*'], 'participants_page');
+            ->get();
 
         $availableOrganizers = User::role('event-organizer')
             ->whereNotIn('id', $course->eventOrganizers->pluck('id'))
+            ->orderBy('name')
             ->get();
 
         return view('courses.show', compact('course', 'availableInstructors', 'availableOrganizers', 'unEnrolledParticipants'));
