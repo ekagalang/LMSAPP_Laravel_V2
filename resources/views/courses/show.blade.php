@@ -821,7 +821,7 @@
                             selectedUnenrollUsers: [],
                             searchTermEnroll: '',
                             searchTermUnenroll: '',
-                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants) }},
+                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants->items()) }},
                             enrolledParticipantsData: {{ Js::from($course->enrolledUsers) }},
                             get filteredUnEnrolledParticipants() {
                                 if (this.searchTermEnroll === '') return this.unEnrolledParticipantsData;
@@ -929,7 +929,7 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-emerald-900">Daftarkan Peserta</h4>
-                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->count() }} calon peserta tersedia</p>
+                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->total() }} calon peserta tersedia</p>
                                     </div>
                                 </div>
 
