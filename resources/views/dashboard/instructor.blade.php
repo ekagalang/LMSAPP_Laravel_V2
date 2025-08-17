@@ -107,7 +107,7 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">Kursus Saya</p>
+                                <p class="text-sm font-medium text-gray-500">Kelas Saya</p>
                                 <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['courses']['total']) }}</p>
                             </div>
                         </div>
@@ -158,18 +158,18 @@
                             <div class="flex-shrink-0">
                                 <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                                     <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                     </svg>
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">Kuis Aktif</p>
-                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['quizzes']['total']) }}</p>
+                                <p class="text-sm font-medium text-gray-500">Total Diskusi</p>
+                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['discussions']['total'] ?? 0) }}</p>
                             </div>
                         </div>
                         <div class="mt-4">
                             <div class="text-xs text-gray-600">
-                                {{ $stats['quizzes']['completed'] }} dari {{ $stats['quizzes']['attempts'] }} percobaan selesai
+                                di semua kursus Anda
                             </div>
                         </div>
                     </div>
@@ -190,7 +190,7 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">Esai Menunggu</p>
+                                <p class="text-sm font-medium text-gray-500">Penilaian Esai</p>
                                 <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['essays']['pending']) }}</p>
                             </div>
                         </div>
@@ -210,7 +210,7 @@
                 <div class="lg:col-span-2">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-medium text-gray-900">Performa Kursus</h3>
+                            <h3 class="text-lg font-medium text-gray-900">Daftar Kelas</h3>
                         </div>
                         <div class="p-6">
                             <div class="space-y-4">
@@ -263,20 +263,51 @@
 
                 <!-- Sidebar dengan notifikasi dan aksi cepat -->
                 <div class="space-y-6">
-                    <!-- Quick Actions dengan notifikasi -->
+                <!-- Quick Actions dengan notifikasi -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-medium text-gray-900">Aksi Cepat</h3>
+                            <h3 class="text-lg font-medium text-gray-900">Tombol Aksi Cepat</h3>
                         </div>
                         <div class="p-6 space-y-3">
-                            @can('manage own courses')
-                            <a href="{{ route('courses.create') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors hover-lift">
-                                <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            <!-- Kelola Diskusi -->
+                            @if($stats['courses']['total'] > 0)
+                            <a href="{{ route('courses.discussions.index', $stats['courses']['performance'][0]['id'] ?? 1) }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors hover-lift">
+                                <svg class="w-5 h-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
-                                Buat Kursus Baru
+                                <span class="text-blue-800">Kelola Diskusi Materi</span>
                             </a>
-                            @endcan
+
+                            <a href="{{ route('chat.index') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors hover-lift">
+                                <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                </svg>
+                                <span class="text-gray-600">Chatting Private</span>
+                            </a>
+
+                            <!-- Kelola Penilaian -->
+                            <a href="{{ route('courses.gradebook', $stats['courses']['performance'][0]['id'] ?? 1) }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors hover-lift">
+                                <svg class="w-5 h-5 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                </svg>
+                                <div class="flex-1">
+                                    <span class="text-green-800">Kelola Penilaian</span>
+                                    @if($stats['essays']['pending'] > 0)
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        {{ $stats['essays']['pending'] }} pending
+                                    </span>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <!-- Lihat Progres -->
+                            <a href="{{ route('eo.courses.index') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors hover-lift">
+                                <svg class="w-5 h-5 mr-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                <span class="text-purple-800">Lihat Progres Peserta</span>
+                            </a>
+                            @endif
 
                             @if($stats['essays']['pending'] > 0)
                             <div class="flex items-center w-full px-4 py-3 text-left text-sm font-medium bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200">
@@ -285,11 +316,28 @@
                                 </svg>
                                 <div class="flex-1">
                                     <p class="text-orange-800 font-medium">{{ $stats['essays']['pending'] }} Esai Perlu Dinilai</p>
-                                    <p class="text-xs text-orange-600">Klik untuk menilai sekarang</p>
+                                    <p class="text-xs text-orange-600">Klik tombol menu penilaian di atas</p>
                                 </div>
                                 <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                             </div>
                             @endif
+                        </div>
+                    </div>
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Status Sistem</h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900">Instruktur Dashboard</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <div class="w-2 h-2 bg-green-600 rounded-full mr-1 animate-pulse"></div>
+                                    Aktif
+                                </span>
+                            </div>
+                            <div class="mt-4 text-xs text-gray-500">
+                                <p>Terakhir diperbarui: {{ now()->format('H:i') }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
