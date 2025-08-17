@@ -298,6 +298,7 @@
                             <div class="border border-gray-300 rounded-lg max-h-48 overflow-y-auto p-2" id="participantsContainer">
                                 <p class="text-gray-500 text-sm p-2">Loading participants...</p>
                             </div>
+                            <p id="participantsError" class="mt-2 text-sm text-red-600 hidden"></p>
                             <p class="mt-1 text-xs text-gray-500">
                                 @if(auth()->user()->hasRole(['super-admin', 'instructor', 'event-organizer']))
                                     Participants will be filtered based on the selected course.
@@ -614,40 +615,6 @@
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
-        // Initialize modal (keep existing modal functionality)
-        function initializeModal() {
-            const modal = document.getElementById('newChatModal');
-            const newChatBtns = document.querySelectorAll('#newChatBtn, #newChatBtnEmpty, #newChatBtnWelcome');
-            const closeModalBtn = document.getElementById('closeModal');
-            const cancelBtn = document.getElementById('cancelBtn');
-            
-            // Open modal
-            newChatBtns.forEach(btn => {
-                if (btn) {
-                    btn.addEventListener('click', () => {
-                        modal.classList.remove('hidden');
-                        loadAvailableUsers();
-                    });
-                }
-            });
-            
-            // Close modal
-            [closeModalBtn, cancelBtn].forEach(btn => {
-                if (btn) {
-                    btn.addEventListener('click', () => {
-                        modal.classList.add('hidden');
-                    });
-                }
-            });
-            
-            // Close modal on outside click
-            modal?.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                }
-            });
-        }
-
         // Load available users for chat creation (updated dengan course filtering)
         async function loadAvailableUsers(coursePeriodId = null) {
             try {
@@ -739,12 +706,27 @@
             const closeModalBtn = document.getElementById('closeModal');
             const cancelBtn = document.getElementById('cancelBtn');
             const createChatForm = document.getElementById('createChatForm');
+            const participantsContainer = document.getElementById('participantsContainer');
+
+            // Hide participant error when selecting participants
+            participantsContainer?.addEventListener('change', () => {
+                const error = document.getElementById('participantsError');
+                if (error) {
+                    error.classList.add('hidden');
+                    error.textContent = '';
+                }
+            });
             
             // Open modal
             newChatBtns.forEach(btn => {
                 if (btn) {
                     btn.addEventListener('click', () => {
                         modal.classList.remove('hidden');
+                        const error = document.getElementById('participantsError');
+                        if (error) {
+                            error.classList.add('hidden');
+                            error.textContent = '';
+                        }
                         
                         // Only load course periods for admin/instructor/EO
                         const coursePeriodSection = document.getElementById('coursePeriodSection');
@@ -812,9 +794,17 @@
         async function createNewChat(formData) {
             try {
                 const participants = Array.from(formData.getAll('participants[]'));
+                const error = document.getElementById('participantsError');
+                if (error) {
+                    error.classList.add('hidden');
+                    error.textContent = '';
+                }
                 
                 if (participants.length === 0) {
-                    alert('Please select at least one participant');
+                    if (error) {
+                        error.textContent = 'Please select at least one participant.';
+                        error.classList.remove('hidden');
+                    }
                     return;
                 }
 
