@@ -47,7 +47,11 @@ class Chat extends Model
 
     public function activeParticipants()
     {
-        return $this->participants()->wherePivot('is_active', true);
+        return $this->participants(); // For now, all participants are active
+
+        // You can add conditions like:
+        // return $this->participants()->where('status', 'active');
+        // or check last seen timestamp, etc.
     }
 
     public function messages()
@@ -69,10 +73,12 @@ class Chat extends Model
         return $query->where('is_active', true);
     }
 
-    public function scopeForUser($query, $userId)
+    public function scopeForUser($query, $userId = null)
     {
+        $userId = $userId ?: auth()->id();
+
         return $query->whereHas('participants', function ($q) use ($userId) {
-            $q->where('user_id', $userId)->where('is_active', true);
+            $q->where('user_id', $userId);
         });
     }
 
@@ -87,10 +93,11 @@ class Chat extends Model
     // METHODS
     // ========================================
 
-    public function hasParticipant($userId): bool
+    public function hasParticipant($userId)
     {
         return $this->participants()->where('user_id', $userId)->exists();
     }
+
 
     public function addParticipant($userId): void
     {
@@ -109,26 +116,38 @@ class Chat extends Model
         ]);
     }
 
-    public function updateLastMessage(): void
+    public function updateLastMessage()
     {
-        $this->update(['last_message_at' => now()]);
+        $this->touch(); // Updates updated_at timestamp
     }
 
-    public function getDisplayName(): string
+    public function getDisplayName()
     {
-        if ($this->type === 'group') {
-            return $this->name ?? 'Group Chat';
+        if ($this->name) {
+            return $this->name;
         }
 
-        // For direct chats, show the other participant's name
-        $participants = $this->activeParticipants;
-        if ($participants->count() === 2) {
-            $currentUserId = auth()->id();
-            $otherParticipant = $participants->where('id', '!=', $currentUserId)->first();
-            return $otherParticipant ? $otherParticipant->name : 'Direct Chat';
+        if ($this->type === 'direct') {
+            // For direct chats, show other participant's name
+            $otherParticipant = $this->participants()
+                ->where('user_id', '!=', auth()->id())
+                ->first();
+
+            return $otherParticipant ? $otherParticipant->name : 'Unknown User';
         }
 
-        return 'Chat';
+        // For group chats without name, create one from participants
+        $participantNames = $this->participants()
+            ->where('user_id', '!=', auth()->id())
+            ->pluck('name')
+            ->take(3)
+            ->implode(', ');
+
+        if ($this->participants()->count() > 4) {
+            $participantNames .= ' and ' . ($this->participants()->count() - 4) . ' others';
+        }
+
+        return $participantNames ?: 'Group Chat';
     }
 
     public function isChatAllowed(): bool
@@ -155,5 +174,61 @@ class Chat extends Model
             'period' => $this->coursePeriod->name,
             'status' => $this->coursePeriod->status
         ];
+    }
+
+    public function lastMessage()
+    {
+        return $this->hasOne(Message::class)->latest();
+    }
+
+    public function getUnreadCountForUser($userId = null)
+    {
+        $userId = $userId ?: auth()->id();
+
+        // Get the last read timestamp for this user in this chat
+        $participant = $this->participants()
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$participant || !$participant->pivot->last_read_at) {
+            // If no read timestamp, all messages are unread
+            return $this->messages()->count();
+        }
+
+        return $this->messages()
+            ->where('created_at', '>', $participant->pivot->last_read_at)
+            ->where('user_id', '!=', $userId) // Don't count own messages
+            ->count();
+    }
+
+    public function markAsReadForUser($userId = null)
+    {
+        $userId = $userId ?: auth()->id();
+
+        $this->participants()
+            ->updateExistingPivot($userId, [
+                'last_read_at' => now()
+            ]);
+    }
+
+    public function otherParticipants($userId = null)
+    {
+        $userId = $userId ?: auth()->id();
+
+        return $this->participants()->where('user_id', '!=', $userId);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // When a chat is created, add creator as participant if not already added
+        static::created(function ($chat) {
+            if (!$chat->hasParticipant($chat->created_by)) {
+                $chat->participants()->attach($chat->created_by, [
+                    'joined_at' => now()
+                ]);
+            }
+        });
     }
 }

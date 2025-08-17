@@ -131,6 +131,60 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/courses/{course}/add-eo', [CourseController::class, 'addEventOrganizer'])->name('courses.addEo');
     Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
 
+    // Course Period routes
+    Route::resource('course-periods', CoursePeriodController::class);
+    Route::get('/course-periods/create/{course}', [CoursePeriodController::class, 'create'])
+        ->name('course-periods.create');
+    Route::post('/course-periods/create/{course}', [CoursePeriodController::class, 'store'])
+        ->name('course-periods.store');
+
+    // ============================================================================
+    // 🔥 UPDATED CHAT ROUTES - Layout Terpadu dengan Sidebar + Main Chat Area
+    // ============================================================================
+
+    // Main chat interface - unified layout (index dengan sidebar + chat area)
+    Route::get('/chat', [App\Http\Controllers\Api\ChatController::class, 'webIndex'])
+        ->name('chat.index');
+
+    // Individual chat view - AJAX endpoint untuk load chat ke main area
+    Route::get('/chat/{chat}', [App\Http\Controllers\Api\ChatController::class, 'webShow'])
+        ->name('chat.show');
+
+    // Chat search endpoint untuk search functionality di sidebar
+    Route::get('/chat/search', [App\Http\Controllers\Api\ChatController::class, 'search'])
+        ->name('chat.search');
+
+    // Message routes - untuk send/receive messages
+    Route::post('/chats/{chat}/messages', [MessageController::class, 'store'])
+        ->name('messages.store');
+
+    Route::post('/chats/{chat}/typing', [MessageController::class, 'UserTyping'])
+        ->name('messages.UserTyping');
+
+    // Chat API routes untuk WEB interface (JSON responses) - tetap menggunakan force.json middleware
+    Route::middleware('force.json')->group(function () {
+        Route::post('/chats', [App\Http\Controllers\Api\ChatController::class, 'store'])
+            ->name('chats.store');
+
+        Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers'])
+            ->name('chats.users');
+
+        Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods'])
+            ->name('chats.periods');
+    });
+
+    // ============================================================================
+    // END CHAT ROUTES
+    // ============================================================================
+
+    // Export PDF
+    Route::get('/courses/{course}/export-progress-pdf', [ProgressController::class, 'exportCourseProgressPdf'])
+        ->name('courses.exportProgressPdf')
+        ->middleware('auth');
+
+    // Prasyarat
+    Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
+
     // Grup Route untuk Admin, Instruktur, dan EO
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::resource('roles', RoleController::class);
@@ -184,36 +238,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/courses', [EventOrganizerController::class, 'index'])->name('courses.index');
     });
 
-    // Export PDF
-    Route::get('/courses/{course}/export-progress-pdf', [ProgressController::class, 'exportCourseProgressPdf'])
-        ->name('courses.exportProgressPdf')
-        ->middleware('auth');
-
-    // Prasyarat
-    Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
-
-    // Course Period routes
-    Route::resource('course-periods', CoursePeriodController::class);
-    Route::get('/course-periods/create/{course}', [CoursePeriodController::class, 'create'])
-        ->name('course-periods.create');
-
-    Route::post('/course-periods/create/{course}', [CoursePeriodController::class, 'store'])
-        ->name('course-periods.store');
-
-    // NEW: Chat interface routes
-    Route::get('/chat', [App\Http\Controllers\Api\ChatController::class, 'webIndex'])->name('chat.index');
-    Route::get('/chat/{chat}', [App\Http\Controllers\Api\ChatController::class, 'webShow'])->name('chat.show');
-    Route::post('/chats/{chat}/messages', [MessageController::class, 'store'])->name('messages.store');
-    Route::post('/chats/{chat}/typing', [MessageController::class, 'UserTyping'])->name('messages.UserTyping');
-
-    // Chat API routes untuk WEB interface (tanpa sanctum!)
-    // Chat API routes untuk WEB interface
-    Route::middleware('force.json')->group(function () {
-        Route::post('/chats', [App\Http\Controllers\Api\ChatController::class, 'store'])->name('chats.store');
-        Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers'])->name('chats.users');
-        Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods'])->name('chats.periods');
-    });
-
     Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create');
     Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate');
     Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store');
@@ -241,6 +265,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
         ->name('certificates.destroy');
+});
+
+// ============================================================================
+// 🔥 TRUE API ROUTES - untuk mobile apps, external integrations, etc (dengan sanctum)
+// ============================================================================
+Route::middleware('auth:sanctum')->prefix('api')->group(function () {
+    // Chat API routes untuk mobile/external apps
+    Route::prefix('chats')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\ChatController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\ChatController::class, 'store']);
+        Route::get('/{chat}', [App\Http\Controllers\Api\ChatController::class, 'show']);
+        Route::get('/{chat}/messages', [App\Http\Controllers\Api\MessageController::class, 'index']);
+        Route::post('/{chat}/messages', [App\Http\Controllers\Api\MessageController::class, 'store']);
+        Route::post('/{chat}/typing', [App\Http\Controllers\Api\MessageController::class, 'UserTyping']);
+        Route::get('/search', [App\Http\Controllers\Api\ChatController::class, 'search']);
+    });
+
+    // Helper routes untuk mobile/external apps
+    Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers']);
+    Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods']);
 });
 
 require __DIR__ . '/auth.php';

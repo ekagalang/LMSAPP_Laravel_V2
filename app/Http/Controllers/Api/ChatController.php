@@ -1,286 +1,492 @@
 <?php
+// app/Http/Controllers/Api/ChatController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Chat;
+use App\Models\User;
 use App\Models\CoursePeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class ChatController extends Controller
 {
-    public function index(Request $request)
-    {
-        $user = $request->user();
-
-        $chats = Chat::forUser($user->id)
-            ->active()
-            ->with([
-                'latestMessage.user:id,name',
-                'activeParticipants:id,name',
-                'coursePeriod.course:id,title'
-            ])
-            ->orderBy('last_message_at', 'desc')
-            ->get()
-            ->map(function ($chat) {
-                $context = $chat->getContextInfo();
-                return [
-                    'id' => $chat->id,
-                    'name' => $chat->getDisplayName(),
-                    'type' => $chat->type,
-                    'context' => $context,
-                    'participants' => $chat->activeParticipants,
-                    'latest_message' => $chat->latestMessage ? [
-                        'content' => $chat->latestMessage->content,
-                        'user' => $chat->latestMessage->user->name,
-                        'created_at' => $chat->latestMessage->created_at->diffForHumans(),
-                    ] : null,
-                    'last_message_at' => $chat->last_message_at?->diffForHumans(),
-                    'unread_count' => $this->getUnreadCount($chat, $request->user()->id),
-                ];
-            });
-
-        return response()->json(['chats' => $chats]);
-    }
-
-    public function store(Request $request)
-    {
-        Gate::authorize('create', Chat::class);
-
-        // ✅ Validasi name hanya wajib untuk group chat
-        $request->validate([
-            'type' => ['required', Rule::in(['direct', 'group'])],
-            'course_period_id' => ['nullable', 'exists:course_periods,id'],
-            'participant_ids' => ['required', 'array', 'min:1'],
-            'participant_ids.*' => ['exists:users,id'],
-            'name' => [
-                Rule::requiredIf(fn() => $request->type === 'group'),
-                'nullable',
-                'string',
-                'max:255'
-            ],
-        ]);
-
-        $coursePeriod = null;
-        if ($request->course_period_id) {
-            $coursePeriod = CoursePeriod::findOrFail($request->course_period_id);
-
-            // Cek apakah chat di periode ini diizinkan
-            if (!$coursePeriod->isChatAllowed()) {
-                return response()->json([
-                    'message' => 'Chat tidak tersedia untuk periode ini.'
-                ], 422);
-            }
-
-            // Cek semua peserta terdaftar di periode kursus
-            foreach ($request->participant_ids as $participantId) {
-                if (!$coursePeriod->hasUser($participantId)) {
-                    return response()->json([
-                        'message' => 'Semua peserta harus terdaftar dalam periode kursus ini.'
-                    ], 422);
-                }
-            }
-        }
-
-        // ✅ Cek direct chat sudah ada
-        if ($request->type === 'direct' && count($request->participant_ids) === 1) {
-            $existingChat = Chat::where('type', 'direct')
-                ->where('course_period_id', $request->course_period_id)
-                ->whereHas('participants', function ($q) use ($request) {
-                    $q->where('user_id', $request->user()->id);
-                })
-                ->whereHas('participants', function ($q) use ($request) {
-                    $q->where('user_id', $request->participant_ids[0]);
-                })
-                ->first();
-
-            if ($existingChat) {
-                return response()->json(['chat' => $existingChat->load('activeParticipants:id,name')]);
-            }
-        }
-
-        // ✅ Auto set nama jika kosong
-        $chatName = $request->name;
-        if ($request->type === 'group') {
-            if (!$chatName && $coursePeriod) {
-                $chatName = $coursePeriod->course->title . ' - ' . $coursePeriod->name;
-            } elseif (!$chatName) {
-                $chatName = 'Group Chat';
-            }
-        } else {
-            if (!$chatName) {
-                $chatName = 'Direct Chat';
-            }
-        }
-
-        // ✅ Buat chat
-        $chat = Chat::create([
-            'course_period_id' => $request->course_period_id,
-            'created_by' => $request->user()->id,
-            'name' => $chatName,
-            'type' => $request->type,
-        ]);
-
-        // Tambahkan peserta
-        $chat->addParticipant($request->user()->id);
-        foreach ($request->participant_ids as $participantId) {
-            $chat->addParticipant($participantId);
-        }
-
-        return response()->json([
-            'chat' => $chat->load('activeParticipants:id,name')
-        ], 201);
-    }
-
-    public function show(Chat $chat)
-    {
-        Gate::authorize('view', $chat);
-
-        $context = $chat->getContextInfo();
-
-        return response()->json([
-            'chat' => [
-                'id' => $chat->id,
-                'name' => $chat->getDisplayName(),
-                'type' => $chat->type,
-                'context' => $context,
-                'participants' => $chat->activeParticipants,
-                'can_send_message' => $chat->isChatAllowed(),
-                'course_period' => $chat->coursePeriod ? [
-                    'id' => $chat->coursePeriod->id,
-                    'name' => $chat->coursePeriod->name,
-                    'course_title' => $chat->coursePeriod->course->title,
-                    'is_active' => $chat->coursePeriod->isActive(),
-                    'end_date' => $chat->coursePeriod->end_date->format('Y-m-d H:i:s'),
-                ] : null,
-            ]
-        ]);
-    }
-
-    public function availableUsers(Request $request)
-    {
-        $user = $request->user();
-        $query = $request->get('q', '');
-        $coursePeriodId = $request->get('course_period_id');
-
-        if ($coursePeriodId) {
-            $coursePeriod = CoursePeriod::findOrFail($coursePeriodId);
-            $users = $coursePeriod->course->getAllUsers()
-                ->where('id', '!=', $user->id)
-                ->when($query, function ($collection) use ($query) {
-                    return $collection->filter(function ($user) use ($query) {
-                        return stripos($user->name, $query) !== false ||
-                               stripos($user->email, $query) !== false;
-                    });
-                })
-                ->take(50)
-                ->values();
-        } else {
-            if ($user->hasRole('super-admin')) {
-                $usersQuery = User::where('id', '!=', $user->id);
-                if ($query) {
-                    $usersQuery->where(function ($q) use ($query) {
-                        $q->where('name', 'like', "%{$query}%")
-                          ->orWhere('email', 'like', "%{$query}%");
-                    });
-                }
-                $users = $usersQuery->take(50)->get()->map(function ($u) {
-                    return [
-                        'id' => $u->id,
-                        'name' => $u->name,
-                        'email' => $u->email
-                    ];
-                });
-            } else {
-                $users = $user->getAvailableChatUsers($query);
-            }
-        }
-
-        return response()->json(['users' => $users]);
-    }
-
-    public function availableCoursePeriods(Request $request)
-    {
-        $user = $request->user();
-
-        if ($user->hasRole('super-admin')) {
-            $periods = CoursePeriod::active()
-                ->with('course:id,title')
-                ->get()
-                ->map(function ($period) {
-                    return [
-                        'id' => $period->id,
-                        'name' => $period->name,
-                        'course_title' => $period->course->title,
-                        'full_name' => $period->course->title . ' - ' . $period->name,
-                    ];
-                });
-        } else {
-            $periods = CoursePeriod::forUser($user->id)
-                ->active()
-                ->with('course:id,title')
-                ->get()
-                ->map(function ($period) {
-                    return [
-                        'id' => $period->id,
-                        'name' => $period->name,
-                        'course_title' => $period->course->title,
-                        'full_name' => $period->course->title . ' - ' . $period->name,
-                    ];
-                });
-        }
-
-        return response()->json(['periods' => $periods]);
-    }
-
-    private function getUnreadCount(Chat $chat, $userId): int
-    {
-        $participant = $chat->participants()->where('user_id', $userId)->first();
-        if (!$participant || !$participant->pivot->last_read_at) {
-            return $chat->messages()->count();
-        }
-        return $chat->messages()
-            ->where('created_at', '>', $participant->pivot->last_read_at)
-            ->where('user_id', '!=', $userId)
-            ->count();
-    }
-
+    /**
+     * Display chat index page with unified layout
+     */
     public function webIndex(Request $request)
     {
-        $user = $request->user();
-
-        $chats = Chat::forUser($user->id)
-            ->active()
+        // Get user's chats with latest messages
+        $chats = Chat::whereHas('participants', function ($query) {
+            $query->where('user_id', auth()->id());
+        })
             ->with([
-                'latestMessage.user:id,name',
-                'activeParticipants:id,name',
-                'coursePeriod.course:id,title'
+                'participants:id,name',
+                'lastMessage.user:id,name',
+                'activeParticipants'
             ])
-            ->orderBy('last_message_at', 'desc')
+            ->withCount('activeParticipants')
+            ->orderBy('updated_at', 'desc')
             ->get();
+
+        // Add display name and format data for each chat
+        $chats->each(function ($chat) {
+            $chat->display_name = $chat->getDisplayName();
+
+            // Add unread count (you can implement this based on your needs)
+            $chat->unread_count = 0; // Placeholder - implement based on your message read tracking
+        });
 
         return view('chat.index', compact('chats'));
     }
 
-    public function webShow(Chat $chat)
+    /**
+     * Show specific chat (AJAX response for unified layout)
+     */
+    public function webShow(Request $request, Chat $chat)
     {
         Gate::authorize('view', $chat);
 
-        $messages = $chat->messages()
-            ->with('user:id,name')
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->reverse()
-            ->values();
-
-        $chat->participants()->updateExistingPivot(auth()->id(), [
-            'last_read_at' => now()
+        // Load chat with participants and messages
+        $chat->load([
+            'participants:id,name',
+            'activeParticipants',
+            'messages' => function ($query) {
+                $query->with('user:id,name')
+                    ->orderBy('created_at', 'asc')
+                    ->limit(50); // Load last 50 messages
+            }
         ]);
 
-        return view('chat.show', compact('chat', 'messages'));
+        // If AJAX request, return JSON
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'chat' => [
+                    'id' => $chat->id,
+                    'name' => $chat->name,
+                    'display_name' => $chat->getDisplayName(),
+                    'type' => $chat->type,
+                    'participants_count' => $chat->activeParticipants->count(),
+                    'participants' => $chat->activeParticipants->map(function ($participant) {
+                        return [
+                            'id' => $participant->id,
+                            'name' => $participant->name
+                        ];
+                    })
+                ],
+                'messages' => $chat->messages->map(function ($message) {
+                    return [
+                        'id' => $message->id,
+                        'content' => $message->content,
+                        'user_id' => $message->user_id,
+                        'user' => [
+                            'id' => $message->user->id,
+                            'name' => $message->user->name
+                        ],
+                        'created_at' => $message->created_at->toISOString(),
+                        'formatted_time' => $message->created_at->format('H:i')
+                    ];
+                })
+            ]);
+        }
+
+        // For non-AJAX requests, redirect to index (maintain backward compatibility)
+        return redirect()->route('chat.index');
+    }
+
+    /**
+     * Store a newly created chat
+     */
+    public function store(Request $request)
+    {
+        \Log::info('=== CHAT CREATION START ===');
+        \Log::info('Request data:', $request->all());
+        \Log::info('Current user:', ['id' => auth()->id(), 'name' => auth()->user()->name]);
+
+        try {
+            // Validation
+            \Log::info('Starting validation...');
+            $request->validate([
+                'type' => ['required', 'in:direct,group'],
+                'participant_ids' => ['required', 'array', 'min:1'],
+                'participant_ids.*' => ['exists:users,id'],
+                'name' => ['nullable', 'string', 'max:255'],
+                'course_period_id' => ['nullable', 'exists:course_periods,id']
+            ]);
+            \Log::info('Validation passed');
+
+            // Authorization check
+            \Log::info('Checking authorization...');
+            if ($request->filled('course_period_id')) {
+                \Log::info('Checking course-specific permission for period: ' . $request->course_period_id);
+
+                // Debug course period
+                $coursePeriod = \App\Models\CoursePeriod::find($request->course_period_id);
+                if ($coursePeriod) {
+                    \Log::info('Course period found:', [
+                        'id' => $coursePeriod->id,
+                        'name' => $coursePeriod->name,
+                        'course_title' => $coursePeriod->course->title ?? 'No Course'
+                    ]);
+                } else {
+                    \Log::error('Course period not found: ' . $request->course_period_id);
+                }
+
+                Gate::authorize('createForCoursePeriod', [Chat::class, $request->course_period_id]);
+            } else {
+                \Log::info('Checking general create permission');
+                Gate::authorize('create', Chat::class);
+            }
+            \Log::info('Authorization passed');
+
+            // Participant validation
+            \Log::info('Validating participants...');
+            foreach ($request->participant_ids as $participantId) {
+                $targetUser = User::find($participantId);
+                if (!$targetUser) {
+                    \Log::error('Participant not found: ' . $participantId);
+                    continue;
+                }
+
+                \Log::info('Checking if user can chat with: ' . $targetUser->name);
+                $canChat = auth()->user()->canChatWith($targetUser, $request->course_period_id);
+                \Log::info('Can chat result: ' . ($canChat ? 'YES' : 'NO'));
+
+                if (!$canChat) {
+                    \Log::warning('User cannot chat with participant: ' . $targetUser->name);
+                    return response()->json([
+                        'message' => "You cannot chat with {$targetUser->name} in this context.",
+                        'errors' => ['participant_ids' => ["Invalid participant: {$targetUser->name}"]]
+                    ], 422);
+                }
+            }
+            \Log::info('Participant validation passed');
+
+            DB::beginTransaction();
+            \Log::info('Database transaction started');
+
+            // Create chat
+            $chatData = [
+                'name' => $request->name,
+                'type' => $request->type,
+                'course_period_id' => $request->course_period_id,
+                'created_by' => auth()->id(),
+                'is_active' => true // Make sure this is set
+            ];
+
+            \Log::info('Creating chat with data:', $chatData);
+
+            $chat = Chat::create($chatData);
+            \Log::info('Chat created successfully with ID: ' . $chat->id);
+
+            // Prepare participants
+            $participants = collect($request->participant_ids);
+            if (!$participants->contains(auth()->id())) {
+                $participants->push(auth()->id());
+            }
+
+            \Log::info('Participants to add:', $participants->toArray());
+
+            // Add participants
+            foreach ($participants->unique() as $userId) {
+                \Log::info('Adding participant: ' . $userId);
+
+                $chat->participants()->attach($userId, [
+                    'joined_at' => now(),
+                    'is_active' => true
+                ]);
+            }
+
+            \Log::info('All participants added successfully');
+
+            DB::commit();
+            \Log::info('Database transaction committed');
+
+            // Load fresh data
+            $chat->load(['participants:id,name', 'activeParticipants']);
+            \Log::info('Chat data reloaded');
+
+            $response = [
+                'message' => 'Chat created successfully',
+                'chat' => [
+                    'id' => $chat->id,
+                    'name' => $chat->name,
+                    'display_name' => $chat->getDisplayName(),
+                    'type' => $chat->type,
+                    'participants' => $chat->activeParticipants->map(function ($p) {
+                        return ['id' => $p->id, 'name' => $p->name];
+                    })
+                ]
+            ];
+
+            \Log::info('=== CHAT CREATION SUCCESS ===');
+            \Log::info('Response:', $response);
+
+            if ($request->wantsJson()) {
+                return response()->json($response, 201);
+            }
+
+            return redirect()->route('chat.index')->with('success', 'Chat created successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('=== VALIDATION ERROR ===');
+            \Log::error('Validation errors:', $e->errors());
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            return back()->withErrors($e->errors());
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            \Log::error('=== AUTHORIZATION ERROR ===');
+            \Log::error('Auth error:', ['message' => $e->getMessage()]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Unauthorized to create chat',
+                    'error' => $e->getMessage()
+                ], 403);
+            }
+
+            return back()->withErrors(['error' => 'Unauthorized to create chat: ' . $e->getMessage()]);
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            \Log::error('=== GENERAL ERROR ===');
+            \Log::error('Error details:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Failed to create chat',
+                    'error' => $e->getMessage(),
+                    'debug' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]
+                ], 500);
+            }
+
+            return back()->withErrors(['error' => 'Failed to create chat: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get available users for chat creation
+     */
+    public function availableUsers(Request $request)
+    {
+        $request->validate([
+            'course_period_id' => 'nullable|exists:course_periods,id',
+            'search' => 'nullable|string|max:100'
+        ]);
+
+        $coursePeriodId = $request->get('course_period_id');
+        $search = $request->get('search');
+
+        // Use the new method from User model
+        $users = auth()->user()->getAvailableUsersForChat($coursePeriodId, $search);
+
+        // Add additional info untuk setiap user
+        $users = $users->map(function ($user) use ($coursePeriodId) {
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ];
+
+            // Jika course period dipilih, tampilkan role user di course tersebut
+            if ($coursePeriodId) {
+                $coursePeriod = \App\Models\CoursePeriod::find($coursePeriodId);
+                if ($coursePeriod) {
+                    // Cek role user di course ini
+                    $userRole = 'participant'; // default
+
+                    if ($coursePeriod->course->instructors->contains($user->id)) {
+                        $userRole = 'instructor';
+                    } elseif ($coursePeriod->course->eventOrganizers->contains($user->id)) {
+                        $userRole = 'organizer';
+                    }
+
+                    $userData['role_in_course'] = $userRole;
+                }
+            }
+
+            return $userData;
+        });
+
+        return response()->json($users);
+    }
+
+
+
+    /**
+     * Get available course periods for chat creation
+     */
+    public function availableCoursePeriods(Request $request)
+    {
+        // Use the new method from User model
+        $coursePeriods = auth()->user()->getAccessibleCoursePeriods();
+
+        $coursePeriods = $coursePeriods->map(function ($period) {
+            return [
+                'id' => $period->id,
+                'name' => $period->name,
+                'course_title' => $period->course->title ?? 'Unknown Course',
+                'display_name' => ($period->course->title ?? 'Unknown') . ' - ' . $period->name,
+                'start_date' => $period->start_date->format('Y-m-d'),
+                'end_date' => $period->end_date->format('Y-m-d')
+            ];
+        });
+
+        return response()->json($coursePeriods);
+    }
+
+
+    /**
+     * API Index for mobile/external apps
+     */
+    public function index(Request $request)
+    {
+        $chats = Chat::whereHas('participants', function ($query) {
+            $query->where('user_id', auth()->id());
+        })
+            ->with([
+                'participants:id,name',
+                'lastMessage.user:id,name'
+            ])
+            ->withCount('activeParticipants')
+            ->orderBy('updated_at', 'desc')
+            ->paginate(20);
+
+        return response()->json([
+            'chats' => $chats->getCollection()->map(function ($chat) {
+                return [
+                    'id' => $chat->id,
+                    'name' => $chat->name,
+                    'display_name' => $chat->getDisplayName(),
+                    'type' => $chat->type,
+                    'participants_count' => $chat->active_participants_count,
+                    'last_message' => $chat->lastMessage ? [
+                        'content' => $chat->lastMessage->content,
+                        'user_name' => $chat->lastMessage->user->name,
+                        'created_at' => $chat->lastMessage->created_at->toISOString()
+                    ] : null,
+                    'updated_at' => $chat->updated_at->toISOString()
+                ];
+            }),
+            'pagination' => [
+                'current_page' => $chats->currentPage(),
+                'last_page' => $chats->lastPage(),
+                'per_page' => $chats->perPage(),
+                'total' => $chats->total()
+            ]
+        ]);
+    }
+
+
+    /**
+     * API Show for mobile/external apps
+     */
+    public function show(Request $request, Chat $chat)
+    {
+        Gate::authorize('view', $chat);
+
+        $chat->load([
+            'participants:id,name',
+            'activeParticipants',
+            'messages' => function ($query) use ($request) {
+                $query->with('user:id,name')
+                    ->orderBy('created_at', 'desc');
+
+                if ($request->filled('before')) {
+                    $query->where('id', '<', $request->get('before'));
+                }
+
+                $query->limit($request->get('limit', 50));
+            }
+        ]);
+
+        return response()->json([
+            'chat' => [
+                'id' => $chat->id,
+                'name' => $chat->name,
+                'display_name' => $chat->getDisplayName(),
+                'type' => $chat->type,
+                'participants' => $chat->activeParticipants->map(function ($participant) {
+                    return [
+                        'id' => $participant->id,
+                        'name' => $participant->name
+                    ];
+                })
+            ],
+            'messages' => $chat->messages->reverse()->values()->map(function ($message) {
+                return [
+                    'id' => $message->id,
+                    'content' => $message->content,
+                    'user_id' => $message->user_id,
+                    'user' => [
+                        'id' => $message->user->id,
+                        'name' => $message->user->name
+                    ],
+                    'created_at' => $message->created_at->toISOString()
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Search chats
+     */
+    public function search(Request $request)
+    {
+        $request->validate([
+            'query' => ['required', 'string', 'min:1']
+        ]);
+
+        $searchTerm = $request->get('query');
+
+        $chats = Chat::whereHas('participants', function ($query) {
+            $query->where('user_id', auth()->id());
+        })
+            ->where(function ($query) use ($searchTerm) {
+                $query->where('name', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('participants', function ($subQuery) use ($searchTerm) {
+                        $subQuery->where('name', 'like', "%{$searchTerm}%");
+                    })
+                    ->orWhereHas('messages', function ($subQuery) use ($searchTerm) {
+                        $subQuery->where('content', 'like', "%{$searchTerm}%");
+                    });
+            })
+            ->with(['participants:id,name', 'lastMessage.user:id,name'])
+            ->withCount('activeParticipants')
+            ->orderBy('updated_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'chats' => $chats->map(function ($chat) {
+                return [
+                    'id' => $chat->id,
+                    'name' => $chat->name,
+                    'display_name' => $chat->getDisplayName(),
+                    'type' => $chat->type,
+                    'participants_count' => $chat->active_participants_count,
+                    'last_message' => $chat->lastMessage ? [
+                        'content' => Str::limit($chat->lastMessage->content, 50),
+                        'user_name' => $chat->lastMessage->user->name,
+                        'created_at' => $chat->lastMessage->created_at->toISOString()
+                    ] : null
+                ];
+            })
+        ]);
     }
 }
