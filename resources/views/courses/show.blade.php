@@ -691,7 +691,7 @@
                                             </div>
                                         @endforelse
                                     </div>
-                                    {{-- REMOVED: Pagination links --}}
+                                    {{-- All pagination removed - now using Collection directly --}}
                                     @if($availableInstructors->count() > 0)
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -800,7 +800,7 @@
                                             </div>
                                         @endforelse
                                     </div>
-                                    {{-- REMOVED: Pagination links --}}
+                                    {{-- All pagination removed - now using Collection directly --}}
                                     @if($availableOrganizers->count() > 0)
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -821,7 +821,7 @@
                             selectedUnenrollUsers: [],
                             searchTermEnroll: '',
                             searchTermUnenroll: '',
-                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants->items()) }},
+                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants) }},
                             enrolledParticipantsData: {{ Js::from($course->enrolledUsers) }},
                             get filteredUnEnrolledParticipants() {
                                 if (this.searchTermEnroll === '') return this.unEnrolledParticipantsData;
@@ -929,7 +929,7 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-emerald-900">Daftarkan Peserta</h4>
-                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->total() }} calon peserta tersedia</p>
+                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->count() }} calon peserta tersedia</p>
                                     </div>
                                 </div>
 
