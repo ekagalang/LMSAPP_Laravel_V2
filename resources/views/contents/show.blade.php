@@ -395,11 +395,272 @@
                                         </a>
                                     </div>
 
-                                @elseif(in_array($content->type, ['text', 'essay']))
+                                @elseif($content->type == 'text')
                                     <div class="prose prose-lg max-w-none">
                                         <div class="content-text text-gray-800 leading-relaxed">
                                             {!! $content->body !!}
                                         </div>
+                                    </div>
+
+                                @elseif($content->type == 'essay')
+                                    {{-- Essay Content Body --}}
+                                    @if($content->body)
+                                        <div class="prose prose-lg max-w-none mb-8">
+                                            <div class="content-text text-gray-800 leading-relaxed">
+                                                {!! $content->body !!}
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    {{-- Essay Questions Section --}}
+                                    @php
+                                        $submission = $content->essaySubmissions()->where('user_id', Auth::id())->first();
+                                        $questions = $content->essayQuestions;
+                                    @endphp
+
+                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-8 border border-green-100">
+                                        {{-- JIKA SUDAH ADA JAWABAN --}}
+                                        @if ($submission)
+                                            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-6 rounded-lg">
+                                                <div class="flex items-center mb-4">
+                                                    <svg class="w-8 h-8 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    <div>
+                                                        <p class="font-bold text-lg">Anda Sudah Mengumpulkan Jawaban</p>
+                                                        <p class="text-sm">Dikumpulkan pada: {{ $submission->created_at->format('d F Y, H:i') }}</p>
+                                                    </div>
+                                                </div>
+
+                                                @if ($submission->is_fully_graded)
+                                                    <div class="mt-4 flex space-x-4">
+                                                        <a href="{{ route('essays.result', $submission->id) }}" 
+                                                        class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                            </svg>
+                                                            Lihat Nilai dan Feedback
+                                                        </a>
+                                                        <div class="flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-lg">
+                                                            <span class="font-medium">Total Nilai: {{ $submission->total_score }}/{{ $submission->max_total_score }}</span>
+                                                        </div>
+                                                    </div>
+                                                @else
+                                                    <div class="flex items-center mt-4 p-4 bg-yellow-100 text-yellow-800 rounded-lg">
+                                                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        <span>Jawaban Anda sedang menunggu penilaian dari instruktur.</span>
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                        {{-- JIKA BELUM ADA JAWABAN DAN USER ADALAH PESERTA --}}
+                                        @elseif (Auth::user()->hasRole('participant'))
+                                            @if ($questions->isEmpty())
+                                                {{-- Fallback untuk essay lama tanpa questions --}}
+                                                <div class="text-center mb-6">
+                                                    <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                                        </svg>
+                                                    </div>
+                                                    <h3 class="text-xl font-bold text-gray-900 mb-2">Essay Assignment</h3>
+                                                    <p class="text-gray-600">Tulis jawaban essay Anda di bawah ini</p>
+                                                </div>
+
+                                                <form action="{{ route('essays.store', $content) }}" method="POST">
+                                                    @csrf
+                                                    <div class="mb-6">
+                                                        <label for="essay_editor" class="block text-sm font-medium text-gray-700 mb-2">
+                                                            Tulis Jawaban Anda:
+                                                        </label>
+                                                        <textarea id="essay_editor" name="essay_content" rows="10" 
+                                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-vertical"
+                                                                placeholder="Tulis jawaban essay Anda di sini..."
+                                                                required></textarea>
+                                                    </div>
+                                                    
+                                                    <div class="text-center">
+                                                        <button type="submit" 
+                                                                class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                                                                onclick="return confirm('Apakah Anda yakin ingin mengumpulkan essay ini? Anda tidak dapat mengubah jawaban setelah dikumpulkan.')">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                                            </svg>
+                                                            Kirim Jawaban
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            @else
+                                                {{-- NEW SYSTEM: Multiple questions --}}
+                                                <div class="text-center mb-6">
+                                                    <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                                        </svg>
+                                                    </div>
+                                                    <h3 class="text-xl font-bold text-gray-900 mb-2">Essay Assignment</h3>
+                                                    <p class="text-gray-600">Jawab {{ $questions->count() }} pertanyaan essay di bawah ini</p>
+                                                </div>
+
+                                                <form action="{{ route('essays.store', $content) }}" method="POST" class="space-y-8">
+                                                    @csrf
+                                                    
+                                                    @foreach ($questions->sortBy('order') as $index => $question)
+                                                        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                                                            <div class="flex justify-between items-start mb-4">
+                                                                <h4 class="text-lg font-semibold text-gray-900 flex items-center">
+                                                                    <span class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                                                                        {{ $index + 1 }}
+                                                                    </span>
+                                                                    Pertanyaan {{ $index + 1 }}
+                                                                </h4>
+                                                                <span class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                                                                    {{ $question->max_score }} poin
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                                                                <p class="text-gray-800 leading-relaxed">{{ $question->question }}</p>
+                                                            </div>
+                                                            
+                                                            <div class="space-y-2">
+                                                                <label for="answer_{{ $question->id }}" class="block text-sm font-medium text-gray-700">
+                                                                    Jawaban Anda:
+                                                                </label>
+                                                                <textarea
+                                                                    id="answer_{{ $question->id }}"
+                                                                    name="answer_{{ $question->id }}"
+                                                                    rows="6"
+                                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-vertical"
+                                                                    placeholder="Tulis jawaban Anda untuk pertanyaan {{ $index + 1 }}..."
+                                                                    required>{{ old("answer_{$question->id}") }}</textarea>
+                                                                @error("answer_{$question->id}")
+                                                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                                                @enderror
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                    
+                                                    <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                                                        <p class="text-sm text-gray-600">
+                                                            Total: {{ $questions->sum('max_score') }} poin
+                                                        </p>
+                                                        <button type="submit" 
+                                                                class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                                                                onclick="return confirm('Apakah Anda yakin ingin mengumpulkan semua jawaban essay ini? Anda tidak dapat mengubah jawaban setelah dikumpulkan.')">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                                            </svg>
+                                                            Kirim Semua Jawaban
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            @endif
+
+                                        {{-- JIKA USER BISA EDIT CONTENT (instructor/admin) --}}
+                                        @elseif (Auth::user()->can('update', $content->lesson->course))
+                                            <div class="text-center mb-6">
+                                                <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"/>
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Kelola Pertanyaan Essay</h3>
+                                                <p class="text-gray-600">Tambah dan kelola pertanyaan untuk essay ini</p>
+                                            </div>
+                                            
+                                            {{-- Form tambah pertanyaan --}}
+                                            <form action="{{ route('essay.questions.store', $content) }}" method="POST" class="mb-8 p-6 bg-white rounded-xl border border-gray-200">
+                                                @csrf
+                                                <h4 class="font-semibold text-gray-900 mb-4">Tambah Pertanyaan Baru</h4>
+                                                
+                                                <div class="space-y-4">
+                                                    <div>
+                                                        <label for="question" class="block text-sm font-medium text-gray-700 mb-2">
+                                                            Pertanyaan:
+                                                        </label>
+                                                        <textarea
+                                                            id="question"
+                                                            name="question"
+                                                            rows="3"
+                                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                            placeholder="Masukkan pertanyaan essay..."
+                                                            required></textarea>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <label for="max_score" class="block text-sm font-medium text-gray-700 mb-2">
+                                                            Skor Maksimal:
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            id="max_score"
+                                                            name="max_score"
+                                                            min="1"
+                                                            max="1000"
+                                                            value="100"
+                                                            class="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                            required>
+                                                    </div>
+                                                    
+                                                    <button type="submit" class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors">
+                                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                        </svg>
+                                                        Tambah Pertanyaan
+                                                    </button>
+                                                </div>
+                                            </form>
+
+                                            {{-- List pertanyaan existing --}}
+                                            @if ($questions->count() > 0)
+                                                <div class="space-y-4">
+                                                    <h4 class="font-semibold text-gray-900">Pertanyaan yang Ada ({{ $questions->count() }})</h4>
+                                                    @foreach ($questions->sortBy('order') as $index => $question)
+                                                        <div class="flex items-start justify-between p-6 bg-white border border-gray-200 rounded-lg">
+                                                            <div class="flex-1">
+                                                                <div class="flex items-center mb-2">
+                                                                    <span class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                                                                        {{ $index + 1 }}
+                                                                    </span>
+                                                                    <h5 class="font-medium text-gray-900">Soal {{ $index + 1 }}</h5>
+                                                                    <span class="ml-auto px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">{{ $question->max_score }} poin</span>
+                                                                </div>
+                                                                <p class="text-gray-600 ml-9">{{ Str::limit($question->question, 150) }}</p>
+                                                            </div>
+                                                            <form action="{{ route('essay.questions.destroy', $question->id) }}" method="POST" class="ml-4">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" 
+                                                                        class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                                                        onclick="return confirm('Yakin ingin menghapus pertanyaan ini?')"
+                                                                        title="Hapus pertanyaan">
+                                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    @endforeach
+                                                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                                                        <p class="text-sm text-blue-700 font-medium">
+                                                            Total skor maksimal: {{ $questions->sum('max_score') }} poin
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="text-center p-8 bg-gray-50 rounded-lg">
+                                                    <div class="w-12 h-12 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p class="text-gray-600">Belum ada pertanyaan. Tambahkan pertanyaan pertama untuk essay ini.</p>
+                                                </div>
+                                            @endif
+                                        @endif
                                     </div>
 
                                 @elseif($content->type == 'quiz' && $content->quiz)
@@ -545,13 +806,6 @@
                                     </div>
                                 @endif
                             </div>
-
-                            <!-- Essay/Quiz Section (untuk essay dan quiz tanpa konten utama) -->
-                            @if(($content->type == 'essay' || $content->type == 'quiz') && !$content->quiz)
-                                <div class="mt-8 pt-8 border-t border-gray-200">
-                                    @include('contents.partials.essay-quiz-section')
-                                </div>
-                            @endif
                         </div>
                     </div>
 
