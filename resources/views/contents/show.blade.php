@@ -770,20 +770,75 @@
                                 @elseif($content->type == 'zoom')
                                     @php
                                         $zoomDetails = json_decode($content->body, true);
+                                        $schedulingStatus = $content->getSchedulingStatus();
                                     @endphp
                                     <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-8 border border-blue-100">
                                         <div class="text-center mb-6">
                                             <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 011.45.89V16.11a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 011.45.89V16.11a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                                </svg>
                                             </div>
                                             <h3 class="text-2xl font-bold text-gray-900 mb-2">Rapat Online via Zoom</h3>
-                                            <p class="text-gray-600 mb-4">Gunakan detail di bawah ini untuk bergabung ke dalam rapat.</p>
+                                            <p class="text-gray-600 mb-4">
+                                                @if($content->is_scheduled)
+                                                    Meeting dijadwalkan {{ $content->getScheduledStartInTimezone()->format('d M Y, H:i') }} - {{ $content->getScheduledEndInTimezone()->format('H:i') }} WIB
+                                                @else
+                                                    Gunakan detail di bawah ini untuk bergabung ke dalam rapat.
+                                                @endif
+                                            </p>
                                         </div>
+
+                                        {{-- ✅ Scheduling Status Display --}}
+                                        @if($content->is_scheduled)
+                                            <div class="mb-6">
+                                                @if($schedulingStatus['status'] === 'upcoming')
+                                                    <div class="bg-yellow-100 border border-yellow-300 rounded-xl p-4 text-center">
+                                                        <div class="flex items-center justify-center mb-2">
+                                                            <svg class="w-6 h-6 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                            </svg>
+                                                            <span class="font-semibold text-yellow-800">Meeting Belum Dimulai</span>
+                                                        </div>
+                                                        <p class="text-yellow-700">{{ $schedulingStatus['message'] }}</p>
+                                                        <p class="text-sm text-yellow-600 mt-1">{{ $schedulingStatus['starts_in'] }}</p>
+                                                    </div>
+                                                @elseif($schedulingStatus['status'] === 'active')
+                                                    <div class="bg-green-100 border border-green-300 rounded-xl p-4 text-center">
+                                                        <div class="flex items-center justify-center mb-2">
+                                                            <svg class="w-6 h-6 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                            </svg>
+                                                            <span class="font-semibold text-green-800">Meeting Sedang Berlangsung</span>
+                                                        </div>
+                                                        <p class="text-green-700">{{ $schedulingStatus['message'] }}</p>
+                                                        <p class="text-sm text-green-600 mt-1">Berakhir {{ $schedulingStatus['ends_in'] }}</p>
+                                                    </div>
+                                                @elseif($schedulingStatus['status'] === 'ended')
+                                                    <div class="bg-red-100 border border-red-300 rounded-xl p-4 text-center">
+                                                        <div class="flex items-center justify-center mb-2">
+                                                            <svg class="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                            </svg>
+                                                            <span class="font-semibold text-red-800">Meeting Telah Berakhir</span>
+                                                        </div>
+                                                        <p class="text-red-700">{{ $schedulingStatus['message'] }}</p>
+                                                        <p class="text-sm text-red-600 mt-1">Berakhir {{ $schedulingStatus['ended_ago'] }}</p>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endif
 
                                         <div class="bg-white rounded-xl p-6 mb-6 divide-y divide-gray-200">
                                             <div class="flex items-center py-3">
                                                 <span class="font-semibold w-32 text-gray-600">Link Rapat</span>
-                                                <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" class="text-blue-600 hover:underline break-all">{{ $zoomDetails['link'] ?? 'Tidak tersedia' }}</a>
+                                                @if($schedulingStatus['can_join'])
+                                                    <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" class="text-blue-600 hover:underline break-all">
+                                                        {{ $zoomDetails['link'] ?? 'Tidak tersedia' }}
+                                                    </a>
+                                                @else
+                                                    <span class="text-gray-400 break-all">{{ $zoomDetails['link'] ?? 'Tidak tersedia' }}</span>
+                                                @endif
                                             </div>
                                             <div class="flex items-center py-3">
                                                 <span class="font-semibold w-32 text-gray-600">Meeting ID</span>
@@ -798,10 +853,30 @@
                                         </div>
 
                                         <div class="text-center">
-                                            <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                                                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                                Gabung Sekarang
-                                            </a>
+                                            @if($schedulingStatus['can_join'])
+                                                <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" 
+                                                class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                                    </svg>
+                                                    Gabung Sekarang
+                                                </a>
+                                            @else
+                                                <button disabled 
+                                                        class="inline-flex items-center px-8 py-4 bg-gray-400 text-white font-bold rounded-xl cursor-not-allowed opacity-50">
+                                                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H9m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                    Meeting Belum Tersedia
+                                                </button>
+                                                <p class="text-sm text-gray-500 mt-2">
+                                                    @if($schedulingStatus['status'] === 'upcoming')
+                                                        Meeting akan dibuka otomatis saat waktu yang dijadwalkan
+                                                    @else
+                                                        Meeting sudah tidak tersedia
+                                                    @endif
+                                                </p>
+                                            @endif
                                         </div>
                                     </div>
                                 @endif
@@ -968,7 +1043,7 @@
                         <div>
                             @if ($previousContent)
                                 <a href="{{ route('contents.show', $previousContent) }}"
-                                   class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm hover:scale-105">
+                                class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm hover:scale-105">
                                     <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                                     </svg>
@@ -983,35 +1058,29 @@
                         <div>
                             @if ($canGoNext)
                                 <a href="{{ route('contents.show', $nextContent) }}"
-                                   class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
+                                class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
                                     <span class="mr-2">Selanjutnya</span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                     </svg>
                                 </a>
                             @elseif (!$nextContent && $isContentEffectivelyCompleted)
-                                <!-- ✅ FITUR BARU: Cek apakah semua kursus sudah selesai -->
-                                @if($isAllCourseCompleted)
-                                    <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit"
-                                               class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
-                                            🎉 Selesaikan Kursus
-                                        </button>
-                                    </form>
-                                @else
-                                    <a href="{{ route('courses.show', $course->id) }}"
-                                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
-                                        Kembali ke Kursus
-                                    </a>
-                                @endif
+                                {{-- ✅ FIX: Simple completion button - let controller handle the logic --}}
+                                <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
+                                    @csrf
+                                    <button type="submit"
+                                        class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
+                                        <span class="mr-2">✅</span>
+                                        Selesai & Lanjutkan
+                                    </button>
+                                </form>
                             @elseif (!$isContentEffectivelyCompleted && !$isTask)
                                 <button @click="markAsCompleted()"
                                         class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">
                                     Tandai Selesai untuk Lanjut
                                 </button>
                             @else
-                                <!-- ✅ TAMBAHAN: Pesan untuk desktop -->
+                                {{-- ✅ TAMBAHAN: Pesan untuk desktop --}}
                                 <div class="text-center py-3">
                                     <p class="text-sm text-gray-600">
                                         @if($content->type === 'quiz')
@@ -1019,7 +1088,7 @@
                                         @elseif($content->type === 'essay')
                                             Submit essay untuk melanjutkan
                                         @else
-                                            Selesaikan materi ini untuk melanjutkan
+                                            Selesaikan tugas ini untuk melanjutkan
                                         @endif
                                     </p>
                                 </div>

@@ -4,7 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\Duplicateable; // Import Trait
+use App\Models\Traits\Duplicateable;
+use Carbon\Carbon;
 
 class Content extends Model
 {
@@ -24,6 +25,17 @@ class Content extends Model
         'file_path',
         'order',
         'quiz_id',
+        'scheduled_start',
+        'scheduled_end',
+        'is_scheduled',
+        'timezone_offset',
+
+    ];
+
+    protected $casts = [
+        'scheduled_start' => 'datetime',
+        'scheduled_end' => 'datetime',
+        'is_scheduled' => 'boolean',
     ];
 
     /**
@@ -38,6 +50,70 @@ class Content extends Model
      * @var string
      */
     protected $replicateFile = 'file_path';
+
+    public function isZoomAccessible(): bool
+    {
+        if ($this->type !== 'zoom' || !$this->is_scheduled) {
+            return true; // Non-scheduled zoom or non-zoom content always accessible
+        }
+
+        $now = now();
+
+        // Check if current time is within scheduled window
+        return $now->gte($this->scheduled_start) && $now->lte($this->scheduled_end);
+    }
+
+    public function getSchedulingStatus(): array
+    {
+        if ($this->type !== 'zoom' || !$this->is_scheduled) {
+            return [
+                'status' => 'available',
+                'message' => 'Meeting tersedia',
+                'can_join' => true
+            ];
+        }
+
+        $now = now();
+
+        if ($now->lt($this->scheduled_start)) {
+            return [
+                'status' => 'upcoming',
+                'message' => 'Meeting akan dimulai pada ' . $this->scheduled_start->format('d M Y, H:i'),
+                'can_join' => false,
+                'starts_in' => $now->diffForHumans($this->scheduled_start)
+            ];
+        }
+
+        if ($now->gt($this->scheduled_end)) {
+            return [
+                'status' => 'ended',
+                'message' => 'Meeting telah berakhir pada ' . $this->scheduled_end->format('d M Y, H:i'),
+                'can_join' => false,
+                'ended_ago' => $this->scheduled_end->diffForHumans($now)
+            ];
+        }
+
+        return [
+            'status' => 'active',
+            'message' => 'Meeting sedang berlangsung (berakhir ' . $this->scheduled_end->format('H:i') . ')',
+            'can_join' => true,
+            'ends_in' => $now->diffForHumans($this->scheduled_end)
+        ];
+    }
+
+    public function getScheduledStartInTimezone($timezone = 'Asia/Jakarta'): ?Carbon
+    {
+        if (!$this->scheduled_start) return null;
+
+        return $this->scheduled_start->setTimezone($timezone);
+    }
+
+    public function getScheduledEndInTimezone($timezone = 'Asia/Jakarta'): ?Carbon
+    {
+        if (!$this->scheduled_end) return null;
+
+        return $this->scheduled_end->setTimezone($timezone);
+    }
 
     /**
      * Relasi ke Lesson

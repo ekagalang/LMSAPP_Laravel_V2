@@ -19,6 +19,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\CertificateController;
+use Carbon\Carbon;
 
 class ContentController extends Controller
 {
@@ -48,9 +49,9 @@ class ContentController extends Controller
         if ($content->type === 'quiz' && $content->quiz) {
             if ($user) {
                 $hasPassedQuizBefore = $user->quizAttempts()
-                                            ->where('quiz_id', $content->quiz->id)
-                                            ->where('passed', true)
-                                            ->exists();
+                    ->where('quiz_id', $content->quiz->id)
+                    ->where('passed', true)
+                    ->exists();
             }
         }
 
@@ -71,16 +72,31 @@ class ContentController extends Controller
             $content->id => ['completed' => true, 'completed_at' => now()]
         ]);
 
-        // Cek progress course
-        $progressData = $user->getProgressForCourse($course);
+        // ✅ FIX: Cari next content dengan urutan yang benar ACROSS LESSONS
+        $orderedContents = $this->getOrderedContents($course);
 
-        // Jika progres sudah 100% atau lebih
-        if ($progressData['progress_percentage'] >= 100) {
+        $currentIndex = $orderedContents->search(function ($item) use ($content) {
+            return $item->id === $content->id;
+        });
 
-            // PERBAIKAN: Gunakan method internal bukan CertificateController::generateForUser
+        // ✅ FIX: Ambil content berikutnya dari SELURUH course, bukan cuma lesson
+        $nextContent = ($currentIndex !== false && $currentIndex < $orderedContents->count() - 1)
+            ? $orderedContents->get($currentIndex + 1)
+            : null;
+
+        if ($nextContent) {
+            // ✅ Ada content berikutnya - lanjut ke sana
+            return redirect()->route('contents.show', ['content' => $nextContent->id])
+                ->with('success', 'Lanjut ke konten berikutnya!');
+        }
+
+        // ✅ FIX: Ini adalah content TERAKHIR - cek apakah semua sudah selesai
+        $allCompleted = $this->checkIfAllCourseContentCompleted($user, $course);
+
+        if ($allCompleted) {
+            // ✅ SEMUA SELESAI - generate certificate & redirect ke dashboard
             $this->checkAndGenerateCertificate($course, $user);
 
-            // Tandai kursus sebagai selesai untuk pengguna
             $user->courses()->updateExistingPivot($course->id, ['completed_at' => now()]);
 
             return redirect()->route('dashboard')->with([
@@ -90,19 +106,39 @@ class ContentController extends Controller
             ]);
         }
 
-        // Lanjutkan ke konten berikutnya atau kembali ke course
-        $nextContent = $lesson->contents()
-            ->where('order', '>', $content->order)
-            ->orderBy('order', 'asc')
-            ->first();
+        // ✅ FIX: Masih ada content yang belum selesai - redirect ke course overview
+        return redirect()->route('courses.show', $course->id)
+            ->with('success', 'Konten ini telah selesai. Silakan lanjutkan konten lainnya.');
+    }
 
-        if ($nextContent) {
-            return redirect()->route('contents.show', ['content' => $nextContent->id])
-                ->with('success', 'Lanjut ke konten berikutnya!');
+    private function checkIfAllCourseContentCompleted($user, $course)
+    {
+        $orderedContents = $this->getOrderedContents($course);
+
+        foreach ($orderedContents as $content) {
+            $isCompleted = false;
+
+            if ($content->type === 'quiz' && $content->quiz_id) {
+                $isCompleted = $user->quizAttempts()
+                    ->where('quiz_id', $content->quiz_id)
+                    ->where('passed', true)
+                    ->exists();
+            } elseif ($content->type === 'essay') {
+                $isCompleted = $user->essaySubmissions()
+                    ->where('content_id', $content->id)
+                    ->exists();
+            } else {
+                $isCompleted = $user->completedContents()
+                    ->where('content_id', $content->id)
+                    ->exists();
+            }
+
+            if (!$isCompleted) {
+                return false; // Masih ada yang belum selesai
+            }
         }
 
-        return redirect()->route('courses.show', $course->id)
-            ->with('success', 'Selamat! Anda telah menyelesaikan konten ini.');
+        return true; // Semua sudah selesai
     }
 
     // TAMBAHKAN method ini ke ContentController:
@@ -208,26 +244,29 @@ class ContentController extends Controller
     // ✅ PERBAIKAN UTAMA: Method untuk mendapatkan konten dalam urutan yang benar
     private function getOrderedContents(Course $course)
     {
-        // Ambil semua lessons dengan contents dalam urutan yang benar
-        $lessons = $course->lessons()
-            ->orderBy('order', 'asc')
-            ->with(['contents' => function ($query) {
-                $query->orderBy('order', 'asc');
-            }])
-            ->get();
+        // ✅ Cache untuk performance di VPS
+        return \Cache::remember("ordered_contents_{$course->id}", 300, function () use ($course) {
+            // Ambil semua lessons dengan contents dalam urutan yang benar
+            $lessons = $course->lessons()
+                ->orderBy('order', 'asc')
+                ->with(['contents' => function ($query) {
+                    $query->orderBy('order', 'asc');
+                }])
+                ->get();
 
-        // Gabungkan semua contents dari semua lessons dengan mempertahankan urutan
-        $orderedContents = collect();
+            // Gabungkan semua contents dari semua lessons dengan mempertahankan urutan
+            $orderedContents = collect();
 
-        foreach ($lessons as $lesson) {
-            foreach ($lesson->contents as $content) {
-                // Tambahkan informasi lesson order untuk debugging jika diperlukan
-                $content->lesson_order = $lesson->order;
-                $orderedContents->push($content);
+            foreach ($lessons as $lesson) {
+                foreach ($lesson->contents as $content) {
+                    // Tambahkan informasi lesson order untuk debugging jika diperlukan
+                    $content->lesson_order = $lesson->order;
+                    $orderedContents->push($content);
+                }
             }
-        }
 
-        return $orderedContents;
+            return $orderedContents;
+        });
     }
 
     // ✅ PERBAIKAN: Method untuk mendapatkan konten yang sudah terbuka
@@ -323,7 +362,7 @@ class ContentController extends Controller
         if ($request->input('type') === 'essay' && $request->has('questions')) {
             $rules['questions'] = 'required|array|min:1';
             $rules['questions.*.text'] = 'required|string';
-            $rules['questions.*.max_score'] = 'required|integer|min:1|max:1000';
+            $rules['questions.*.max_score'] = 'required|integer|min:1|max:10000';
         }
 
         // Tentukan aturan validasi dan sumber data 'body' berdasarkan tipe konten
@@ -350,6 +389,10 @@ class ContentController extends Controller
             $rules['zoom_link'] = 'required|url';
             $rules['zoom_meeting_id'] = 'required|string|max:255';
             $rules['zoom_password'] = 'nullable|string|max:255';
+            $rules['is_scheduled'] = 'boolean';
+            $rules['scheduled_start'] = 'nullable|required_if:is_scheduled,true|date|after:now';
+            $rules['scheduled_end'] = 'nullable|required_if:is_scheduled,true|date|after:scheduled_start';
+            $rules['timezone'] = 'nullable|string|in:Asia/Jakarta,UTC,Asia/Kuala_Lumpur,Asia/Singapore';
         }
 
         $validated = $request->validate($rules);
@@ -363,11 +406,28 @@ class ContentController extends Controller
             if ($bodySource) {
                 $content->body = $request->input($bodySource);
             } elseif ($validated['type'] === 'zoom') {
-                $content->body = json_encode([
+                $zoomData = [
                     'link' => $validated['zoom_link'],
                     'meeting_id' => $validated['zoom_meeting_id'],
                     'password' => $validated['zoom_password'] ?? '',
-                ]);
+                ];
+
+                if ($request->boolean('is_scheduled')) {
+                    $timezone = $request->input('timezone', 'Asia/Jakarta');
+                    $zoomData['is_scheduled'] = true;
+                    $zoomData['timezone'] = $timezone;
+
+                    // Convert to UTC for storage
+                    $content->scheduled_start = Carbon::createFromFormat('Y-m-d\TH:i', $request->input('scheduled_start'), $timezone)->utc();
+                    $content->scheduled_end = Carbon::createFromFormat('Y-m-d\TH:i', $request->input('scheduled_end'), $timezone)->utc();
+                    $content->is_scheduled = true;
+                } else {
+                    $content->is_scheduled = false;
+                    $content->scheduled_start = null;
+                    $content->scheduled_end = null;
+                }
+
+                $content->body = json_encode($zoomData);
             } else {
                 $content->body = null;
             }
@@ -400,7 +460,7 @@ class ContentController extends Controller
             // PERBAIKAN: Handle essay questions HANYA jika ada questions data
             if ($validated['type'] === 'essay' && $request->has('questions') && !empty($validated['questions'])) {
                 $this->saveEssayQuestions($content, $validated['questions']);
-                
+
                 // PERBAIKAN: Jika menggunakan system baru (questions), kosongkan body
                 $content->body = null;
                 $content->save();
