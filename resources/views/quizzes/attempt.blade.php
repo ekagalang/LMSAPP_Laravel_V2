@@ -456,7 +456,7 @@
                         </div>
                         
                         <button type="button" 
-                                onclick="showSubmitConfirmation()"
+                                onclick="showSubmitConfirmation(event)"
                                 class="btn-submit bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-12 py-4 rounded-xl text-lg font-bold shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
                             <i class="fas fa-paper-plane mr-3"></i>
                             Kirim Jawaban
@@ -532,7 +532,7 @@
             </button>
             
             <!-- Submit Button -->
-            <button onclick="showSubmitConfirmation()" 
+            <button onclick="showSubmitConfirmation(event)" 
                     class="bg-green-500 hover:bg-green-600 text-white w-16 h-16 rounded-full shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center backdrop-blur-sm border-2 border-green-400/30 group relative"
                     title="Kirim jawaban">
                 <!-- Ensure icon is visible -->
@@ -1113,7 +1113,11 @@
             document.getElementById('quiz-attempt-form').submit();
         }
 
-        function showSubmitConfirmation() {
+        function showSubmitConfirmation(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             updateProgress();
             
             const modal = document.getElementById('submit-modal');
@@ -1144,6 +1148,9 @@
         }
 
         function submitQuiz() {
+            // Set flag to prevent beforeunload warning
+            isSubmitting = true;
+            
             localStorage.removeItem(`quiz_backup_${quizId}`);
             
             const submitBtn = event.target;
@@ -1151,6 +1158,10 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Mengirim...';
             submitBtn.disabled = true;
             
+            // Hide modal
+            hideSubmitConfirmation();
+            
+            // Submit form
             document.getElementById('quiz-attempt-form').submit();
         }
 
@@ -1257,7 +1268,14 @@
         });
 
         // Prevent accidental page close
+        let isSubmitting = false;
+
         window.addEventListener('beforeunload', function(e) {
+            // Don't show warning if user is submitting quiz
+            if (isSubmitting) {
+                return;
+            }
+            
             if (typeof timeLeft !== 'undefined' && timeLeft > 0) {
                 e.preventDefault();
                 e.returnValue = 'Anda yakin ingin meninggalkan halaman? Jawaban akan tersimpan otomatis.';
