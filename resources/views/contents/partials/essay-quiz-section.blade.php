@@ -47,7 +47,7 @@
                         Jawab Pertanyaan Essay ({{ $questions->count() }} Soal)
                     </h3>
                     
-                    @foreach ($questions as $index => $question)
+                    @foreach ($questions->sortBy('order') as $index => $question)
                         <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border">
                             <div class="flex justify-between items-start mb-4">
                                 <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
@@ -62,19 +62,18 @@
                                 {!! nl2br(e($question->question)) !!}
                             </div>
                             
-                            <div>
-                                <label for="answer_{{ $question->id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <div class="space-y-2">
+                                <label for="answer_q{{ $question->id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Jawaban Anda:
                                 </label>
                                 <textarea
-                                    id="answer_{{ $question->id }}"
-                                    name="answer_{{ $question->id }}"
+                                    id="answer_q{{ $question->id }}"
+                                    name="answers[{{ $question->id }}]"
                                     rows="6"
-                                    class="summernote-editor block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300"
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 resize-vertical"
                                     placeholder="Tulis jawaban Anda untuk soal {{ $index + 1 }}..."
-                                    required
-                                >{{ old("answer_{$question->id}") }}</textarea>
-                                @error("answer_{$question->id}")
+                                    required>{{ old("answers.{$question->id}") }}</textarea>
+                                @error("answers.{$question->id}")
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -85,7 +84,9 @@
                         <p class="text-sm text-gray-600 dark:text-gray-400">
                             Total: {{ $questions->sum('max_score') }} poin
                         </p>
-                        <x-primary-button>{{ __('Kirim Semua Jawaban') }}</x-primary-button>
+                        <button type="submit" class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
+                            {{ __('Kirim Semua Jawaban') }}
+                        </button>
                     </div>
                 </form>
             @endif
