@@ -56,7 +56,11 @@ class EssaySubmission extends Model
      */
     public function getTotalScoreAttribute()
     {
-        return $this->answers()->whereNotNull('score')->avg('score') ?? 0;
+        if (!$this->content->scoring_enabled) {
+            return null;
+        }
+
+        return $this->answers()->sum('score');
     }
 
     /**
@@ -64,7 +68,13 @@ class EssaySubmission extends Model
      */
     public function getMaxTotalScoreAttribute()
     {
-        return $this->content->essayQuestions->sum('max_score') ?: 100;
+        if (!$this->content->scoring_enabled) {
+            return null;
+        }
+
+        return $this->answers()
+            ->join('essay_questions', 'essay_answers.question_id', '=', 'essay_questions.id')
+            ->sum('essay_questions.max_score');
     }
 
     /**
@@ -72,12 +82,15 @@ class EssaySubmission extends Model
      */
     public function getIsFullyGradedAttribute()
     {
-        if ($this->answers->count() === 0) return false;
+        // Jika essay tidak memerlukan scoring, return true
+        if (!$this->content->scoring_enabled) {
+            return true;
+        }
 
-        $totalQuestions = $this->content->essayQuestions()->count();
-        $gradedAnswers = $this->answers()->whereNotNull('score')->count();
-
-        return $gradedAnswers === $totalQuestions;
+        // Untuk essay dengan scoring, cek apakah semua answers sudah ada score
+        return $this->answers()
+            ->whereNotNull('score')
+            ->count() === $this->answers()->count();
     }
 
     /**
@@ -103,5 +116,10 @@ class EssaySubmission extends Model
     public function getAnswerAttribute()
     {
         return $this->answers->pluck('answer')->implode('<hr>');
+    }
+
+    public function needsGrading()
+    {
+        return $this->content->scoring_enabled && !$this->is_fully_graded;
     }
 }

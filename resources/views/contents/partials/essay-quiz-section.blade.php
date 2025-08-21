@@ -11,17 +11,39 @@
                 <p class="font-bold">Anda Sudah Mengumpulkan Jawaban</p>
                 <p>Jawaban Anda dikumpulkan pada: {{ $submission->created_at->format('d F Y, H:i') }}</p>
 
-                @if ($submission->is_fully_graded)
-                    <div class="mt-4">
-                        <a href="{{ route('essays.result', $submission->id) }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md inline-block">
-                            Lihat Nilai dan Feedback
-                        </a>
-                        <div class="mt-2">
-                            <span class="text-sm">Total Nilai: {{ $submission->total_score }}/{{ $submission->max_total_score }}</span>
+                {{-- Tampilkan score hanya jika scoring enabled --}}
+                @if ($content->scoring_enabled)
+                    @if ($submission->is_fully_graded)
+                        <div class="mt-4">
+                            <a href="{{ route('essays.result', $submission->id) }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md inline-block">
+                                Lihat Nilai dan Feedback
+                            </a>
+                            <div class="mt-2">
+                                <span class="text-sm">Total Nilai: {{ $submission->total_score }}/{{ $submission->max_total_score }}</span>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <p class="mt-2">Jawaban Anda sedang menunggu penilaian dari instruktur.</p>
+                    @endif
                 @else
-                    <p class="mt-2">Jawaban Anda sedang menunggu penilaian dari instruktur.</p>
+                    <div class="mt-4">
+                        <div class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Essay Berhasil Dikumpulkan
+                        </div>
+                        <p class="mt-2 text-sm">Essay ini tidak memerlukan penilaian.</p>
+                        
+                        {{-- Link untuk melihat feedback jika ada --}}
+                        @if ($submission->answers()->whereNotNull('feedback')->exists())
+                            <div class="mt-3">
+                                <a href="{{ route('essays.result', $submission->id) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md inline-block">
+                                    Lihat Catatan Instruktur
+                                </a>
+                            </div>
+                        @endif
+                    </div>
                 @endif
             </div>
 
@@ -43,37 +65,26 @@
                 {{-- NEW SYSTEM: Multiple questions --}}
                 <form action="{{ route('essays.store', $content) }}" method="POST" class="mt-6">
                     @csrf
-                    <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-                        Jawab Pertanyaan Essay ({{ $questions->count() }} Soal)
-                    </h3>
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Pertanyaan Essay</h3>
                     
-                    @foreach ($questions->sortBy('order') as $index => $question)
-                        <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border">
-                            <div class="flex justify-between items-start mb-4">
-                                <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                                    Soal {{ $index + 1 }}
-                                </h4>
-                                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                                    {{ $question->max_score }} poin
-                                </span>
+                    @foreach($questions as $index => $question)
+                        <div class="mb-6 p-4 border border-gray-200 rounded-lg">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="text-lg font-medium text-gray-700">Pertanyaan {{ $index + 1 }}</h4>
+                                {{-- Tampilkan max score hanya jika scoring enabled --}}
+                                @if ($content->scoring_enabled)
+                                    <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">{{ $question->max_score }} poin</span>
+                                @endif
                             </div>
-                            
-                            <div class="prose dark:prose-invert max-w-none mb-4">
-                                {!! nl2br(e($question->question)) !!}
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label for="answer_q{{ $question->id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Jawaban Anda:
-                                </label>
-                                <textarea
-                                    id="answer_q{{ $question->id }}"
-                                    name="answers[{{ $question->id }}]"
-                                    rows="6"
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 resize-vertical"
-                                    placeholder="Tulis jawaban Anda untuk soal {{ $index + 1 }}..."
-                                    required>{{ old("answers.{$question->id}") }}</textarea>
-                                @error("answers.{$question->id}")
+                            <p class="text-gray-600 mb-4">{{ $question->question }}</p>
+                            <div>
+                                <textarea 
+                                    name="answer_{{ $question->id }}" 
+                                    rows="6" 
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="Tulis jawaban Anda di sini..."
+                                    required>{{ old("answer_{$question->id}") }}</textarea>
+                                @error("answer_{$question->id}")
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -81,9 +92,16 @@
                     @endforeach
                     
                     <div class="mt-6 flex items-center justify-between">
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                            Total: {{ $questions->sum('max_score') }} poin
-                        </p>
+                        {{-- Tampilkan total score hanya jika scoring enabled --}}
+                        @if ($content->scoring_enabled)
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                Total: {{ $questions->sum('max_score') }} poin
+                            </p>
+                        @else
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                {{ $questions->count() }} pertanyaan
+                            </p>
+                        @endif
                         <button type="submit" class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
                             {{ __('Kirim Semua Jawaban') }}
                         </button>
@@ -94,7 +112,28 @@
         {{-- JIKA USER BISA EDIT CONTENT (instructor/admin) --}}
         @elseif (Auth::user()->can('update', $content->lesson->course))
             <div class="mt-6">
-                <h3 class="text-lg font-semibold mb-4">Kelola Pertanyaan Essay</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Kelola Pertanyaan Essay</h3>
+                    {{-- Status scoring indicator --}}
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-600">Status Penilaian:</span>
+                        @if ($content->scoring_enabled)
+                            <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Dengan Penilaian
+                            </span>
+                        @else
+                            <span class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Tanpa Penilaian
+                            </span>
+                        @endif
+                    </div>
+                </div>
                 
                 {{-- Form tambah pertanyaan --}}
                 <form action="{{ route('essay.questions.store', $content) }}" method="POST" class="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -113,92 +152,59 @@
                         ></textarea>
                     </div>
                     
-                    <div class="mb-4">
-                        <label for="max_score" class="block text-sm font-medium text-gray-700 mb-2">
-                            Skor Maksimal:
-                        </label>
-                        <input
-                            type="number"
-                            id="max_score"
-                            name="max_score"
-                            min="1"
-                            max="1000"
-                            value="100"
-                            class="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                            required
-                        >
-                    </div>
+                    {{-- Max score input hanya tampil jika scoring enabled --}}
+                    @if ($content->scoring_enabled)
+                        <div class="mb-4">
+                            <label for="max_score" class="block text-sm font-medium text-gray-700 mb-2">
+                                Skor Maksimal:
+                            </label>
+                            <input
+                                type="number"
+                                id="max_score"
+                                name="max_score"
+                                min="1"
+                                value="100"
+                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                required
+                            >
+                        </div>
+                    @else
+                        <input type="hidden" name="max_score" value="0">
+                    @endif
                     
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors">
                         Tambah Pertanyaan
                     </button>
                 </form>
 
-                {{-- List pertanyaan existing --}}
-                @if ($questions->count() > 0)
+                {{-- Daftar pertanyaan existing --}}
+                @if($questions->count() > 0)
                     <div class="space-y-4">
-                        <h4 class="font-medium">Pertanyaan yang Ada ({{ $questions->count() }})</h4>
-                        @foreach ($questions as $index => $question)
-                            <div class="flex items-start justify-between p-4 bg-white border rounded-lg">
-                                <div class="flex-1">
-                                    <h5 class="font-medium">Soal {{ $index + 1 }} ({{ $question->max_score }} poin)</h5>
-                                    <p class="text-gray-600 mt-1">{!! nl2br(e(Str::limit($question->question, 200))) !!}</p>
+                        @foreach($questions as $index => $question)
+                            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <h4 class="font-medium text-gray-700">Pertanyaan {{ $index + 1 }}</h4>
+                                        <p class="text-gray-600 mt-1">{{ $question->question }}</p>
+                                        {{-- Tampilkan max score hanya jika scoring enabled --}}
+                                        @if ($content->scoring_enabled)
+                                            <span class="text-sm text-gray-500 mt-2 inline-block">Skor Maksimal: {{ $question->max_score }} poin</span>
+                                        @endif
+                                    </div>
+                                    <form action="{{ route('essay.questions.destroy', $question) }}" method="POST" class="ml-4">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800" onclick="return confirm('Hapus pertanyaan ini?')">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
                                 </div>
-                                <form action="{{ route('essay.questions.destroy', $question->id) }}" method="POST" class="ml-4">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" 
-                                            class="text-red-600 hover:text-red-800 text-sm"
-                                            onclick="return confirm('Yakin ingin menghapus pertanyaan ini?')">
-                                        Hapus
-                                    </button>
-                                </form>
                             </div>
                         @endforeach
-                        <p class="text-sm text-gray-500">
-                            Total skor maksimal: {{ $questions->sum('max_score') }} poin
-                        </p>
                     </div>
                 @endif
-            </div>
-        @endif
-    </div>
-
-@elseif ($content->type == 'quiz' && $content->quiz)
-    {{-- QUIZ LOGIC TETAP SAMA --}}
-    @php
-        $latestAttempt = Auth::user()
-            ->quizAttempts()
-            ->where('quiz_id', $content->quiz->id)
-            ->latest('created_at')
-            ->first();
-        
-        $hasPassed = $latestAttempt && $latestAttempt->score >= $content->quiz->passing_grade;
-    @endphp
-
-    <div class="mt-6 border-t pt-6">
-        @if($latestAttempt)
-            <h3 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Hasil Kuis</h3>
-            <div class="p-4 rounded-md border {{ $hasPassed ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300' }}">
-                <p class="font-semibold {{ $hasPassed ? 'text-green-800' : 'text-red-800' }}">
-                    Skor: {{ $latestAttempt->score }}/{{ $content->quiz->total_points }}
-                    ({{ number_format(($latestAttempt->score / $content->quiz->total_points) * 100, 1) }}%)
-                </p>
-                <p class="text-sm {{ $hasPassed ? 'text-green-600' : 'text-red-600' }}">
-                    {{ $hasPassed ? 'Lulus' : 'Tidak Lulus' }} - Batas Kelulusan: {{ $content->quiz->passing_grade }}%
-                </p>
-                <a href="{{ route('quizzes.result', [$content->quiz, $latestAttempt]) }}" 
-                   class="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                    Lihat Detail Hasil
-                </a>
-            </div>
-        @elseif(Auth::user()->hasRole('participant'))
-            <div class="text-center">
-                <p class="mb-4 text-gray-600 dark:text-gray-400">Kuis belum pernah dikerjakan</p>
-                <a href="{{ route('quizzes.start', $content->quiz) }}" 
-                   class="inline-block px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
-                    Mulai Kuis
-                </a>
             </div>
         @endif
     </div>

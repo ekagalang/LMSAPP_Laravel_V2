@@ -18,29 +18,35 @@
                     {{-- Info Submission --}}
                     <div class="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <h3 class="text-lg font-bold mb-2">Informasi Submission</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-{{ $submission->content->scoring_enabled ? '3' : '2' }} gap-4 text-sm">
                             <div>
                                 <span class="font-medium">Dikumpulkan:</span><br>
                                 {{ $submission->created_at->format('d F Y, H:i') }}
                             </div>
                             <div>
                                 <span class="font-medium">Status:</span><br>
-                                @if($submission->is_fully_graded)
-                                    <span class="text-green-600">Sudah Dinilai</span>
+                                @if($submission->content->scoring_enabled)
+                                    @if($submission->is_fully_graded)
+                                        <span class="text-green-600">Sudah Dinilai</span>
+                                    @else
+                                        <span class="text-yellow-600">Menunggu Penilaian</span>
+                                    @endif
                                 @else
-                                    <span class="text-yellow-600">Menunggu Penilaian</span>
+                                    <span class="text-blue-600">Berhasil Dikumpulkan</span>
                                 @endif
                             </div>
-                            <div>
-                                <span class="font-medium">Total Nilai:</span><br>
-                                @if($submission->is_fully_graded)
-                                    <span class="text-2xl font-bold text-blue-600">
-                                        {{ $submission->total_score }}/{{ $submission->max_total_score }}
-                                    </span>
-                                @else
-                                    <span class="text-gray-500">Belum dinilai</span>
-                                @endif
-                            </div>
+                            @if($submission->content->scoring_enabled)
+                                <div>
+                                    <span class="font-medium">Total Nilai:</span><br>
+                                    @if($submission->is_fully_graded)
+                                        <span class="text-2xl font-bold text-blue-600">
+                                            {{ $submission->total_score }}/{{ $submission->max_total_score }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-500">Belum dinilai</span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -56,7 +62,7 @@
                                             Essay Answer
                                         @endif
                                     </h3>
-                                    @if($answer->question)
+                                    @if($answer->question && $submission->content->scoring_enabled)
                                         <span class="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded">
                                             {{ $answer->question->max_score }} poin
                                         </span>
@@ -79,39 +85,66 @@
                                     </div>
                                 </div>
 
-                                {{-- Grading Section --}}
-                                @if($answer->score !== null)
-                                    <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <div class="bg-green-100 dark:bg-green-900 p-4 rounded-lg">
-                                                <p class="text-sm text-green-800 dark:text-green-200">Nilai:</p>
-                                                <p class="text-3xl font-bold text-green-900 dark:text-green-100">
-                                                    {{ $answer->score }}@if($answer->question)/{{ $answer->question->max_score }}@endif
-                                                </p>
+                                {{-- Grading Section - hanya tampil jika scoring enabled --}}
+                                @if($submission->content->scoring_enabled)
+                                    @if($answer->score !== null)
+                                        <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div class="bg-green-100 dark:bg-green-900 p-4 rounded-lg">
+                                                    <p class="text-sm text-green-800 dark:text-green-200">Nilai:</p>
+                                                    <p class="text-3xl font-bold text-green-900 dark:text-green-100">
+                                                        {{ $answer->score }}@if($answer->question)/{{ $answer->question->max_score }}@endif
+                                                    </p>
+                                                </div>
+                                                <div class="md:col-span-2 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                                                    <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                                                        Feedback dari Instruktur:
+                                                    </p>
+                                                    <p class="mt-2 text-gray-800 dark:text-gray-200">
+                                                        {{ $answer->feedback ?: 'Tidak ada feedback khusus untuk soal ini.' }}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div class="md:col-span-2 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
-                                                <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                                                    Feedback dari Instruktur:
+                                        </div>
+                                    @else
+                                        <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+                                            <p class="text-gray-500 text-center py-4">
+                                                Soal ini belum dinilai oleh instruktur.
+                                            </p>
+                                        </div>
+                                    @endif
+                                @else
+                                    {{-- Essay tanpa scoring - hanya tampilkan feedback jika ada --}}
+                                    @if($answer->feedback)
+                                        <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+                                            <div class="bg-blue-100 dark:bg-blue-900 p-4 rounded-lg">
+                                                <p class="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                                                    Catatan dari Instruktur:
                                                 </p>
-                                                <p class="mt-2 text-gray-800 dark:text-gray-200">
-                                                    {{ $answer->feedback ?: 'Tidak ada feedback khusus untuk soal ini.' }}
+                                                <p class="mt-2 text-blue-900 dark:text-blue-100">
+                                                    {{ $answer->feedback }}
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
-                                @else
-                                    <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
-                                        <p class="text-gray-500 text-center py-4">
-                                            Soal ini belum dinilai oleh instruktur.
-                                        </p>
-                                    </div>
+                                    @else
+                                        <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+                                            <div class="bg-green-100 dark:bg-green-900 p-4 rounded-lg text-center">
+                                                <p class="text-green-800 dark:text-green-200 font-medium">
+                                                    Essay berhasil dikumpulkan
+                                                </p>
+                                                <p class="text-sm text-green-600 dark:text-green-300 mt-1">
+                                                    Essay ini tidak memerlukan penilaian
+                                                </p>
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endif
                             </div>
                         </div>
                     @endforeach
 
-                    {{-- Overall Grade Summary --}}
-                    @if($submission->is_fully_graded && $submission->answers->count() > 1)
+                    {{-- Overall Grade Summary - hanya tampil jika scoring enabled --}}
+                    @if($submission->content->scoring_enabled && $submission->is_fully_graded && $submission->answers->count() > 1)
                         <div class="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
                             <h3 class="text-lg font-bold mb-4 text-blue-900 dark:text-blue-100">
                                 Ringkasan Nilai

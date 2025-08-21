@@ -69,7 +69,6 @@ class GradebookController extends Controller
      */
     public function showUserEssays(Course $course, User $user)
     {
-        // PERBAIKAN: Menggunakan 'grade' sebagai otorisasi, bukan 'update'
         $this->authorize('grade', $course);
 
         $essayContentIds = $course->lessons()->with('contents')
@@ -91,26 +90,39 @@ class GradebookController extends Controller
     {
         $this->authorize('grade', $submission->content->lesson->course);
 
+        // Cek apakah essay memerlukan scoring
+        if (!$submission->content->scoring_enabled) {
+            // Untuk essay tanpa scoring, hanya simpan feedback
+            $validated = $request->validate([
+                'feedback' => 'nullable|string',
+            ]);
+
+            $answer = $submission->answers()->first();
+            if ($answer) {
+                $answer->update(['feedback' => $validated['feedback']]);
+            }
+
+            return redirect()->route('gradebook.user_essays', [
+                'course' => $submission->content->lesson->course->id,
+                'user' => $submission->user_id
+            ])->with('success', 'Catatan untuk ' . $submission->user->name . ' berhasil disimpan.');
+        }
+
+        // Untuk essay dengan scoring
         $validated = $request->validate([
             'score' => 'required|integer|min:0|max:100',
             'feedback' => 'nullable|string',
         ]);
 
-        // PERBAIKAN: Cek apakah kolom 'status' ada sebelum update
         $updateData = $validated + ['graded_at' => now()];
 
         try {
-            // Coba update dengan status jika kolom ada
             $updateData['status'] = 'graded';
             $submission->update($updateData);
         } catch (\Exception $e) {
-            // Jika error (kolom status tidak ada), update tanpa status
             unset($updateData['status']);
             $submission->update($updateData);
         }
-
-        $course = $submission->content->lesson->course;
-        $user = $submission->user;
 
         return redirect()->route('gradebook.user_essays', [
             'course' => $submission->content->lesson->course->id,
@@ -123,7 +135,6 @@ class GradebookController extends Controller
      */
     public function storeFeedback(Request $request, Course $course, User $user)
     {
-        // PERBAIKAN: Menggunakan 'grade' sebagai otorisasi, bukan 'update'
         $this->authorize('grade', $course);
 
         $request->validate(['feedback' => 'required|string']);
@@ -146,35 +157,43 @@ class GradebookController extends Controller
         $gradedCount = 0;
 
         DB::transaction(function () use ($scores, $feedbacks, $submission, &$gradedCount) {
-            foreach ($scores as $answerId => $score) {
-                if ($score !== null && $score !== '') {
-                    $answer = \App\Models\EssayAnswer::where('id', $answerId)
-                        ->where('submission_id', $submission->id)
-                        ->first();
+            foreach ($feedbacks as $answerId => $feedback) {
+                $answer = \App\Models\EssayAnswer::where('id', $answerId)
+                    ->where('submission_id', $submission->id)
+                    ->first();
 
-                    if ($answer) {
-                        $answer->update([
-                            'score' => (int) $score,
-                            'feedback' => $feedbacks[$answerId] ?? null,
-                        ]);
+                if ($answer) {
+                    $updateData = ['feedback' => $feedback];
+                    
+                    // Hanya update score jika scoring enabled dan score diberikan
+                    if ($submission->content->scoring_enabled && isset($scores[$answerId]) && $scores[$answerId] !== null && $scores[$answerId] !== '') {
+                        $updateData['score'] = (int) $scores[$answerId];
                         $gradedCount++;
                     }
+
+                    $answer->update($updateData);
                 }
             }
 
-            // Update submission graded_at if all questions are graded
-            $totalQuestions = $submission->content->essayQuestions()->count();
-            $currentGradedAnswers = $submission->answers()->whereNotNull('score')->count();
+            // Update submission graded_at jika scoring enabled dan semua questions sudah graded
+            if ($submission->content->scoring_enabled) {
+                $totalQuestions = $submission->content->essayQuestions()->count();
+                $currentGradedAnswers = $submission->answers()->whereNotNull('score')->count();
 
-            if ($currentGradedAnswers >= $totalQuestions) {
-                $submission->update([
-                    'graded_at' => now(),
-                    'status' => 'graded'
-                ]);
+                if ($currentGradedAnswers >= $totalQuestions) {
+                    $submission->update([
+                        'graded_at' => now(),
+                        'status' => 'graded'
+                    ]);
+                }
             }
         });
 
-        $message = "Berhasil menyimpan {$gradedCount} nilai.";
+        if ($submission->content->scoring_enabled) {
+            $message = "Berhasil menyimpan {$gradedCount} nilai.";
+        } else {
+            $message = "Catatan berhasil disimpan.";
+        }
 
         return redirect()->back()->with('success', $message);
     }
@@ -192,6 +211,10 @@ class GradebookController extends Controller
             'user'
         ]);
 
-        return view('gradebook.essay_detail', compact('submission'));
+        // Calculate progress variables untuk view
+        $totalQuestions = $submission->content->essayQuestions()->count();
+        $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+
+        return view('gradebook.essay_detail', compact('submission', 'totalQuestions', 'gradedAnswers'));
     }
 }

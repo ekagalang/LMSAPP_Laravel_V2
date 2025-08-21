@@ -73,7 +73,9 @@
 
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden"
                  x-data="contentFormManager({
-                     content: {{ Js::from($content) }},
+                     content: @js(array_merge($content->toArray(), [
+                         'scoring_enabled' => old('scoring_enabled', $content->scoring_enabled ?? true)
+                     ])),
                      createUrl: '{{ route('lessons.contents.store', $lesson) }}',
                      updateUrl: '{{ $content->exists ? route('lessons.contents.update', [$lesson, $content]) : '' }}'
                  })"
@@ -212,6 +214,41 @@
                                     </div>
                                 </label>
                             </div>
+
+                            <div x-show="content.type === 'essay'" x-transition class="mb-6">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h4 class="text-sm font-medium text-blue-900 mb-1">Pengaturan Penilaian Essay</h4>
+                                            <p class="text-xs text-blue-700">Pilih apakah essay ini memerlukan penilaian atau tidak</p>
+                                        </div>
+                                        <div class="flex items-center space-x-3">
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" 
+                                                    name="scoring_enabled" 
+                                                    value="1" 
+                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'checked' : '' }}
+                                                    x-model="content.scoring_enabled"
+                                                    class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                                <span class="ml-2 text-sm text-gray-700">Dengan Penilaian</span>
+                                            </label>
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" 
+                                                    name="scoring_enabled" 
+                                                    value="0" 
+                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? '' : 'checked' }}
+                                                    x-model="content.scoring_enabled"
+                                                    class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                                <span class="ml-2 text-sm text-gray-700">Tanpa Penilaian</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 text-xs text-blue-600">
+                                        <p><strong>Dengan Penilaian:</strong> Instruktur dapat memberikan nilai dan feedback pada essay siswa</p>
+                                        <p><strong>Tanpa Penilaian:</strong> Essay hanya sebagai tugas pengumpulan, tanpa scoring</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -273,9 +310,16 @@
                                                     <span class="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
                                                         Soal {{ $index + 1 }}
                                                     </span>
-                                                    <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                        {{ $question->max_score }} poin
-                                                    </span>
+                                                    {{-- 🆕 Tampilkan score hanya jika scoring enabled --}}
+                                                    @if($content->scoring_enabled)
+                                                        <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                            {{ $question->max_score }} poin
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                                                            Tanpa Penilaian
+                                                        </span>
+                                                    @endif
                                                 </div>
                                                 <div class="text-sm text-gray-700 leading-relaxed">
                                                     {!! nl2br(e($question->question)) !!}
@@ -342,7 +386,8 @@
                                                         ></textarea>
                                                     </div>
                                                     
-                                                    <div class="w-40">
+                                                    {{-- 🆕 Max score input - hanya tampil jika scoring enabled --}}
+                                                    <div x-show="$root.content.scoring_enabled" class="w-40">
                                                         <label class="block text-sm font-medium text-gray-700 mb-2">
                                                             Skor Maksimal <span class="text-red-500">*</span>
                                                         </label>
@@ -353,9 +398,14 @@
                                                             min="1" 
                                                             max="1000"
                                                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                                            required
+                                                            :required="$root.content.scoring_enabled"
                                                         />
                                                     </div>
+                                                    
+                                                    {{-- 🆕 Hidden input untuk max_score jika scoring disabled --}}
+                                                    <template x-if="!$root.content.scoring_enabled">
+                                                        <input type="hidden" :name="'questions[' + index + '][max_score]'" value="0">
+                                                    </template>
                                                 </div>
                                             </div>
                                         </template>
@@ -375,8 +425,12 @@
                                                 <p class="text-sm text-gray-600">
                                                     Pertanyaan Baru: <span x-text="questions.length" class="font-semibold"></span>
                                                 </p>
-                                                <p class="text-sm text-gray-600">
+                                                {{-- 🆕 Total score hanya tampil jika scoring enabled --}}
+                                                <p x-show="$root.content.scoring_enabled" class="text-sm text-gray-600">
                                                     Total Skor Baru: <span x-text="totalScore" class="font-semibold text-green-600"></span> poin
+                                                </p>
+                                                <p x-show="!$root.content.scoring_enabled" class="text-sm text-blue-600">
+                                                    Mode: <span class="font-semibold">Tanpa Penilaian</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -704,7 +758,18 @@
                 uploadedImagePreviewUrl: null,
 
                 initForm() {
+                    // 🆕 TAMBAHAN: Initialize scoring_enabled untuk essay
+                    if (!this.content.hasOwnProperty('scoring_enabled')) {
+                        this.content.scoring_enabled = {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'true' : 'false' }};
+                    }
+
                     this.$watch('content.type', (newType) => this.handleTypeChange(newType));
+
+                    // 🆕 TAMBAHAN: Watch scoring_enabled changes
+                    this.$watch('content.scoring_enabled', (value) => {
+                        console.log('Scoring enabled changed to:', value);
+                        // Bisa tambah logic tambahan jika diperlukan
+                    });
 
                     if (this.content.type === 'zoom' && this.content.body) {
                     try {
@@ -713,7 +778,7 @@
                         this.content.zoom_meeting_id = zoomDetails.meeting_id || '';
                         this.content.zoom_password = zoomDetails.password || '';
                         
-                        // ✅ NEW: Parse scheduling data dari JSON body
+                        // Parse scheduling data dari JSON body
                         this.content.is_scheduled = zoomDetails.is_scheduled || false;
                         this.content.timezone = zoomDetails.timezone || 'Asia/Jakarta';
                     } catch (e) {
@@ -798,6 +863,11 @@
                         this.content.scheduled_end = '';
                         this.content.timezone = 'Asia/Jakarta';
                     }
+
+                    // 🆕 TAMBAHAN: Reset scoring_enabled to true when changing to essay
+                    if (type === 'essay' && !this.content.hasOwnProperty('scoring_enabled')) {
+                        this.content.scoring_enabled = true;
+                    }
                 },
 
                 submitForm() {
@@ -827,7 +897,7 @@
                             this.errors.zoom_meeting_id = 'Meeting ID tidak boleh kosong.';
                         }
                         
-                        // ✅ NEW: Scheduling validation
+                        // Scheduling validation
                         if (this.content.is_scheduled) {
                             if (!this.content.scheduled_start) {
                                 this.errors.scheduled_start = 'Waktu mulai harus diisi';
@@ -853,7 +923,7 @@
                     return Object.keys(this.errors).length === 0;
                 },
 
-                // ✅ NEW: Helper method untuk debug scheduling
+                // Helper method untuk debug scheduling
                 debugScheduling() {
                     console.log('Zoom Scheduling Debug:', {
                         is_scheduled: this.content.is_scheduled,
@@ -891,7 +961,7 @@
                     return {
                         title: this.content.title || '',
                         description: '',
-                        duration: 0, // Ditambahkan: default duration
+                        duration: 0,
                         total_marks: 100,
                         pass_marks: 70,
                         status: 'draft',
@@ -934,9 +1004,8 @@
             }
         }
 
-        // ✅ TESTING: Add console debug untuk development
+        // Debug helper untuk development
         document.addEventListener('DOMContentLoaded', function() {
-            // Debug helper - remove in production
             if (typeof window.debugZoomScheduling === 'undefined') {
                 window.debugZoomScheduling = function() {
                     const alpine = document.querySelector('[x-data]').__x;
@@ -950,42 +1019,48 @@
             }
         });
 
+        // 🆕 TAMBAHAN: Essay Questions Manager dengan scoring awareness
         function essayQuestionsManager() {
-    return {
-        questions: [
-            { text: '', max_score: 100 }
-        ],
-        
-        get totalScore() {
-            return this.questions.reduce((total, q) => total + parseInt(q.max_score || 0), 0);
-        },
-        
-        addQuestion() {
-            this.questions.push({ text: '', max_score: 100 });
-            console.log('Question added, total:', this.questions.length);
-        },
-        
-        removeQuestion(index) {
-            if (this.questions.length > 1) {
-                this.questions.splice(index, 1);
-                console.log('Question removed, total:', this.questions.length);
-            }
-        },
+            return {
+                questions: [
+                    { text: '', max_score: 100 }
+                ],
+                
+                get totalScore() {
+                    // 🆕 Hanya hitung total jika scoring enabled
+                    const parentComponent = this.$root;
+                    if (parentComponent && parentComponent.content && !parentComponent.content.scoring_enabled) {
+                        return 0;
+                    }
+                    return this.questions.reduce((total, q) => total + parseInt(q.max_score || 0), 0);
+                },
+                
+                addQuestion() {
+                    this.questions.push({ text: '', max_score: 100 });
+                    console.log('Question added, total:', this.questions.length);
+                },
+                
+                removeQuestion(index) {
+                    if (this.questions.length > 1) {
+                        this.questions.splice(index, 1);
+                        console.log('Question removed, total:', this.questions.length);
+                    }
+                },
 
-        init() {
-            console.log('Essay Questions Manager initialized');
-            
-            // Jika edit content lama tanpa questions, load dari body
-            @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
-                this.questions = [{ text: @json(strip_tags($content->body)), max_score: 100 }];
-                console.log('Loaded legacy question from body');
-            @else
-                this.questions = [{ text: '', max_score: 100 }];
-                console.log('Started with empty question');
-            @endif
+                init() {
+                    console.log('Essay Questions Manager initialized');
+                    
+                    // Jika edit content lama tanpa questions, load dari body
+                    @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
+                        this.questions = [{ text: @json(strip_tags($content->body)), max_score: 100 }];
+                        console.log('Loaded legacy question from body');
+                    @else
+                        this.questions = [{ text: '', max_score: 100 }];
+                        console.log('Started with empty question');
+                    @endif
+                }
+            }
         }
-    }
-}
     </script>
     @endpush
 </x-app-layout>

@@ -358,6 +358,11 @@ class ContentController extends Controller
             'file_upload' => 'nullable|file|max:102400',
         ];
 
+        // 🆕 TAMBAHAN: Validasi untuk scoring_enabled pada essay
+        if ($request->input('type') === 'essay') {
+            $rules['scoring_enabled'] = 'nullable|boolean';
+        }
+
         // PERBAIKAN: Validasi untuk essay questions (hanya jika ada questions)
         if ($request->input('type') === 'essay' && $request->has('questions')) {
             $rules['questions'] = 'required|array|min:1';
@@ -401,6 +406,11 @@ class ContentController extends Controller
         try {
             $content->lesson_id = $lesson->id;
             $content->fill($validated);
+
+            // 🆕 TAMBAHAN: Set scoring_enabled untuk essay (default true untuk backward compatibility)
+            if ($validated['type'] === 'essay') {
+                $content->scoring_enabled = $request->input('scoring_enabled', true);
+            }
 
             // PERBAIKAN: Secara eksplisit atur kolom 'body' dari sumber yang benar
             if ($bodySource) {
@@ -474,6 +484,7 @@ class ContentController extends Controller
 
         return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil disimpan.');
     }
+
     private function saveEssayQuestions($content, $questionsData)
     {
         // Hapus questions lama jika edit
@@ -483,7 +494,8 @@ class ContentController extends Controller
         foreach ($questionsData as $index => $questionData) {
             $content->essayQuestions()->create([
                 'question' => $questionData['text'],
-                'max_score' => $questionData['max_score'],
+                // 🆕 Set max_score berdasarkan scoring_enabled
+                'max_score' => $content->scoring_enabled ? $questionData['max_score'] : 0,
                 'order' => $index + 1,
             ]);
         }

@@ -14,24 +14,27 @@ class EssayQuestionController extends Controller
      */
     public function store(Request $request, Content $content)
     {
-        // Check permission - hanya yang bisa update course
-        $course = $content->lesson->course;
-        $this->authorize('update', $course);
+        $this->authorize('update', $content->lesson->course);
 
-        $request->validate([
+        $rules = [
             'question' => 'required|string',
-            'max_score' => 'required|integer|min:1|max:1000',
-        ]);
+        ];
 
-        $maxOrder = $content->essayQuestions()->max('order') ?? 0;
+        // 🆕 Max score hanya required jika scoring enabled
+        if ($content->scoring_enabled) {
+            $rules['max_score'] = 'required|integer|min:1|max:10000';
+        }
+
+        $validated = $request->validate($rules);
 
         $content->essayQuestions()->create([
-            'question' => $request->question,
-            'max_score' => $request->max_score,
-            'order' => $maxOrder + 1,
+            'question' => $validated['question'],
+            // 🆕 Set max_score berdasarkan scoring_enabled
+            'max_score' => $content->scoring_enabled ? $validated['max_score'] : 0,
+            'order' => $content->essayQuestions()->max('order') + 1,
         ]);
 
-        return back()->with('success', 'Pertanyaan berhasil ditambahkan!');
+        return back()->with('success', 'Pertanyaan essay berhasil ditambahkan.');
     }
 
     /**
@@ -73,24 +76,28 @@ class EssayQuestionController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function update(Request $request, $questionId)
+    public function update(Request $request, EssayQuestion $question)
     {
-        $question = EssayQuestion::findOrFail($questionId);
-        
-        // Check permission
-        $course = $question->content->lesson->course;
-        $this->authorize('update', $course);
+        $content = $question->content;
+        $this->authorize('update', $content->lesson->course);
 
-        $request->validate([
+        $rules = [
             'question' => 'required|string',
-            'max_score' => 'required|integer|min:1|max:1000',
-        ]);
+        ];
+
+        // 🆕 Max score hanya required jika scoring enabled
+        if ($content->scoring_enabled) {
+            $rules['max_score'] = 'required|integer|min:1|max:10000';
+        }
+
+        $validated = $request->validate($rules);
 
         $question->update([
-            'question' => $request->question,
-            'max_score' => $request->max_score,
+            'question' => $validated['question'],
+            // 🆕 Set max_score berdasarkan scoring_enabled
+            'max_score' => $content->scoring_enabled ? $validated['max_score'] : 0,
         ]);
 
-        return back()->with('success', 'Pertanyaan berhasil diupdate!');
+        return back()->with('success', 'Pertanyaan essay berhasil diperbarui.');
     }
 }
