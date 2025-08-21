@@ -151,9 +151,37 @@ class GradebookController extends Controller
     {
         $this->authorize('grade', $submission->content->lesson->course);
 
+        if (!$submission->content->scoring_enabled) {
+            // Handle feedback only for non-scoring essays
+            $feedbacks = $request->input('feedback', []);
+            
+            DB::transaction(function () use ($feedbacks, $submission) {
+                foreach ($feedbacks as $answerId => $feedback) {
+                    $answer = \App\Models\EssayAnswer::where('id', $answerId)
+                        ->where('submission_id', $submission->id)
+                        ->first();
+
+                    if ($answer) {
+                        $answer->update(['feedback' => $feedback]);
+                    }
+                }
+            });
+
+            return redirect()->back()->with('success', 'Catatan berhasil disimpan.');
+        }
+
+        // Handle scoring essays based on grading mode
+        if ($submission->content->grading_mode === 'overall') {
+            return $this->storeOverallGrade($request, $submission);
+        } else {
+            return $this->storeIndividualGrades($request, $submission);
+        }
+    }
+
+    private function storeIndividualGrades(Request $request, EssaySubmission $submission)
+    {
         $scores = $request->input('scores', []);
         $feedbacks = $request->input('feedback', []);
-
         $gradedCount = 0;
 
         DB::transaction(function () use ($scores, $feedbacks, $submission, &$gradedCount) {
@@ -165,8 +193,7 @@ class GradebookController extends Controller
                 if ($answer) {
                     $updateData = ['feedback' => $feedback];
                     
-                    // Hanya update score jika scoring enabled dan score diberikan
-                    if ($submission->content->scoring_enabled && isset($scores[$answerId]) && $scores[$answerId] !== null && $scores[$answerId] !== '') {
+                    if (isset($scores[$answerId]) && $scores[$answerId] !== null && $scores[$answerId] !== '') {
                         $updateData['score'] = (int) $scores[$answerId];
                         $gradedCount++;
                     }
@@ -175,27 +202,58 @@ class GradebookController extends Controller
                 }
             }
 
-            // Update submission graded_at jika scoring enabled dan semua questions sudah graded
-            if ($submission->content->scoring_enabled) {
-                $totalQuestions = $submission->content->essayQuestions()->count();
-                $currentGradedAnswers = $submission->answers()->whereNotNull('score')->count();
+            // Update submission graded_at jika semua questions sudah graded
+            $totalQuestions = $submission->content->essayQuestions()->count();
+            $currentGradedAnswers = $submission->answers()->whereNotNull('score')->count();
 
-                if ($currentGradedAnswers >= $totalQuestions) {
-                    $submission->update([
-                        'graded_at' => now(),
-                        'status' => 'graded'
-                    ]);
-                }
+            if ($currentGradedAnswers >= $totalQuestions) {
+                $submission->update([
+                    'graded_at' => now(),
+                    'status' => 'graded'
+                ]);
             }
         });
 
-        if ($submission->content->scoring_enabled) {
-            $message = "Berhasil menyimpan {$gradedCount} nilai.";
-        } else {
-            $message = "Catatan berhasil disimpan.";
-        }
-
+        $message = "Berhasil menyimpan {$gradedCount} nilai individual.";
         return redirect()->back()->with('success', $message);
+    }
+
+    private function storeOverallGrade(Request $request, EssaySubmission $submission)
+    {
+        $validated = $request->validate([
+            'overall_score' => 'required|integer|min:0|max:' . $submission->content->essayQuestions()->sum('max_score'),
+            'overall_feedback' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($validated, $submission) {
+            // Update all answers dengan score proporsional dan feedback yang sama
+            $questions = $submission->content->essayQuestions()->orderBy('order')->get();
+            $totalMaxScore = $questions->sum('max_score');
+            $overallScore = $validated['overall_score'];
+            
+            foreach ($questions as $question) {
+                $answer = $submission->answers()->where('question_id', $question->id)->first();
+                if ($answer) {
+                    // Hitung score proporsional untuk setiap pertanyaan
+                    $proportionalScore = $totalMaxScore > 0 
+                        ? round(($overallScore * $question->max_score) / $totalMaxScore) 
+                        : 0;
+                    
+                    $answer->update([
+                        'score' => $proportionalScore,
+                        'feedback' => $validated['overall_feedback']
+                    ]);
+                }
+            }
+
+            // Mark submission as graded
+            $submission->update([
+                'graded_at' => now(),
+                'status' => 'graded'
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Penilaian keseluruhan berhasil disimpan.');
     }
 
     public function showEssayDetail(EssaySubmission $submission)

@@ -361,6 +361,7 @@ class ContentController extends Controller
         // 🆕 TAMBAHAN: Validasi untuk scoring_enabled pada essay
         if ($request->input('type') === 'essay') {
             $rules['scoring_enabled'] = 'nullable|boolean';
+            $rules['grading_mode'] = 'nullable|in:individual,overall';
         }
 
         // PERBAIKAN: Validasi untuk essay questions (hanya jika ada questions)
@@ -410,6 +411,12 @@ class ContentController extends Controller
             // 🆕 TAMBAHAN: Set scoring_enabled untuk essay (default true untuk backward compatibility)
             if ($validated['type'] === 'essay') {
                 $content->scoring_enabled = $request->input('scoring_enabled', true);
+                $content->grading_mode = $request->input('grading_mode', 'individual');
+                
+                // Jika scoring disabled, set grading_mode ke individual sebagai default
+                if (!$content->scoring_enabled) {
+                    $content->grading_mode = 'individual';
+                }
             }
 
             // PERBAIKAN: Secara eksplisit atur kolom 'body' dari sumber yang benar
@@ -470,8 +477,6 @@ class ContentController extends Controller
             // PERBAIKAN: Handle essay questions HANYA jika ada questions data
             if ($validated['type'] === 'essay' && $request->has('questions') && !empty($validated['questions'])) {
                 $this->saveEssayQuestions($content, $validated['questions']);
-
-                // PERBAIKAN: Jika menggunakan system baru (questions), kosongkan body
                 $content->body = null;
                 $content->save();
             }

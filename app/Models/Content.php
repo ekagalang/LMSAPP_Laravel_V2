@@ -29,13 +29,15 @@ class Content extends Model
         'scheduled_end',
         'is_scheduled',
         'timezone_offset',
-
+        'scoring_enabled',
+        'grading_mode',
     ];
 
     protected $casts = [
         'scheduled_start' => 'datetime',
         'scheduled_end' => 'datetime',
         'is_scheduled' => 'boolean',
+        'scoring_enabled' => 'boolean',
     ];
 
     /**

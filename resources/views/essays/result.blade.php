@@ -20,6 +20,12 @@
                         <h3 class="text-lg font-bold mb-2">Informasi Submission</h3>
                         <div class="grid grid-cols-1 md:grid-cols-{{ $submission->content->scoring_enabled ? '3' : '2' }} gap-4 text-sm">
                             <div>
+                                <span class="font-medium">Mode Penilaian:</span><br>
+                                <span class="text-sm {{ $submission->content->grading_mode === 'overall' ? 'text-purple-600' : 'text-blue-600' }}">
+                                    {{ $submission->content->grading_mode === 'overall' ? 'Keseluruhan Essay' : 'Per Soal Individual' }}
+                                </span>
+                            </div>
+                            <div>
                                 <span class="font-medium">Dikumpulkan:</span><br>
                                 {{ $submission->created_at->format('d F Y, H:i') }}
                             </div>

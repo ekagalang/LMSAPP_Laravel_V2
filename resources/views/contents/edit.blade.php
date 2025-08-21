@@ -217,6 +217,53 @@
 
                             <div x-show="content.type === 'essay'" x-transition class="mb-6">
                                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                        <div class="mb-4">
+                                            <h4 class="text-sm font-medium text-indigo-900 mb-1">Model Penilaian Essay</h4>
+                                            <p class="text-xs text-indigo-700">Pilih cara memberikan nilai dan feedback</p>
+                                        </div>
+                                        
+                                        <div class="space-y-3">
+                                            <label class="flex items-start cursor-pointer">
+                                                <input type="radio" 
+                                                    name="grading_mode" 
+                                                    value="individual" 
+                                                    {{ old('grading_mode', $content->grading_mode ?? 'individual') === 'individual' ? 'checked' : '' }}
+                                                    x-model="content.grading_mode"
+                                                    class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
+                                                <div class="ml-3">
+                                                    <span class="text-sm font-medium text-gray-900">Per Soal Individual</span>
+                                                    <p class="text-xs text-gray-600">Berikan nilai dan feedback untuk setiap pertanyaan secara terpisah</p>
+                                                </div>
+                                            </label>
+                                            
+                                            <label class="flex items-start cursor-pointer">
+                                                <input type="radio" 
+                                                    name="grading_mode" 
+                                                    value="overall" 
+                                                    {{ old('grading_mode', $content->grading_mode ?? 'individual') === 'overall' ? 'checked' : '' }}
+                                                    x-model="content.grading_mode"
+                                                    class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
+                                                <div class="ml-3">
+                                                    <span class="text-sm font-medium text-gray-900">Keseluruhan Essay</span>
+                                                    <p class="text-xs text-gray-600">Berikan satu nilai dan feedback untuk seluruh essay</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        
+                                        <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                            <div class="flex">
+                                                <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                                </svg>
+                                                <div class="text-xs text-blue-800">
+                                                    <p><strong>Per Soal:</strong> Instructor menilai setiap pertanyaan dengan skor terpisah. Total skor = jumlah skor semua soal.</p>
+                                                    <p class="mt-1"><strong>Keseluruhan:</strong> Instructor memberikan satu skor untuk seluruh essay. Lebih simple dan cepat.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <h4 class="text-sm font-medium text-blue-900 mb-1">Pengaturan Penilaian Essay</h4>
@@ -763,12 +810,23 @@
                         this.content.scoring_enabled = {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'true' : 'false' }};
                     }
 
+                    if (!this.content.hasOwnProperty('grading_mode')) {
+                        this.content.grading_mode = '{{ old('grading_mode', $content->grading_mode ?? 'individual') }}';
+                    }
+
                     this.$watch('content.type', (newType) => this.handleTypeChange(newType));
 
                     // 🆕 TAMBAHAN: Watch scoring_enabled changes
                     this.$watch('content.scoring_enabled', (value) => {
                         console.log('Scoring enabled changed to:', value);
-                        // Bisa tambah logic tambahan jika diperlukan
+                        // Reset grading mode to individual jika scoring disabled
+                        if (!value) {
+                            this.content.grading_mode = 'individual';
+                        }
+                    });
+
+                    this.$watch('content.grading_mode', (value) => {
+                        console.log('Grading mode changed to:', value);
                     });
 
                     if (this.content.type === 'zoom' && this.content.body) {

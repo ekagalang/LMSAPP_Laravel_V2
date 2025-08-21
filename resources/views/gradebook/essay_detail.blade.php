@@ -27,51 +27,172 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             {{-- Submission Header --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">{{ $submission->user->name }}</h3>
-                            <p class="text-sm text-gray-600">{{ $submission->user->email }}</p>
-                            <p class="text-sm text-gray-600">Submitted: {{ $submission->created_at->format('d F Y, H:i') }}</p>
-                        </div>
-                        <div class="text-right">
-                            @if($submission->content->scoring_enabled)
+            @if($submission->content->scoring_enabled)
+                @if($submission->content->grading_mode === 'overall')
+                    {{-- OVERALL GRADING MODE --}}
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-semibold text-gray-900">Penilaian Keseluruhan Essay</h4>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    Overall Grading
+                                </span>
+                            </div>
+                            
+                            {{-- Display all questions and answers --}}
+                            @foreach($submission->content->essayQuestions()->orderBy('order')->get() as $index => $question)
                                 @php
-                                    $totalQuestions = $submission->content->essayQuestions()->count();
-                                    $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
-                                    $percentage = $totalQuestions > 0 ? round(($gradedAnswers / $totalQuestions) * 100) : 0;
+                                    $answer = $submission->answers()->where('question_id', $question->id)->first();
                                 @endphp
-                                <div class="text-2xl font-bold text-gray-900">{{ $gradedAnswers }}/{{ $totalQuestions }}</div>
-                                <div class="text-sm text-gray-600">Questions Graded</div>
-                                <div class="mt-2">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $percentage >= 100 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                                        {{ $percentage }}% Complete
-                                    </span>
+                                
+                                <div class="mb-6 p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                                    <h5 class="font-medium text-gray-900 mb-2">Pertanyaan {{ $index + 1 }}</h5>
+                                    <p class="text-gray-700 mb-3">{!! nl2br(e($question->question)) !!}</p>
+                                    
+                                    <div class="bg-white p-3 rounded border">
+                                        <h6 class="text-sm font-medium text-gray-600 mb-2">Jawaban:</h6>
+                                        @if($answer && $answer->answer)
+                                            <div class="prose max-w-none text-sm">
+                                                {!! nl2br(e($answer->answer)) !!}
+                                            </div>
+                                        @else
+                                            <p class="text-gray-500 italic text-sm">Tidak ada jawaban untuk pertanyaan ini.</p>
+                                        @endif
+                                    </div>
                                 </div>
-                            @else
-                                <div class="text-2xl font-bold text-blue-600">Dikumpulkan</div>
-                                <div class="text-sm text-gray-600">Essay Tanpa Penilaian</div>
-                                <div class="mt-2">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                        Berhasil Dikumpulkan
-                                    </span>
+                            @endforeach
+                            
+                            {{-- Overall grading form --}}
+                            @php
+                                $totalMaxScore = $submission->content->essayQuestions()->sum('max_score');
+                                $overallScore = $submission->answers()->first()->score ?? null;
+                                $overallFeedback = $submission->answers()->first()->feedback ?? '';
+                            @endphp
+                            
+                            <div class="border-t pt-6">
+                                <h5 class="font-medium text-gray-900 mb-4">Berikan Penilaian untuk Seluruh Essay</h5>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Nilai Keseluruhan (0 - {{ $totalMaxScore }})
+                                        </label>
+                                        <div class="relative">
+                                            <input type="number" 
+                                                name="overall_score" 
+                                                min="0" 
+                                                max="{{ $totalMaxScore }}" 
+                                                value="{{ $overallScore }}"
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
+                                                placeholder="Masukkan nilai">
+                                            <div class="absolute right-3 top-3 text-gray-500 text-sm">
+                                                / {{ $totalMaxScore }}
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Nilai ini akan diterapkan untuk seluruh essay</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Feedback Keseluruhan
+                                        </label>
+                                        <textarea name="overall_feedback" 
+                                                rows="5"
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="Berikan feedback untuk keseluruhan essay...">{{ $overallFeedback }}</textarea>
+                                    </div>
                                 </div>
-                            @endif
-                        </div>
-                    </div>
-                    
-                    {{-- Progress Bar - hanya tampil jika scoring enabled --}}
-                    @if($submission->content->scoring_enabled)
-                        <div class="mt-4">
-                            <div class="w-full bg-gray-200 rounded-full h-3">
-                                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500" 
-                                     style="width: {{ $percentage }}%"></div>
                             </div>
                         </div>
-                    @endif
-                </div>
-            </div>
+                    </div>
+                @else
+                    {{-- INDIVIDUAL GRADING MODE (existing code) --}}
+                    @foreach($submission->content->essayQuestions()->orderBy('order')->get() as $index => $question)
+                        @php
+                            $answer = $submission->answers()->where('question_id', $question->id)->first();
+                        @endphp
+                        
+                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-lg font-semibold text-gray-900">
+                                        Question {{ $index + 1 }} of {{ $submission->content->essayQuestions()->count() }}
+                                    </h4>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Individual Grading
+                                        </span>
+                                        @if($answer && $answer->score !== null)
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                                Graded: {{ $answer->score }}/{{ $question->max_score }}
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                                Not Graded
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                                
+                                {{-- Question Text --}}
+                                <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+                                    <h5 class="font-medium text-blue-900 mb-2">Question:</h5>
+                                    <div class="text-blue-800">{!! nl2br(e($question->question)) !!}</div>
+                                </div>
+                                
+                                {{-- Student Answer --}}
+                                <div class="mb-6">
+                                    <h5 class="font-medium text-gray-900 mb-3">Student Answer:</h5>
+                                    <div class="p-4 bg-gray-50 border border-gray-300 rounded-lg min-h-[120px]">
+                                        @if($answer && $answer->answer)
+                                            <div class="prose max-w-none">
+                                                {!! nl2br(e($answer->answer)) !!}
+                                            </div>
+                                        @else
+                                            <p class="text-gray-500 italic">No answer provided for this question.</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                
+                                @if($answer)
+                                    {{-- Individual grading form --}}
+                                    <div class="border-t pt-6">
+                                        <h5 class="font-medium text-gray-900 mb-4">Grade This Answer:</h5>
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    Score (0 - {{ $question->max_score }})
+                                                </label>
+                                                <div class="relative">
+                                                    <input type="number" 
+                                                        name="scores[{{ $answer->id }}]" 
+                                                        min="0" 
+                                                        max="{{ $question->max_score }}" 
+                                                        value="{{ $answer->score }}"
+                                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                                                        placeholder="Enter score">
+                                                    <div class="absolute right-3 top-3 text-gray-500 text-sm">
+                                                        / {{ $question->max_score }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    Feedback (Optional)
+                                                </label>
+                                                <textarea name="feedback[{{ $answer->id }}]" 
+                                                        rows="4"
+                                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="Provide specific feedback for this answer...">{{ $answer->feedback }}</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
+            @else
 
             {{-- Grading Form --}}
             <form action="{{ route('gradebook.store-multi-grade', $submission) }}" method="POST">
