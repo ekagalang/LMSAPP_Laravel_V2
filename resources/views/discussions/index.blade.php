@@ -175,17 +175,36 @@
                                         <div class="p-6">
                                             <!-- Existing Replies -->
                                             @if($discussion->replies->count() > 0)
-                                                <div class="space-y-4">
+                                                <div class="space-y-4 mb-6">
                                                     <h6 class="text-md font-semibold text-gray-800 flex items-center">
                                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
                                                         </svg>
                                                         Balasan Sebelumnya ({{ $discussion->replies->count() }})
                                                     </h6>
-                                                    @include('discussions.partials.replies', ['replies' => $discussion->replies, 'discussion' => $discussion])
+                                                    
+                                                    {{-- Tampilkan balasan yang ada --}}
+                                                    <div class="space-y-3">
+                                                        @foreach($discussion->replies as $reply)
+                                                            <div class="flex items-start space-x-3">
+                                                                <div class="flex-shrink-0">
+                                                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center font-bold text-gray-600 text-sm">
+                                                                        {{ strtoupper(substr($reply->user->name, 0, 1)) }}
+                                                                    </div>
+                                                                </div>
+                                                                <div class="flex-grow bg-white p-4 rounded-lg shadow-sm">
+                                                                    <div class="flex items-center space-x-2 mb-2">
+                                                                        <span class="font-semibold text-gray-800">{{ $reply->user->name }}</span>
+                                                                        <span class="text-gray-400 text-sm">{{ $reply->created_at->diffForHumans() }}</span>
+                                                                    </div>
+                                                                    <p class="text-gray-700">{{ $reply->body }}</p>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
                                                 </div>
                                             @else
-                                                <div class="text-center py-6">
+                                                <div class="text-center py-6 mb-6">
                                                     <div class="flex justify-center mb-3">
                                                         <div class="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
                                                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,6 +216,63 @@
                                                     <p class="text-sm text-gray-400 mt-1">Jadilah yang pertama memberikan jawaban!</p>
                                                 </div>
                                             @endif
+
+                                            {{-- FORM BALAS - BAGIAN YANG DITAMBAHKAN! --}}
+                                            <div class="border-t border-gray-200 pt-6">
+                                                <form action="{{ route('discussions.replies.store', $discussion) }}" method="POST" class="space-y-4">
+                                                    @csrf
+                                                    
+                                                    <!-- Form header -->
+                                                    <div class="flex items-center space-x-2 mb-3">
+                                                        <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                                            <span class="font-bold text-white text-xs">
+                                                                {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
+                                                            </span>
+                                                        </div>
+                                                        <span class="text-sm font-medium text-gray-700">Tulis balasan Anda</span>
+                                                    </div>
+                                                    
+                                                    <!-- Textarea -->
+                                                    <div class="relative">
+                                                        <textarea 
+                                                            name="body" 
+                                                            rows="4" 
+                                                            class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 rounded-lg shadow-sm resize-none transition-all duration-200 placeholder-gray-400" 
+                                                            placeholder="Bagikan pemikiran, pertanyaan, atau masukan Anda..."
+                                                            required
+                                                        ></textarea>
+                                                    </div>
+                                                    
+                                                    <!-- Form actions -->
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="flex items-center space-x-2 text-xs text-gray-500">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                            </svg>
+                                                            <span>Bersikaplah sopan dan konstruktif</span>
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center space-x-3">
+                                                            <button 
+                                                                type="button" 
+                                                                class="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                                                                onclick="this.closest('form').querySelector('textarea[name=body]').value = ''"
+                                                            >
+                                                                Bersihkan
+                                                            </button>
+                                                            <button 
+                                                                type="submit"
+                                                                class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                            >
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                                                </svg>
+                                                                Kirim Balasan
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

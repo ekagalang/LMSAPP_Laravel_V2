@@ -39,7 +39,9 @@
                             Oleh <span class="font-semibold">{{ $discussion->user->name }}</span> - <span class="text-gray-400">{{ $discussion->created_at->diffForHumans() }}</span>
                         </p>
                     </div>
-                    <button @click="activeReply === {{ $discussion->id }} ? activeReply = null : activeReply = {{ $discussion->id }}" class="text-sm text-indigo-600 hover:underline">
+                    <button 
+                        @click="activeReply === {{ $discussion->id }} ? activeReply = null : activeReply = {{ $discussion->id }}" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md shadow hover:bg-indigo-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1">
                         Balas ({{ $discussion->replies->count() }})
                     </button>
                 </div>
