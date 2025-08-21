@@ -82,15 +82,122 @@ class EssaySubmission extends Model
      */
     public function getIsFullyGradedAttribute()
     {
-        // Jika essay tidak memerlukan scoring, return true
-        if (!$this->content->scoring_enabled) {
-            return true;
-        }
+        if ($this->answers->count() === 0) return false;
 
-        // Untuk essay dengan scoring, cek apakah semua answers sudah ada score
-        return $this->answers()
-            ->whereNotNull('score')
-            ->count() === $this->answers()->count();
+        $totalQuestions = $this->content->essayQuestions()->count();
+        $scoringEnabled = $this->content->scoring_enabled ?? true;
+        $gradingMode = $this->content->grading_mode ?? 'individual';
+        
+        // ✅ PERBAIKAN: Handle mode overall
+        if ($gradingMode === 'overall') {
+            if ($scoringEnabled) {
+                // Overall + Scoring: Cek apakah ada nilai di answer pertama
+                $firstAnswer = $this->answers()->first();
+                return $firstAnswer && $firstAnswer->score !== null;
+            } else {
+                // Overall + Feedback Only: Cek apakah ada feedback di answer pertama
+                $firstAnswer = $this->answers()->first();
+                return $firstAnswer && !empty($firstAnswer->feedback);
+            }
+        }
+        
+        // Mode individual (logic lama)
+        if ($totalQuestions === 0) {
+            // Legacy essay tanpa questions
+            if ($scoringEnabled) {
+                return $this->answers()->whereNotNull('score')->count() > 0;
+            } else {
+                return $this->answers()->whereNotNull('feedback')->count() > 0;
+            }
+        }
+        
+        // Individual mode dengan multiple questions
+        if ($scoringEnabled) {
+            $gradedAnswers = $this->answers()->whereNotNull('score')->count();
+            return $gradedAnswers >= $totalQuestions;
+        } else {
+            $feedbackAnswers = $this->answers()->whereNotNull('feedback')->count();
+            return $feedbackAnswers >= $totalQuestions;
+        }
+    }
+
+    public function getCompletionStatusDetailAttribute()
+    {
+        $totalQuestions = $this->content->essayQuestions()->count();
+        $scoringEnabled = $this->content->scoring_enabled ?? true;
+        $gradingMode = $this->content->grading_mode ?? 'individual';
+        
+        $firstAnswer = $this->answers()->first();
+        $answersWithScore = $this->answers()->whereNotNull('score')->count();
+        $answersWithFeedback = $this->answers()->whereNotNull('feedback')->count();
+        
+        return [
+            'total_questions' => $totalQuestions,
+            'scoring_enabled' => $scoringEnabled,
+            'grading_mode' => $gradingMode,
+            'total_answers' => $this->answers->count(),
+            'answers_with_score' => $answersWithScore,
+            'answers_with_feedback' => $answersWithFeedback,
+            'first_answer_has_score' => $firstAnswer && $firstAnswer->score !== null,
+            'first_answer_has_feedback' => $firstAnswer && !empty($firstAnswer->feedback),
+            'is_fully_graded' => $this->is_fully_graded,
+            'graded_at' => $this->graded_at,
+            'status' => $this->status
+        ];
+    }
+
+
+    public function getCompletionStatusAttribute()
+    {
+        $totalQuestions = $this->content->essayQuestions()->count();
+        
+        if ($totalQuestions === 0) {
+            // Legacy model: complete when submitted
+            return [
+                'type' => 'legacy',
+                'is_submitted' => $this->answers()->count() > 0,
+                'is_graded' => $this->answers()->whereNotNull('score')->count() > 0,
+                'is_complete_for_participant' => $this->answers()->count() > 0, // Participant: cukup submit
+                'is_complete_for_progress' => $this->answers()->whereNotNull('score')->count() > 0 // Progress: perlu graded
+            ];
+        } else {
+            // Multi-question model: complete when all graded
+            $gradedAnswers = $this->answers()->whereNotNull('score')->count();
+            $submittedAnswers = $this->answers()->whereNotNull('answer')->count();
+            
+            return [
+                'type' => 'multi_question',
+                'total_questions' => $totalQuestions,
+                'submitted_answers' => $submittedAnswers,
+                'graded_answers' => $gradedAnswers,
+                'is_submitted' => $submittedAnswers >= $totalQuestions,
+                'is_graded' => $gradedAnswers >= $totalQuestions,
+                'is_complete_for_participant' => $submittedAnswers >= $totalQuestions, // Participant: cukup submit semua
+                'is_complete_for_progress' => $gradedAnswers >= $totalQuestions // Progress: perlu semua graded
+            ];
+        }
+    }
+
+    public function canUnlockNextContent(): bool
+    {
+        $status = $this->completion_status;
+        
+        // Untuk unlock content berikutnya, participant cukup sudah submit
+        return $status['is_complete_for_participant'];
+    }
+
+    public function isCompleteForProgress(): bool
+    {
+        $status = $this->completion_status;
+        
+        // Untuk progress tracking, perlu sudah graded (kecuali legacy yang tidak perlu grading)
+        if ($status['type'] === 'legacy') {
+            // Legacy: complete when submitted (backward compatibility)
+            return $status['is_submitted'];
+        }
+        
+        // Multi-question: complete when fully graded
+        return $status['is_complete_for_progress'];
     }
 
     /**

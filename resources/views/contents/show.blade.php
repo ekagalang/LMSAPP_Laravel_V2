@@ -169,13 +169,17 @@
                                     $cIsTask = in_array($c->type, ['quiz', 'essay']);
 
                                     // ✅ PERBAIKAN: Consistent completion check dengan logika essay baru
-                                    if ($c->type === 'quiz' && $c->quiz_id) {
+                                    if ($c->type === 'essay') {
+                                        $submission = $user->essaySubmissions()->where('content_id', $c->id)->first();
+                                        if ($submission) {
+                                            // Untuk tampilan sidebar: show completed jika sudah submit (unlock criteria)
+                                            $isCompleted = $submission->canUnlockNextContent();
+                                        } else {
+                                            $isCompleted = false;
+                                        }
+                                    } elseif ($c->type === 'quiz' && $c->quiz_id) {
                                         $isCompleted = $user->quizAttempts()->where('quiz_id', $c->quiz_id)->where('passed', true)->exists();
-                                    } elseif ($c->type === 'essay') {
-                                        // ✅ PERUBAHAN: Essay dianggap selesai jika sudah submit
-                                        $isCompleted = $user->essaySubmissions()->where('content_id', $c->id)->exists();
                                     } else {
-                                        // ✅ PERBAIKAN: Use fresh query instead of loaded relation
                                         $isCompleted = $user->completedContents()->where('content_id', $c->id)->exists();
                                     }
 

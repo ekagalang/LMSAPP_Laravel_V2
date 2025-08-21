@@ -357,33 +357,22 @@ class User extends Authenticatable
     public function hasCompletedContent(Content $content): bool
     {
         if ($content->type === 'quiz' && $content->quiz_id) {
-            // Quiz logic unchanged
             return $this->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
                 ->where('passed', true)
                 ->exists();
         } elseif ($content->type === 'essay') {
-            // ✅ FIXED ESSAY LOGIC
             $submission = $this->essaySubmissions()
                 ->where('content_id', $content->id)
                 ->first();
 
             if (!$submission) {
-                return false; // Belum submit
+                return false;
             }
 
-            $totalQuestions = $content->essayQuestions()->count();
-
-            if ($totalQuestions === 0) {
-                // Old system or no questions defined - fallback to simple submission check
-                return $submission->answers()->count() > 0;
-            }
-
-            // New system - check all questions are graded
-            $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
-            return $gradedAnswers >= $totalQuestions;
+            // ✅ GUNAKAN METHOD BARU: untuk progress tracking, perlu fully completed
+            return $submission->isCompleteForProgress();
         } else {
-            // Regular content unchanged
             return $this->completedContents()->where('content_id', $content->id)->exists();
         }
     }

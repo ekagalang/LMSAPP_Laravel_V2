@@ -228,6 +228,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/essay-submissions/{submission}/grade-multi', [GradebookController::class, 'storeMultiQuestionGrade'])
             ->name('gradebook.store-multi-grade');
 
+        // ✅ TAMBAHAN: Route untuk overall grading (dengan scoring)
+        Route::post('/essay-submissions/{submission}/grade-overall', [GradebookController::class, 'storeOverallGrade'])
+            ->name('gradebook.store-overall-grade');
+
+        // ✅ TAMBAHAN: Route untuk overall feedback (tanpa scoring)
+        Route::post('/essay-submissions/{submission}/feedback-overall', [GradebookController::class, 'storeOverallFeedback'])
+            ->name('gradebook.store-overall-feedback');
+
         Route::get('/essay-submissions/{submission}/detail', [GradebookController::class, 'showEssayDetail'])
             ->name('gradebook.essay-detail');
     });

@@ -61,7 +61,7 @@ class GradebookController extends Controller
         }
         $participantsWithEssays = $participantsWithEssaysQuery->get();
 
-        return view('gradebook.index', compact('course', 'participants', 'participantsWithEssays', 'allCoursesForFilter'));
+        return view('gradebook.index', compact('course', 'participants', 'participantsWithEssays', 'allCoursesForFilter', 'essayContentIds'));
     }
 
     /**
@@ -218,42 +218,125 @@ class GradebookController extends Controller
         return redirect()->back()->with('success', $message);
     }
 
-    private function storeOverallGrade(Request $request, EssaySubmission $submission)
+    public function storeOverallGrade(Request $request, EssaySubmission $submission)
     {
+        $this->authorize('grade', $submission->content->lesson->course);
+
+        // Validate input
+        $totalMaxScore = $submission->content->essayQuestions()->sum('max_score');
+        
         $validated = $request->validate([
-            'overall_score' => 'required|integer|min:0|max:' . $submission->content->essayQuestions()->sum('max_score'),
+            'overall_score' => "required|integer|min:0|max:{$totalMaxScore}",
             'overall_feedback' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($validated, $submission) {
-            // Update all answers dengan score proporsional dan feedback yang sama
-            $questions = $submission->content->essayQuestions()->orderBy('order')->get();
-            $totalMaxScore = $questions->sum('max_score');
-            $overallScore = $validated['overall_score'];
-            
-            foreach ($questions as $question) {
-                $answer = $submission->answers()->where('question_id', $question->id)->first();
-                if ($answer) {
-                    // Hitung score proporsional untuk setiap pertanyaan
-                    $proportionalScore = $totalMaxScore > 0 
-                        ? round(($overallScore * $question->max_score) / $totalMaxScore) 
-                        : 0;
+        try {
+            DB::transaction(function () use ($validated, $submission) {
+                // Get first answer or create if doesn't exist
+                $firstAnswer = $submission->answers()->first();
+                
+                if (!$firstAnswer) {
+                    // Create a dummy answer for overall grading
+                    $firstQuestion = $submission->content->essayQuestions()->orderBy('order')->first();
+                    if ($firstQuestion) {
+                        $firstAnswer = $submission->answers()->create([
+                            'question_id' => $firstQuestion->id,
+                            'answer' => 'Overall grading - see individual answers above',
+                        ]);
+                    }
+                }
+                
+                if ($firstAnswer) {
+                    // Store overall score and feedback in the first answer
+                    $firstAnswer->update([
+                        'score' => $validated['overall_score'],
+                        'feedback' => $validated['overall_feedback'],
+                    ]);
                     
-                    $answer->update([
-                        'score' => $proportionalScore,
-                        'feedback' => $validated['overall_feedback']
+                    // Clear scores from other answers to avoid confusion
+                    $submission->answers()->where('id', '!=', $firstAnswer->id)->update([
+                        'score' => null,
+                        'feedback' => null
                     ]);
                 }
-            }
 
-            // Mark submission as graded
-            $submission->update([
-                'graded_at' => now(),
-                'status' => 'graded'
+                // Update submission status
+                $submission->update([
+                    'graded_at' => now(),
+                    'status' => 'graded'
+                ]);
+            });
+
+            return redirect()->back()->with('success', 'Penilaian keseluruhan berhasil disimpan!');
+            
+        } catch (\Exception $e) {
+            Log::error('Overall grading error: ' . $e->getMessage(), [
+                'submission_id' => $submission->id,
+                'user_id' => auth()->id()
             ]);
-        });
 
-        return redirect()->back()->with('success', 'Penilaian keseluruhan berhasil disimpan.');
+            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan penilaian. Silakan coba lagi.');
+        }
+    }
+
+    public function storeOverallFeedback(Request $request, EssaySubmission $submission)
+    {
+        $this->authorize('grade', $submission->content->lesson->course);
+
+        $validated = $request->validate([
+            'overall_feedback' => 'required|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $submission) {
+                // Get first answer or create if doesn't exist
+                $firstAnswer = $submission->answers()->first();
+                
+                if (!$firstAnswer) {
+                    // Create a dummy answer for overall feedback
+                    $firstQuestion = $submission->content->essayQuestions()->orderBy('order')->first();
+                    if ($firstQuestion) {
+                        $firstAnswer = $submission->answers()->create([
+                            'question_id' => $firstQuestion->id,
+                            'answer' => 'Overall feedback - see individual answers above',
+                        ]);
+                    } else {
+                        // Legacy essay without questions
+                        $firstAnswer = $submission->answers()->create([
+                            'question_id' => null,
+                            'answer' => 'Overall feedback for essay',
+                        ]);
+                    }
+                }
+                
+                if ($firstAnswer) {
+                    // Store overall feedback in the first answer, clear others
+                    $firstAnswer->update([
+                        'feedback' => $validated['overall_feedback'],
+                    ]);
+                    
+                    // Clear feedback from other answers to avoid confusion
+                    $submission->answers()->where('id', '!=', $firstAnswer->id)->update([
+                        'feedback' => null
+                    ]);
+                }
+
+                // Update submission status (no graded_at for feedback-only)
+                $submission->update([
+                    'status' => 'reviewed'
+                ]);
+            });
+
+            return redirect()->back()->with('success', 'Feedback berhasil disimpan!');
+            
+        } catch (\Exception $e) {
+            Log::error('Overall feedback error: ' . $e->getMessage(), [
+                'submission_id' => $submission->id,
+                'user_id' => auth()->id()
+            ]);
+
+            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan feedback. Silakan coba lagi.');
+        }
     }
 
     public function showEssayDetail(EssaySubmission $submission)

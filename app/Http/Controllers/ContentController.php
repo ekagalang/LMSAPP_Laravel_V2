@@ -272,7 +272,6 @@ class ContentController extends Controller
     // ✅ PERBAIKAN: Method untuk mendapatkan konten yang sudah terbuka
     private function getUnlockedContents(User $user, $orderedContents)
     {
-        // Jika user adalah admin/instruktur, semua konten terbuka
         if ($user->hasRole(['super-admin', 'instructor'])) {
             return $orderedContents;
         }
@@ -280,44 +279,47 @@ class ContentController extends Controller
         $unlocked = collect();
 
         foreach ($orderedContents as $index => $content) {
-            // Konten pertama selalu terbuka
             if ($index === 0) {
                 $unlocked->push($content);
                 continue;
             }
 
-            // Untuk konten selanjutnya, cek apakah konten sebelumnya sudah diselesaikan
             $previousContent = $orderedContents[$index - 1];
-            $previousCompleted = false;
+            $previousCompleted = $this->isContentCompletedForUnlock($user, $previousContent);
 
-            if ($previousContent->type === 'quiz' && $previousContent->quiz_id) {
-                // Untuk kuis, cek apakah sudah lulus
-                $previousCompleted = $user->quizAttempts()
-                    ->where('quiz_id', $previousContent->quiz_id)
-                    ->where('passed', true)
-                    ->exists();
-            } elseif ($previousContent->type === 'essay') {
-                // ✅ PERUBAHAN: Untuk esai, cek apakah sudah submit
-                $previousCompleted = $user->essaySubmissions()
-                    ->where('content_id', $previousContent->id)
-                    ->exists();
-            } else {
-                // Untuk konten biasa, cek di tabel completed
-                $previousCompleted = $user->completedContents()
-                    ->where('content_id', $previousContent->id)
-                    ->exists();
-            }
-
-            // Jika konten sebelumnya sudah selesai, buka konten ini
             if ($previousCompleted) {
                 $unlocked->push($content);
             } else {
-                // Jika konten sebelumnya belum selesai, stop di sini
                 break;
             }
         }
 
         return $unlocked;
+    }
+
+    private function isContentCompletedForUnlock(User $user, Content $content): bool
+    {
+        if ($content->type === 'quiz' && $content->quiz_id) {
+            return $user->quizAttempts()
+                ->where('quiz_id', $content->quiz_id)
+                ->where('passed', true)
+                ->exists();
+        } elseif ($content->type === 'essay') {
+            $submission = $user->essaySubmissions()
+                ->where('content_id', $content->id)
+                ->first();
+                
+            if (!$submission) {
+                return false;
+            }
+            
+            // ✅ GUNAKAN METHOD BARU: untuk unlock, cukup sudah submit
+            return $submission->canUnlockNextContent();
+        } else {
+            return $user->completedContents()
+                ->where('content_id', $content->id)
+                ->exists();
+        }
     }
 
     public function create(Lesson $lesson)
