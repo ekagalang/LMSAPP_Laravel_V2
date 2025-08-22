@@ -311,24 +311,21 @@
                                                 </div>
                                             </form>
                                         </div>
+                                        @include('gradebook.partials.essay-grading-forms', ['submission' => $submission])
                                     @endif
                                 </div>
                             @else
-                                <!-- No Scoring Required - Just Status -->
                                 <div class="border-t border-gray-200 pt-6">
-                                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                                        <div class="flex items-center justify-center text-center">
-                                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h4 class="font-bold text-blue-900">Essay Berhasil Dikumpulkan</h4>
-                                                <p class="text-sm text-blue-700 mt-1">Essay ini tidak memerlukan penilaian</p>
+                                    @if($submission->status === 'reviewed')
+                                        <div class="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                                            <h4 class="font-bold text-blue-900 mb-2">Feedback Telah Diberikan</h4>
+                                            <div class="bg-white p-4 rounded-lg">
+                                                <p class="text-gray-700">{{ $submission->answers->first()->feedback ?? 'Tidak ada feedback.' }}</p>
                                             </div>
                                         </div>
-                                    </div>
+                                    @else
+                                        @include('gradebook.partials.essay-grading-forms', ['submission' => $submission])
+                                    @endif
                                 </div>
                             @endif
                         </div>

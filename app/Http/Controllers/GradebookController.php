@@ -339,6 +339,52 @@ class GradebookController extends Controller
         }
     }
 
+    public function storeEssayFeedbackOnly(Request $request, EssaySubmission $submission)
+    {
+        $this->authorize('grade', $submission->content->lesson->course);
+        
+        $content = $submission->content;
+        
+        if ($content->scoring_enabled) {
+            return redirect()->back()->with('error', 'Essay ini memerlukan penilaian dengan scoring.');
+        }
+        
+        $validated = $request->validate([
+            'feedback' => 'required|string',
+        ]);
+        
+        try {
+            DB::transaction(function () use ($validated, $submission, $content) {
+                if ($content->grading_mode === 'overall') {
+                    $answer = $submission->answers()->first();
+                    if (!$answer) {
+                        $answer = $submission->answers()->create([
+                            'question_id' => null,
+                            'answer' => 'Overall feedback submission',
+                            'feedback' => $validated['feedback'],
+                        ]);
+                    } else {
+                        $answer->update(['feedback' => $validated['feedback']]);
+                    }
+                    
+                    $submission->answers()->where('id', '!=', $answer->id)->update(['feedback' => null]);
+                } else {
+                    foreach ($submission->answers as $answer) {
+                        $answer->update(['feedback' => $validated['feedback']]);
+                    }
+                }
+                
+                $submission->update(['status' => 'reviewed']);
+            });
+            
+            return redirect()->back()->with('success', 'Feedback berhasil disimpan!');
+            
+        } catch (\Exception $e) {
+            Log::error('Essay feedback error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan feedback.');
+        }
+    }
+
     public function showEssayDetail(EssaySubmission $submission)
     {
         $this->authorize('grade', $submission->content->lesson->course);

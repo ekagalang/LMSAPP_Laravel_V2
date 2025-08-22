@@ -216,4 +216,22 @@ class Content extends Model
         }
         return $this->essayQuestions->sum('max_score') ?: 100;
     }
+
+    public function isIndividualGrading(): bool
+    {
+        return $this->grading_mode === 'individual';
+    }
+
+    public function isOverallGrading(): bool
+    {
+        return $this->grading_mode === 'overall';
+    }
+
+    /**
+     * Check if scoring is enabled
+     */
+    public function isScoringEnabled(): bool
+    {
+        return $this->scoring_enabled ?? true;
+    }
 }

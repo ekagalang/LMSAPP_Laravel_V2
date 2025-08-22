@@ -361,9 +361,22 @@ class ContentController extends Controller
         ];
 
         // 🆕 TAMBAHAN: Validasi untuk scoring_enabled pada essay
-        if ($request->input('type') === 'essay') {
-            $rules['scoring_enabled'] = 'nullable|boolean';
-            $rules['grading_mode'] = 'nullable|in:individual,overall';
+        if ($request->has('questions') && !empty($request->input('questions'))) {
+            $questionsData = $request->input('questions');
+            $hasValidQuestion = false;
+            
+            foreach ($questionsData as $question) {
+                if (!empty($question['text'])) {
+                    $hasValidQuestion = true;
+                    break;
+                }
+            }
+            
+            if ($hasValidQuestion) {
+                $rules['questions'] = 'required|array|min:1';
+                $rules['questions.*.text'] = 'required|string';
+                $rules['questions.*.max_score'] = 'required|integer|min:1|max:10000';
+            }
         }
 
         // PERBAIKAN: Validasi untuk essay questions (hanya jika ada questions)
@@ -412,13 +425,17 @@ class ContentController extends Controller
 
             // 🆕 TAMBAHAN: Set scoring_enabled untuk essay (default true untuk backward compatibility)
             if ($validated['type'] === 'essay') {
-                $content->scoring_enabled = $request->input('scoring_enabled', true);
+                // PERBAIKAN: Konversi dan simpan dengan benar
+                $content->scoring_enabled = $request->boolean('scoring_enabled', true);
                 $content->grading_mode = $request->input('grading_mode', 'individual');
                 
-                // Jika scoring disabled, set grading_mode ke individual sebagai default
-                if (!$content->scoring_enabled) {
-                    $content->grading_mode = 'individual';
-                }
+                // Log untuk debug
+                Log::info('Essay settings saved', [
+                    'scoring_enabled' => $content->scoring_enabled,
+                    'grading_mode' => $content->grading_mode,
+                    'request_scoring' => $request->input('scoring_enabled'),
+                    'request_grading' => $request->input('grading_mode')
+                ]);
             }
 
             // PERBAIKAN: Secara eksplisit atur kolom 'body' dari sumber yang benar

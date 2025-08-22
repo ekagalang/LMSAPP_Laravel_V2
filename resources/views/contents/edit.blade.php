@@ -236,7 +236,7 @@
                                                     <p class="text-xs text-gray-600">Berikan nilai dan feedback untuk setiap pertanyaan secara terpisah</p>
                                                 </div>
                                             </label>
-                                            
+
                                             <label class="flex items-start cursor-pointer">
                                                 <input type="radio" 
                                                     name="grading_mode" 
@@ -274,7 +274,7 @@
                                                 <input type="radio" 
                                                     name="scoring_enabled" 
                                                     value="1" 
-                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'checked' : '' }}
+                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) == '1' ? 'checked' : '' }}
                                                     x-model="content.scoring_enabled"
                                                     class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
                                                 <span class="ml-2 text-sm text-gray-700">Dengan Penilaian</span>
@@ -283,7 +283,7 @@
                                                 <input type="radio" 
                                                     name="scoring_enabled" 
                                                     value="0" 
-                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? '' : 'checked' }}
+                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) == '0' ? 'checked' : '' }}
                                                     x-model="content.scoring_enabled"
                                                     class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
                                                 <span class="ml-2 text-sm text-gray-700">Tanpa Penilaian</span>
@@ -805,30 +805,25 @@
                 uploadedImagePreviewUrl: null,
 
                 initForm() {
-                    // 🆕 TAMBAHAN: Initialize scoring_enabled untuk essay
-                    if (!this.content.hasOwnProperty('scoring_enabled')) {
-                        this.content.scoring_enabled = {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'true' : 'false' }};
-                    }
-
                     if (!this.content.hasOwnProperty('grading_mode')) {
                         this.content.grading_mode = '{{ old('grading_mode', $content->grading_mode ?? 'individual') }}';
+                    }
+                    
+                    if (!this.content.hasOwnProperty('scoring_enabled')) {
+                        this.content.scoring_enabled = {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'true' : 'false' }};
                     }
 
                     this.$watch('content.type', (newType) => this.handleTypeChange(newType));
 
                     // 🆕 TAMBAHAN: Watch scoring_enabled changes
-                    this.$watch('content.scoring_enabled', (value) => {
-                        console.log('Scoring enabled changed to:', value);
-                        // Reset grading mode to individual jika scoring disabled
-                        if (!value) {
-                            this.content.grading_mode = 'individual';
-                        }
-                    });
-
                     this.$watch('content.grading_mode', (value) => {
                         console.log('Grading mode changed to:', value);
                     });
-
+                    
+                    this.$watch('content.scoring_enabled', (value) => {
+                        console.log('Scoring enabled changed to:', value);
+                    });
+                    
                     if (this.content.type === 'zoom' && this.content.body) {
                     try {
                         const zoomDetails = JSON.parse(this.content.body);
