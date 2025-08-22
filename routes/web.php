@@ -238,6 +238,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/essay-submissions/{submission}/detail', [GradebookController::class, 'showEssayDetail'])
             ->name('gradebook.essay-detail');
+        
+        Route::post('/essay-submissions/{submission}/grade-overall', [GradebookController::class, 'storeOverallGrade'])
+            ->name('gradebook.store-overall-grade');
+        Route::post('/essay-submissions/{submission}/feedback-overall', [GradebookController::class, 'storeOverallFeedback'])
+            ->name('gradebook.store-overall-feedback');
     });
 
     Route::get('/essay-submissions/{submission}/result', [EssaySubmissionController::class, 'showResult'])->name('essays.result');

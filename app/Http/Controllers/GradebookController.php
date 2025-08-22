@@ -343,7 +343,6 @@ class GradebookController extends Controller
     {
         $this->authorize('grade', $submission->content->lesson->course);
 
-        // Load relationships
         $submission->load([
             'content.essayQuestions' => function ($query) {
                 $query->orderBy('order');
@@ -352,10 +351,9 @@ class GradebookController extends Controller
             'user'
         ]);
 
-        // Calculate progress variables untuk view
-        $totalQuestions = $submission->content->essayQuestions()->count();
-        $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
-
-        return view('gradebook.essay_detail', compact('submission', 'totalQuestions', 'gradedAnswers'));
+        $gradingMode = $submission->content->grading_mode ?? 'individual';
+        $scoringEnabled = $submission->content->scoring_enabled ?? true;
+        
+        return view('gradebook.essay_detail', compact('submission', 'gradingMode', 'scoringEnabled'));
     }
 }
