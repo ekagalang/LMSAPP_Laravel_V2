@@ -150,24 +150,47 @@ class GradebookController extends Controller
     public function storeMultiQuestionGrade(Request $request, EssaySubmission $submission)
     {
         $this->authorize('grade', $submission->content->lesson->course);
+        
+        $content = $submission->content;
 
-        if (!$submission->content->scoring_enabled) {
+        if (!$content->scoring_enabled) {
             // Handle feedback only for non-scoring essays
             $feedbacks = $request->input('feedback', []);
             
-            DB::transaction(function () use ($feedbacks, $submission) {
+            DB::transaction(function () use ($feedbacks, $submission, $content) {
+                $processedCount = 0;
+                
                 foreach ($feedbacks as $answerId => $feedback) {
                     $answer = \App\Models\EssayAnswer::where('id', $answerId)
                         ->where('submission_id', $submission->id)
                         ->first();
 
-                    if ($answer) {
+                    if ($answer && !empty(trim($feedback))) {
                         $answer->update(['feedback' => $feedback]);
+                        $processedCount++;
                     }
+                }
+                
+                // Check completion berdasarkan grading mode
+                $totalQuestions = $content->essayQuestions()->count();
+                $answersWithFeedback = $submission->answers()->whereNotNull('feedback')->count();
+                
+                $shouldMarkComplete = false;
+                if ($content->grading_mode === 'overall') {
+                    $shouldMarkComplete = $answersWithFeedback > 0;
+                } else {
+                    $shouldMarkComplete = $answersWithFeedback >= $totalQuestions;
+                }
+                
+                if ($shouldMarkComplete) {
+                    $submission->update([
+                        'graded_at' => now(),
+                        'status' => 'reviewed'
+                    ]);
                 }
             });
 
-            return redirect()->back()->with('success', 'Catatan berhasil disimpan.');
+            return redirect()->back()->with('success', 'Feedback berhasil disimpan.');
         }
 
         // Handle scoring essays based on grading mode
@@ -222,7 +245,6 @@ class GradebookController extends Controller
     {
         $this->authorize('grade', $submission->content->lesson->course);
 
-        // Validate input
         $totalMaxScore = $submission->content->essayQuestions()->sum('max_score');
         
         $validated = $request->validate([
@@ -232,35 +254,26 @@ class GradebookController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $submission) {
-                // Get first answer or create if doesn't exist
-                $firstAnswer = $submission->answers()->first();
+                // PERBAIKAN: Update semua answers untuk overall grading
+                $allAnswers = $submission->answers;
                 
-                if (!$firstAnswer) {
-                    // Create a dummy answer for overall grading
-                    $firstQuestion = $submission->content->essayQuestions()->orderBy('order')->first();
-                    if ($firstQuestion) {
-                        $firstAnswer = $submission->answers()->create([
-                            'question_id' => $firstQuestion->id,
-                            'answer' => 'Overall grading - see individual answers above',
-                        ]);
-                    }
-                }
-                
-                if ($firstAnswer) {
-                    // Store overall score and feedback in the first answer
+                if ($allAnswers->count() > 0) {
+                    // Set score dan feedback ke answer pertama
+                    $firstAnswer = $allAnswers->first();
                     $firstAnswer->update([
                         'score' => $validated['overall_score'],
                         'feedback' => $validated['overall_feedback'],
                     ]);
                     
-                    // Clear scores from other answers to avoid confusion
-                    $submission->answers()->where('id', '!=', $firstAnswer->id)->update([
-                        'score' => null,
-                        'feedback' => null
-                    ]);
+                    // PENTING: Untuk answers lainnya, set score ke 0 dan feedback ke info overall
+                    foreach ($allAnswers->skip(1) as $answer) {
+                        $answer->update([
+                            'score' => 0, // Set ke 0, bukan null
+                            'feedback' => 'Dinilai secara keseluruhan. Lihat feedback pada soal pertama.',
+                        ]);
+                    }
                 }
 
-                // Update submission status
                 $submission->update([
                     'graded_at' => now(),
                     'status' => 'graded'
@@ -270,12 +283,8 @@ class GradebookController extends Controller
             return redirect()->back()->with('success', 'Penilaian keseluruhan berhasil disimpan!');
             
         } catch (\Exception $e) {
-            Log::error('Overall grading error: ' . $e->getMessage(), [
-                'submission_id' => $submission->id,
-                'user_id' => auth()->id()
-            ]);
-
-            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan penilaian. Silakan coba lagi.');
+            Log::error('Overall grading error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan penilaian.');
         }
     }
 
@@ -289,40 +298,25 @@ class GradebookController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $submission) {
-                // Get first answer or create if doesn't exist
-                $firstAnswer = $submission->answers()->first();
+                $allAnswers = $submission->answers;
                 
-                if (!$firstAnswer) {
-                    // Create a dummy answer for overall feedback
-                    $firstQuestion = $submission->content->essayQuestions()->orderBy('order')->first();
-                    if ($firstQuestion) {
-                        $firstAnswer = $submission->answers()->create([
-                            'question_id' => $firstQuestion->id,
-                            'answer' => 'Overall feedback - see individual answers above',
-                        ]);
-                    } else {
-                        // Legacy essay without questions
-                        $firstAnswer = $submission->answers()->create([
-                            'question_id' => null,
-                            'answer' => 'Overall feedback for essay',
-                        ]);
-                    }
-                }
-                
-                if ($firstAnswer) {
-                    // Store overall feedback in the first answer, clear others
+                if ($allAnswers->count() > 0) {
+                    // Set feedback ke answer pertama
+                    $firstAnswer = $allAnswers->first();
                     $firstAnswer->update([
                         'feedback' => $validated['overall_feedback'],
                     ]);
                     
-                    // Clear feedback from other answers to avoid confusion
-                    $submission->answers()->where('id', '!=', $firstAnswer->id)->update([
-                        'feedback' => null
-                    ]);
+                    // Untuk answers lainnya, set feedback ke info overall
+                    foreach ($allAnswers->skip(1) as $answer) {
+                        $answer->update([
+                            'feedback' => 'Dinilai secara keseluruhan. Lihat feedback pada soal pertama.',
+                        ]);
+                    }
                 }
 
-                // Update submission status (no graded_at for feedback-only)
                 $submission->update([
+                    'graded_at' => now(),
                     'status' => 'reviewed'
                 ]);
             });
@@ -330,12 +324,8 @@ class GradebookController extends Controller
             return redirect()->back()->with('success', 'Feedback berhasil disimpan!');
             
         } catch (\Exception $e) {
-            Log::error('Overall feedback error: ' . $e->getMessage(), [
-                'submission_id' => $submission->id,
-                'user_id' => auth()->id()
-            ]);
-
-            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan feedback. Silakan coba lagi.');
+            Log::error('Overall feedback error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan feedback.');
         }
     }
 
@@ -374,7 +364,10 @@ class GradebookController extends Controller
                     }
                 }
                 
-                $submission->update(['status' => 'reviewed']);
+                $submission->update([
+                    'status' => 'reviewed',
+                    'graded_at' => now() // TAMBAH ini untuk marking as completed
+                ]);
             });
             
             return redirect()->back()->with('success', 'Feedback berhasil disimpan!');

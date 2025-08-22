@@ -313,8 +313,8 @@ class ContentController extends Controller
                 return false;
             }
             
-            // ✅ GUNAKAN METHOD BARU: untuk unlock, cukup sudah submit
-            return $submission->canUnlockNextContent();
+            // Untuk unlock, cukup sudah submit - tidak perlu menunggu grading
+            return $submission->answers()->count() > 0;
         } else {
             return $user->completedContents()
                 ->where('content_id', $content->id)
@@ -511,18 +511,52 @@ class ContentController extends Controller
 
     private function saveEssayQuestions($content, $questionsData)
     {
-        // Hapus questions lama jika edit
-        $content->essayQuestions()->delete();
-
-        // Simpan questions baru
-        foreach ($questionsData as $index => $questionData) {
-            $content->essayQuestions()->create([
-                'question' => $questionData['text'],
-                // 🆕 Set max_score berdasarkan scoring_enabled
-                'max_score' => $content->scoring_enabled ? $questionData['max_score'] : 0,
-                'order' => $index + 1,
-            ]);
-        }
+        $existingQuestions = $content->allEssayQuestions()->orderBy('order')->get();
+        $newQuestionsData = array_values($questionsData);
+        
+        DB::transaction(function() use ($content, $existingQuestions, $newQuestionsData) {
+            foreach ($newQuestionsData as $index => $questionData) {
+                $order = $index + 1;
+                $maxScore = $content->scoring_enabled ? ($questionData['max_score'] ?? 100) : 0;
+                
+                if (isset($existingQuestions[$index])) {
+                    // Update existing question
+                    $existingQuestions[$index]->update([
+                        'question' => $questionData['text'],
+                        'order' => $order,
+                        'max_score' => $maxScore,
+                        'is_active' => true
+                    ]);
+                } else {
+                    // Create new question
+                    $content->essayQuestions()->create([
+                        'question' => $questionData['text'],
+                        'order' => $order,
+                        'max_score' => $maxScore,
+                        'is_active' => true
+                    ]);
+                }
+            }
+            
+            // Soft delete questions yang berlebih
+            if ($existingQuestions->count() > count($newQuestionsData)) {
+                $questionsToDeactivate = $existingQuestions->slice(count($newQuestionsData));
+                
+                foreach ($questionsToDeactivate as $question) {
+                    $hasAnswers = \App\Models\EssayAnswer::where('question_id', $question->id)->exists();
+                    
+                    if ($hasAnswers) {
+                        // Soft delete - preserve data
+                        $question->update(['is_active' => false]);
+                        Log::info("Deactivated question {$question->id} - has existing answers");
+                    } else {
+                        // Hard delete - no answers
+                        $question->delete();
+                        Log::info("Deleted unused question {$question->id}");
+                    }
+                }
+            }
+        });
     }
 
     private function saveQuiz(array $quizData, Lesson $lesson, ?int $quizId): Quiz

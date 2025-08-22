@@ -10,12 +10,14 @@ class EssayQuestion extends Model
         'content_id',
         'question',
         'order',
-        'max_score'
+        'max_score',
+        'is_active'
     ];
 
     protected $casts = [
         'order' => 'integer',
-        'max_score' => 'integer'
+        'max_score' => 'integer',
+        'is_active' => 'boolean'
     ];
 
     public function content()
@@ -26,5 +28,10 @@ class EssayQuestion extends Model
     public function answers()
     {
         return $this->hasMany(EssayAnswer::class, 'question_id');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 }

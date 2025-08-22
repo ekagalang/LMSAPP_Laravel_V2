@@ -195,7 +195,12 @@ class Content extends Model
 
     public function essayQuestions()
     {
-        return $this->hasMany(EssayQuestion::class);
+        return $this->hasMany(EssayQuestion::class)->where('is_active', true)->orderBy('order');
+    }
+
+    public function allEssayQuestions()
+    {
+        return $this->hasMany(EssayQuestion::class)->orderBy('order');
     }
 
     /**

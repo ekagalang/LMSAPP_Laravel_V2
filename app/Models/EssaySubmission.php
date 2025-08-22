@@ -82,42 +82,35 @@ class EssaySubmission extends Model
      */
     public function getIsFullyGradedAttribute()
     {
+        $content = $this->content;
+        
         if ($this->answers->count() === 0) return false;
 
-        $totalQuestions = $this->content->essayQuestions()->count();
-        $scoringEnabled = $this->content->scoring_enabled ?? true;
-        $gradingMode = $this->content->grading_mode ?? 'individual';
+        $totalQuestions = $content->essayQuestions()->count();
         
-        // ✅ PERBAIKAN: Handle mode overall
-        if ($gradingMode === 'overall') {
-            if ($scoringEnabled) {
-                // Overall + Scoring: Cek apakah ada nilai di answer pertama
-                $firstAnswer = $this->answers()->first();
-                return $firstAnswer && $firstAnswer->score !== null;
-            } else {
-                // Overall + Feedback Only: Cek apakah ada feedback di answer pertama
-                $firstAnswer = $this->answers()->first();
-                return $firstAnswer && !empty($firstAnswer->feedback);
-            }
-        }
-        
-        // Mode individual (logic lama)
         if ($totalQuestions === 0) {
-            // Legacy essay tanpa questions
-            if ($scoringEnabled) {
+            return $this->answers()->count() > 0;
+        }
+
+        // PERBAIKAN UTAMA: Logic berdasarkan grading_mode dan scoring_enabled
+        if (!$content->scoring_enabled) {
+            // Tanpa scoring - cek feedback
+            if ($content->grading_mode === 'overall') {
+                // Overall tanpa scoring - minimal 1 answer ada feedback
+                return $this->answers()->whereNotNull('feedback')->count() > 0;
+            } else {
+                // Individual tanpa scoring - semua answer harus ada feedback
+                return $this->answers()->whereNotNull('feedback')->count() >= $totalQuestions;
+            }
+        } else {
+            // Dengan scoring - cek score
+            if ($content->grading_mode === 'overall') {
+                // Overall dengan scoring - minimal 1 answer ada score
                 return $this->answers()->whereNotNull('score')->count() > 0;
             } else {
-                return $this->answers()->whereNotNull('feedback')->count() > 0;
+                // Individual dengan scoring - semua answer harus ada score
+                return $this->answers()->whereNotNull('score')->count() >= $totalQuestions;
             }
-        }
-        
-        // Individual mode dengan multiple questions
-        if ($scoringEnabled) {
-            $gradedAnswers = $this->answers()->whereNotNull('score')->count();
-            return $gradedAnswers >= $totalQuestions;
-        } else {
-            $feedbackAnswers = $this->answers()->whereNotNull('feedback')->count();
-            return $feedbackAnswers >= $totalQuestions;
         }
     }
 
@@ -229,4 +222,29 @@ class EssaySubmission extends Model
     {
         return $this->content->scoring_enabled && !$this->is_fully_graded;
     }
+
+    public function isProcessedByInstructor()
+{
+    $content = $this->content;
+    
+    if ($this->answers->count() === 0) return false;
+
+    if (!$content->scoring_enabled) {
+        // Tanpa scoring - cek ada feedback
+        if ($content->grading_mode === 'overall') {
+            return $this->answers()->whereNotNull('feedback')->count() > 0;
+        } else {
+            $totalQuestions = $content->essayQuestions()->count();
+            return $this->answers()->whereNotNull('feedback')->count() >= $totalQuestions;
+        }
+    } else {
+        // Dengan scoring - cek ada score
+        if ($content->grading_mode === 'overall') {
+            return $this->answers()->whereNotNull('score')->count() > 0;
+        } else {
+            $totalQuestions = $content->essayQuestions()->count();
+            return $this->answers()->whereNotNull('score')->count() >= $totalQuestions;
+        }
+    }
+}
 }

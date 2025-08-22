@@ -370,10 +370,13 @@ class User extends Authenticatable
                 return false;
             }
 
-            // ✅ GUNAKAN METHOD BARU: untuk progress tracking, perlu fully completed
-            return $submission->isCompleteForProgress();
+            // Gunakan logic yang sama dengan getContentStatus
+            return $this->getContentStatus($content) === 'completed';
         } else {
-            return $this->completedContents()->where('content_id', $content->id)->exists();
+            return $this->completedContents()
+                ->where('content_id', $content->id)
+                ->wherePivot('completed', true)
+                ->exists();
         }
     }
 
@@ -623,17 +626,36 @@ class User extends Authenticatable
                 $totalQuestions = $item->essayQuestions()->count();
 
                 if ($totalQuestions === 0) {
-                    // Old system - check if has any answer
+                    // Old system
                     if ($submission->answers()->count() === 0) {
                         return false;
                     }
                     continue;
                 }
 
-                // New system - check all questions graded
-                $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
-                if ($gradedAnswers < $totalQuestions) {
-                    return false;
+                // New system - check berdasarkan grading mode dan scoring
+                if (!$item->scoring_enabled) {
+                    // Tanpa scoring - cek feedback
+                    if ($item->grading_mode === 'overall') {
+                        if ($submission->answers()->whereNotNull('feedback')->count() === 0) {
+                            return false;
+                        }
+                    } else {
+                        if ($submission->answers()->whereNotNull('feedback')->count() < $totalQuestions) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Dengan scoring - cek score
+                    if ($item->grading_mode === 'overall') {
+                        if ($submission->answers()->whereNotNull('score')->count() === 0) {
+                            return false;
+                        }
+                    } else {
+                        if ($submission->answers()->whereNotNull('score')->count() < $totalQuestions) {
+                            return false;
+                        }
+                    }
                 }
             }
         }
@@ -772,18 +794,56 @@ class User extends Authenticatable
 
             $totalQuestions = $content->essayQuestions()->count();
 
+            // Legacy system
             if ($totalQuestions === 0) {
                 return $submission->answers()->count() > 0 ? 'completed' : 'not_started';
             }
 
-            $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
-
-            if ($gradedAnswers >= $totalQuestions) {
-                return 'completed';
-            } elseif ($submission->answers()->count() > 0) {
-                return 'pending_grade';
+            // New system - check berdasarkan scoring dan grading mode
+            if (!$content->scoring_enabled) {
+                // Tanpa scoring
+                if ($content->grading_mode === 'overall') {
+                    // Overall tanpa scoring
+                    if ($submission->answers()->whereNotNull('feedback')->count() > 0) {
+                        return 'completed';
+                    } elseif ($submission->answers()->count() > 0) {
+                        return 'pending_grade';
+                    } else {
+                        return 'not_started';
+                    }
+                } else {
+                    // Individual tanpa scoring
+                    $answersWithFeedback = $submission->answers()->whereNotNull('feedback')->count();
+                    if ($answersWithFeedback >= $totalQuestions) {
+                        return 'completed';
+                    } elseif ($submission->answers()->count() > 0) {
+                        return 'pending_grade';
+                    } else {
+                        return 'not_started';
+                    }
+                }
             } else {
-                return 'not_started';
+                // Dengan scoring
+                if ($content->grading_mode === 'overall') {
+                    // Overall dengan scoring
+                    if ($submission->answers()->whereNotNull('score')->count() > 0) {
+                        return 'completed';
+                    } elseif ($submission->answers()->count() > 0) {
+                        return 'pending_grade';
+                    } else {
+                        return 'not_started';
+                    }
+                } else {
+                    // Individual dengan scoring
+                    $gradedAnswers = $submission->answers()->whereNotNull('score')->count();
+                    if ($gradedAnswers >= $totalQuestions) {
+                        return 'completed';
+                    } elseif ($submission->answers()->count() > 0) {
+                        return 'pending_grade';
+                    } else {
+                        return 'not_started';
+                    }
+                }
             }
         } else {
             return $this->completedContents()->where('content_id', $content->id)->exists()

@@ -31,22 +31,57 @@
                             </div>
                             <div>
                                 <span class="font-medium">Status:</span><br>
+                                @php
+                                    // Logic status berdasarkan grading mode dan scoring
+                                    $isFullyProcessed = false;
+                                    
+                                    if ($submission->content->scoring_enabled) {
+                                        // Dengan scoring
+                                        if ($submission->content->grading_mode === 'overall') {
+                                            // Overall scoring: cek ada score di answer manapun
+                                            $isFullyProcessed = $submission->answers()->whereNotNull('score')->count() > 0;
+                                        } else {
+                                            // Individual scoring: gunakan is_fully_graded
+                                            $isFullyProcessed = $submission->is_fully_graded;
+                                        }
+                                    } else {
+                                        // Tanpa scoring
+                                        if ($submission->content->grading_mode === 'overall') {
+                                            // Overall tanpa scoring: cek ada feedback di answer manapun
+                                            $isFullyProcessed = $submission->answers()->whereNotNull('feedback')->count() > 0;
+                                        } else {
+                                            // Individual tanpa scoring: semua answer harus ada feedback
+                                            $totalQuestions = $submission->content->essayQuestions()->count();
+                                            $answersWithFeedback = $submission->answers()->whereNotNull('feedback')->count();
+                                            $isFullyProcessed = $answersWithFeedback >= $totalQuestions;
+                                        }
+                                    }
+                                @endphp
+                                
                                 @if($submission->content->scoring_enabled)
-                                    @if($submission->is_fully_graded)
+                                    @if($isFullyProcessed)
                                         <span class="text-green-600">Sudah Dinilai</span>
                                     @else
                                         <span class="text-yellow-600">Menunggu Penilaian</span>
                                     @endif
                                 @else
-                                    <span class="text-blue-600">Berhasil Dikumpulkan</span>
+                                    @if($isFullyProcessed)
+                                        <span class="text-green-600">Sudah Ditinjau</span>
+                                    @else
+                                        <span class="text-blue-600">Berhasil Dikumpulkan</span>
+                                    @endif
                                 @endif
                             </div>
                             @if($submission->content->scoring_enabled)
                                 <div>
                                     <span class="font-medium">Total Nilai:</span><br>
-                                    @if($submission->is_fully_graded)
+                                    @if($isFullyProcessed)
                                         <span class="text-2xl font-bold text-blue-600">
-                                            {{ $submission->total_score }}/{{ $submission->max_total_score }}
+                                            @if($submission->content->grading_mode === 'overall')
+                                                {{ $submission->answers()->whereNotNull('score')->first()->score ?? 0 }}/{{ $submission->max_total_score }}
+                                            @else
+                                                {{ $submission->total_score }}/{{ $submission->max_total_score }}
+                                            @endif
                                         </span>
                                     @else
                                         <span class="text-gray-500">Belum dinilai</span>
@@ -93,21 +128,58 @@
 
                                 {{-- Grading Section - hanya tampil jika scoring enabled --}}
                                 @if($submission->content->scoring_enabled)
-                                    @if($answer->score !== null)
+                                    @php
+                                        // Logic untuk menentukan apakah soal ini sudah dinilai
+                                        $isGraded = false;
+                                        if ($submission->content->grading_mode === 'overall') {
+                                            // Overall mode: semua soal dianggap graded jika submission fully graded
+                                            $isGraded = $submission->is_fully_graded;
+                                        } else {
+                                            // Individual mode: cek score per answer
+                                            $isGraded = $answer->score !== null;
+                                        }
+                                    @endphp
+                                    
+                                    @if($isGraded)
                                         <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
                                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div class="bg-green-100 dark:bg-green-900 p-4 rounded-lg">
                                                     <p class="text-sm text-green-800 dark:text-green-200">Nilai:</p>
                                                     <p class="text-3xl font-bold text-green-900 dark:text-green-100">
-                                                        {{ $answer->score }}@if($answer->question)/{{ $answer->question->max_score }}@endif
+                                                        @if($submission->content->grading_mode === 'overall')
+                                                            @if($loop->first)
+                                                                {{ $answer->score }}/{{ $submission->content->essayQuestions->sum('max_score') }}
+                                                            @else
+                                                                <span class="text-lg">Lihat Total</span>
+                                                            @endif
+                                                        @else
+                                                            {{ $answer->score }}@if($answer->question)/{{ $answer->question->max_score }}@endif
+                                                        @endif
                                                     </p>
                                                 </div>
+                                                
                                                 <div class="md:col-span-2 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
                                                     <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                                                        Feedback dari Instruktur:
+                                                        @if($submission->content->grading_mode === 'overall')
+                                                            @if($loop->first)
+                                                                Feedback Keseluruhan dari Instruktur:
+                                                            @else
+                                                                Catatan:
+                                                            @endif
+                                                        @else
+                                                            Feedback dari Instruktur:
+                                                        @endif
                                                     </p>
                                                     <p class="mt-2 text-gray-800 dark:text-gray-200">
-                                                        {{ $answer->feedback ?: 'Tidak ada feedback khusus untuk soal ini.' }}
+                                                        @if($submission->content->grading_mode === 'overall')
+                                                            @if($loop->first)
+                                                                {{ $answer->feedback ?: 'Tidak ada feedback khusus.' }}
+                                                            @else
+                                                                Essay ini dinilai secara keseluruhan. Lihat feedback pada soal pertama untuk detail penilaian.
+                                                            @endif
+                                                        @else
+                                                            {{ $answer->feedback ?: 'Tidak ada feedback khusus untuk soal ini.' }}
+                                                        @endif
                                                     </p>
                                                 </div>
                                             </div>
@@ -121,14 +193,42 @@
                                     @endif
                                 @else
                                     {{-- Essay tanpa scoring - hanya tampilkan feedback jika ada --}}
-                                    @if($answer->feedback)
+                                    @php
+                                        // Logic untuk essay tanpa scoring
+                                        $hasFeedback = false;
+                                        if ($submission->content->grading_mode === 'overall') {
+                                            // Overall tanpa scoring: cek ada feedback di answer manapun
+                                            $hasFeedback = $submission->answers()->whereNotNull('feedback')->count() > 0;
+                                        } else {
+                                            // Individual tanpa scoring: cek feedback per answer
+                                            $hasFeedback = $answer->feedback !== null;
+                                        }
+                                    @endphp
+                                    
+                                    @if($hasFeedback)
                                         <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
                                             <div class="bg-blue-100 dark:bg-blue-900 p-4 rounded-lg">
                                                 <p class="text-sm text-blue-800 dark:text-blue-200 font-medium">
-                                                    Catatan dari Instruktur:
+                                                    @if($submission->content->grading_mode === 'overall')
+                                                        @if($loop->first)
+                                                            Catatan Keseluruhan dari Instruktur:
+                                                        @else
+                                                            Catatan:
+                                                        @endif
+                                                    @else
+                                                        Catatan dari Instruktur:
+                                                    @endif
                                                 </p>
                                                 <p class="mt-2 text-blue-900 dark:text-blue-100">
-                                                    {{ $answer->feedback }}
+                                                    @if($submission->content->grading_mode === 'overall')
+                                                        @if($loop->first)
+                                                            {{ $answer->feedback ?: 'Tidak ada catatan khusus.' }}
+                                                        @else
+                                                            Essay ini dinilai secara keseluruhan. Lihat catatan pada soal pertama.
+                                                        @endif
+                                                    @else
+                                                        {{ $answer->feedback }}
+                                                    @endif
                                                 </p>
                                             </div>
                                         </div>

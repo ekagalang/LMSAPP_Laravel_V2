@@ -13,17 +13,58 @@
 
                 {{-- Tampilkan score hanya jika scoring enabled --}}
                 @if ($content->scoring_enabled)
-                    @if ($submission->is_fully_graded)
+                    @php
+                        // Logic untuk cek apakah essay sudah diproses
+                        $isProcessed = false;
+                        
+                        if ($submission->content->scoring_enabled) {
+                            // Dengan scoring
+                            if ($submission->content->grading_mode === 'overall') {
+                                $isProcessed = $submission->answers()->whereNotNull('score')->count() > 0;
+                            } else {
+                                $isProcessed = $submission->is_fully_graded;
+                            }
+                        } else {
+                            // Tanpa scoring
+                            if ($submission->content->grading_mode === 'overall') {
+                                $isProcessed = $submission->answers()->whereNotNull('feedback')->count() > 0;
+                            } else {
+                                $totalQuestions = $submission->content->essayQuestions()->count();
+                                $answersWithFeedback = $submission->answers()->whereNotNull('feedback')->count();
+                                $isProcessed = $answersWithFeedback >= $totalQuestions;
+                            }
+                        }
+                    @endphp
+
+                    @if ($isProcessed)
                         <div class="mt-4">
                             <a href="{{ route('essays.result', $submission->id) }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md inline-block">
-                                Lihat Nilai dan Feedback
+                                @if($submission->content->scoring_enabled)
+                                    Lihat Nilai dan Feedback
+                                @else
+                                    Lihat Hasil dan Feedback
+                                @endif
                             </a>
-                            <div class="mt-2">
-                                <span class="text-sm">Total Nilai: {{ $submission->total_score }}/{{ $submission->max_total_score }}</span>
-                            </div>
+                            @if($submission->content->scoring_enabled)
+                                <div class="mt-2">
+                                    <span class="text-sm">
+                                        @if($submission->content->grading_mode === 'overall')
+                                            Total Nilai: {{ $submission->answers()->whereNotNull('score')->first()->score ?? 0 }}/{{ $submission->max_total_score }}
+                                        @else
+                                            Total Nilai: {{ $submission->total_score }}/{{ $submission->max_total_score }}
+                                        @endif
+                                    </span>
+                                </div>
+                            @endif
                         </div>
                     @else
-                        <p class="mt-2">Jawaban Anda sedang menunggu penilaian dari instruktur.</p>
+                        <p class="mt-2">
+                            @if($submission->content->scoring_enabled)
+                                Jawaban Anda sedang menunggu penilaian dari instruktur.
+                            @else
+                                Jawaban Anda sedang menunggu tinjauan dari instruktur.
+                            @endif
+                        </p>
                     @endif
                 @else
                     <div class="mt-4">
