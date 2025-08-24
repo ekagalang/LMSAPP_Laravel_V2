@@ -75,6 +75,7 @@
                                             <div class="flex space-x-2">
                                                 <a href="{{ route('admin.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                                 @if(auth()->user()->id !== $user->id)
+                                                    <a href="{{ route('admin.users.reset-password-form', $user) }}" class="text-yellow-600 hover:text-yellow-900">Reset Password</a>
                                                     <form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengguna ini?');">
                                                         @csrf
                                                         @method('DELETE')

@@ -111,6 +111,34 @@ class UserController extends Controller
     }
 
     /**
+     * Show the form for resetting user password.
+     */
+    public function resetPasswordForm(User $user)
+    {
+        return view('admin.users.reset-password', compact('user'));
+    }
+
+    /**
+     * Reset user password.
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (Auth::user()->id === $user->id) {
+            return redirect()->route('admin.users.index')->with('error', 'Anda tidak dapat mengubah password akun Anda sendiri melalui fitur ini.');
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->route('admin.users.index')->with('success', 'Password user berhasil diubah.');
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(User $user)

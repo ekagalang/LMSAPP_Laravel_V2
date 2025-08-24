@@ -192,6 +192,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('roles', RoleController::class)->except(['show']);
 
         // Sertifikat
+        Route::get('certificate-templates/create/enhanced', [CertificateTemplateController::class, 'createEnhanced'])->name('certificate-templates.create-enhanced');
+        Route::get('certificate-templates/{certificateTemplate}/edit/enhanced', [CertificateTemplateController::class, 'editEnhanced'])->name('certificate-templates.edit-enhanced');
         Route::resource('certificate-templates', CertificateTemplateController::class);
 
         // [BARU] Route untuk Manajemen Pengumuman
@@ -205,6 +207,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::get('/users/{user}/reset-password', [UserController::class, 'resetPasswordForm'])->name('users.reset-password-form');
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
         // Bulk Import User

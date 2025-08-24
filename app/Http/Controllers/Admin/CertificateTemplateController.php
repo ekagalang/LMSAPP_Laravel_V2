@@ -21,6 +21,11 @@ class CertificateTemplateController extends Controller
         return view('admin.certificate-templates.create');
     }
 
+    public function createEnhanced()
+    {
+        return view('admin.certificate-templates.enhanced-create');
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -72,6 +77,11 @@ class CertificateTemplateController extends Controller
     public function edit(CertificateTemplate $certificateTemplate)
     {
         return view('admin.certificate-templates.edit', compact('certificateTemplate'));
+    }
+
+    public function editEnhanced(CertificateTemplate $certificateTemplate)
+    {
+        return view('admin.certificate-templates.enhanced-edit', compact('certificateTemplate'));
     }
 
     public function update(Request $request, CertificateTemplate $certificateTemplate)
