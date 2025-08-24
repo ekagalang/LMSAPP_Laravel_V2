@@ -46,7 +46,7 @@
                     </div>
                 </div>
             </div>
-            
+
             @if($announcements && $announcements->count() > 0)
             <div class="mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-blue-500">
@@ -89,7 +89,6 @@
                 </div>
             </div>
             @endif
-            
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -216,6 +215,11 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Upcoming Zoom Sessions -->
+                    @if(isset($stats['upcoming_zoom_sessions']) && $stats['upcoming_zoom_sessions']->count() > 0)
+                        <x-upcoming-zoom-sessions :zoomSessions="$stats['upcoming_zoom_sessions']" />
+                    @endif
 
                     <!-- Recent Activity -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">

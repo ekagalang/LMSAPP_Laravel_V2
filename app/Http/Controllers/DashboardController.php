@@ -557,6 +557,24 @@ class DashboardController extends Controller
 
             $courseIds = $instructorCourses->pluck('id');
 
+            // Get upcoming zoom sessions for instructor's courses
+            $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
+                ->whereHas('lesson.course.instructors', function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                })
+                ->where(function ($query) {
+                    $query->where('is_scheduled', false)
+                        ->orWhere(function ($subQuery) {
+                            $subQuery->where('is_scheduled', true)
+                                ->where('scheduled_start', '>=', now())
+                                ->where('scheduled_start', '<=', now()->addDays(7));
+                        });
+                })
+                ->with(['lesson.course'])
+                ->orderBy('scheduled_start', 'asc')
+                ->take(5)
+                ->get();
+
             // Course statistics
             $totalCourses = $instructorCourses->count();
             $publishedCourses = $instructorCourses->where('status', 'published')->count();
@@ -683,6 +701,7 @@ class DashboardController extends Controller
                     'students' => $recentStudents,
                     'discussions' => $recentDiscussionsList,
                 ],
+                'upcoming_zoom_sessions' => $upcomingZoomSessions,
             ];
         } catch (\Exception $e) {
             Log::error('Error in getInstructorStats: ' . $e->getMessage());
@@ -696,6 +715,24 @@ class DashboardController extends Controller
             // 1. Ambil semua kursus yang dikelola oleh EO ini
             $managedCourses = $user->eventOrganizedCourses()->with(['enrolledUsers'])->get();
             $courseIds = $managedCourses->pluck('id');
+
+            // Get upcoming zoom sessions for EO's managed courses
+            $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
+                ->whereHas('lesson.course.eventOrganizers', function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                })
+                ->where(function ($query) {
+                    $query->where('is_scheduled', false)
+                        ->orWhere(function ($subQuery) {
+                            $subQuery->where('is_scheduled', true)
+                                ->where('scheduled_start', '>=', now())
+                                ->where('scheduled_start', '<=', now()->addDays(7));
+                        });
+                })
+                ->with(['lesson.course'])
+                ->orderBy('scheduled_start', 'asc')
+                ->take(5)
+                ->get();
 
             // 2. Statistik Kursus
             $totalCourses = $managedCourses->count();
@@ -760,7 +797,8 @@ class DashboardController extends Controller
                 'course_performance' => $coursePerformance,
                 'recent_activity' => [
                     'users' => $recentUsers,
-                ]
+                ],
+                'upcoming_zoom_sessions' => $upcomingZoomSessions,
             ];
         } catch (\Exception $e) {
             Log::error('Error in getEoStats: ' . $e->getMessage());

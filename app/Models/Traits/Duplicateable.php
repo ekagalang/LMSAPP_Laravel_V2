@@ -10,16 +10,17 @@ trait Duplicateable
     /**
      * Duplicate the model and its specified relationships recursively.
      *
+     * @param bool $addCopyToTitle Whether to add "(Copy)" to the title (default: true)
      * @return \Illuminate\Database\Eloquent\Model
      */
-    public function duplicate(): Model
+    public function duplicate($addCopyToTitle = true): Model
     {
-        return DB::transaction(function () {
+        return DB::transaction(function () use ($addCopyToTitle) {
             // Replicate the model instance without its relations
             $newModel = $this->replicate();
 
-            // Append "(Copy)" to the title if it exists
-            if (isset($newModel->title)) {
+            // Append "(Copy)" to the title if it exists and $addCopyToTitle is true
+            if ($addCopyToTitle && isset($newModel->title)) {
                 $newModel->title .= ' (Copy)';
             }
 
@@ -33,7 +34,10 @@ trait Duplicateable
             if ($this instanceof \App\Models\Content && $this->quiz) {
                 $originalQuiz = $this->quiz;
                 $newQuiz = $originalQuiz->replicate();
-                $newQuiz->title .= ' (Copy)';
+                // Hanya tambahkan "(Copy)" jika ini adalah duplikasi langsung, bukan child
+                if ($addCopyToTitle) {
+                    $newQuiz->title .= ' (Copy)';
+                }
                 $newQuiz->save();
 
                 // Hubungkan konten baru dengan kuis baru
@@ -53,6 +57,19 @@ trait Duplicateable
                     }
                 }
             }
+
+            // =================================================================
+            // PERBAIKAN: Logika khusus untuk duplikasi Essay Questions
+            // =================================================================
+            // Cek apakah model ini adalah Content dan memiliki Essay Questions
+            if ($this instanceof \App\Models\Content && $this->allEssayQuestions()->count() > 0) {
+                // Duplikasi setiap essay question
+                foreach ($this->allEssayQuestions as $originalEssayQuestion) {
+                    $newEssayQuestion = $originalEssayQuestion->replicate();
+                    $newEssayQuestion->content_id = $newModel->id;
+                    $newEssayQuestion->save();
+                }
+            }
             // =================================================================
             // AKHIR PERBAIKAN
             // =================================================================
@@ -61,8 +78,8 @@ trait Duplicateable
             $this->load($this->getRelationsToDuplicate());
 
             foreach ($this->getRelations() as $relationName => $relation) {
-                // Skip relasi quiz karena sudah ditangani secara khusus di atas
-                if ($relationName === 'quiz') {
+                // Skip relasi quiz dan essay questions karena sudah ditangani secara khusus di atas
+                if ($relationName === 'quiz' || $relationName === 'allEssayQuestions' || $relationName === 'essayQuestions') {
                     continue;
                 }
                 
@@ -80,12 +97,14 @@ trait Duplicateable
 
                 if ($relation instanceof \Illuminate\Database\Eloquent\Collection) {
                     foreach ($relation as $relatedModel) {
-                        $newChild = $relatedModel->duplicate();
+                        // Child models should not have "(Copy)" added to their titles
+                        $newChild = $relatedModel->duplicate(false);
                         $newModel->{$relationName}()->save($newChild);
                     }
                 }
                 elseif ($relation instanceof Model) {
-                    $newRelatedModel = $relation->duplicate();
+                    // Child models should not have "(Copy)" added to their titles
+                    $newRelatedModel = $relation->duplicate(false);
                     $foreignKeyName = $this->{$relationName}()->getForeignKeyName();
                     $newModel->{$foreignKeyName} = $newRelatedModel->id;
                     $newModel->save();

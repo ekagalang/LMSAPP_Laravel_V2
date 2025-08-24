@@ -259,6 +259,11 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Upcoming Zoom Sessions -->
+                    @if(isset($stats['upcoming_zoom_sessions']) && $stats['upcoming_zoom_sessions']->count() > 0)
+                        <x-upcoming-zoom-sessions :zoomSessions="$stats['upcoming_zoom_sessions']" />
+                    @endif
                 </div>
 
                 <!-- Sidebar dengan notifikasi dan aksi cepat -->

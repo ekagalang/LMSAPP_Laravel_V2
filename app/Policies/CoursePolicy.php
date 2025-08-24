@@ -75,7 +75,7 @@ class CoursePolicy
      */
     public function duplicate(User $user): bool
     {
-        return $user->can('manage own courses');
+        return $user->can('manage all courses');
     }
 
     /**
