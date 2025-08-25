@@ -44,48 +44,74 @@
                             </div>
                             <div class="md:col-span-2">
                                 <div class="w-full h-full min-h-[600px] bg-gray-200 dark:bg-gray-900 rounded-lg shadow-inner relative">
-                                    <!-- PDF Preview dengan fallback -->
-                                    <div id="pdf-container" class="w-full h-full">
-                                        <!-- Coba iframe dulu -->
-                                        <iframe 
-                                            id="pdf-iframe"
-                                            src="{{ Storage::url('certificates/' . $certificate->certificate_code . '.pdf') }}#toolbar=0&navpanes=0" 
-                                            width="100%" 
-                                            height="800px" 
-                                            class="rounded-lg"
-                                            onload="pdfLoaded()"
-                                            onerror="showFallback()">
-                                        </iframe>
-                                        
-                                        <!-- Fallback jika iframe gagal -->
-                                        <div id="pdf-fallback" class="hidden w-full h-full flex flex-col items-center justify-center p-8 text-center">
-                                            <svg class="w-24 h-24 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                            </svg>
-                                            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                                Certificate Preview
-                                            </h3>
-                                            <p class="text-gray-600 dark:text-gray-400 mb-4">
-                                                Certificate preview tidak dapat ditampilkan di browser ini.
-                                            </p>
-                                            <div class="space-y-3">
-                                                <a href="{{ Storage::url('certificates/' . $certificate->certificate_code . '.pdf') }}" 
-                                                   target="_blank"
-                                                   class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 transition">
-                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                                                    </svg>
-                                                    Buka di Tab Baru
-                                                </a>
-                                                <a href="{{ Storage::url('certificates/' . $certificate->certificate_code . '.pdf') }}" 
-                                                   download
-                                                   class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 transition">
-                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                    </svg>
-                                                    Download PDF
-                                                </a>
+                                    <!-- Loading indicator -->
+                                    <div id="pdf-loading" class="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                        <div class="text-center">
+                                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                                            <p class="text-gray-600 dark:text-gray-400">Loading certificate...</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- PDF Container dengan PDF.js -->
+                                    <div id="pdf-viewer" class="hidden w-full h-full">
+                                        <div class="bg-white rounded-lg shadow-sm border">
+                                            <!-- PDF Controls -->
+                                            <div class="flex items-center justify-between p-3 border-b bg-gray-50 rounded-t-lg">
+                                                <div class="flex items-center space-x-2">
+                                                    <button id="prev-page" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                                                        ← Previous
+                                                    </button>
+                                                    <span class="text-sm text-gray-700">
+                                                        Page <span id="page-num">1</span> of <span id="page-count">-</span>
+                                                    </span>
+                                                    <button id="next-page" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                                                        Next →
+                                                    </button>
+                                                </div>
+                                                <div class="flex items-center space-x-2">
+                                                    <button id="zoom-out" class="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">−</button>
+                                                    <span id="zoom-level" class="text-sm text-gray-700">100%</span>
+                                                    <button id="zoom-in" class="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">+</button>
+                                                </div>
                                             </div>
+                                            
+                                            <!-- PDF Canvas -->
+                                            <div class="overflow-auto" style="height: 700px;">
+                                                <div class="flex justify-center p-4">
+                                                    <canvas id="pdf-canvas" class="border shadow-lg"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fallback jika PDF.js gagal -->
+                                    <div id="pdf-fallback" class="hidden w-full h-full flex flex-col items-center justify-center p-8 text-center">
+                                        <svg class="w-24 h-24 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            Certificate Preview
+                                        </h3>
+                                        <p class="text-gray-600 dark:text-gray-400 mb-4">
+                                            Certificate preview tidak dapat ditampilkan di browser ini.
+                                        </p>
+                                        <div class="space-y-3">
+                                            <a href="{{ Storage::url('certificates/' . $certificate->certificate_code . '.pdf') }}" 
+                                               target="_blank"
+                                               class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 transition">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                                </svg>
+                                                Buka di Tab Baru
+                                            </a>
+                                            <a href="{{ Storage::url('certificates/' . $certificate->certificate_code . '.pdf') }}" 
+                                               download
+                                               class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 transition">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                </svg>
+                                                Download PDF
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -97,57 +123,153 @@
         </div>
     </x-app-layout>
 
+    <!-- Load PDF.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
     <script>
-    let iframeLoaded = false;
-    
-    function pdfLoaded() {
-        iframeLoaded = true;
-        console.log('PDF loaded successfully in iframe');
+    // Configure PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    let scale = 1.0;
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const pdfUrl = "{{ Storage::url('certificates/' . $certificate->certificate_code . '.pdf') }}";
+
+    /**
+     * Render halaman PDF
+     */
+    function renderPage(num) {
+        pageRendering = true;
+        
+        pdfDoc.getPage(num).then(function(page) {
+            const viewport = page.getViewport({scale: scale});
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+            
+            const renderTask = page.render(renderContext);
+
+            renderTask.promise.then(function() {
+                pageRendering = false;
+                if (pageNumPending !== null) {
+                    renderPage(pageNumPending);
+                    pageNumPending = null;
+                }
+            });
+        });
+
+        // Update page counters
+        document.getElementById('page-num').textContent = num;
     }
-    
+
+    /**
+     * Queue render page jika sedang rendering
+     */
+    function queueRenderPage(num) {
+        if (pageRendering) {
+            pageNumPending = num;
+        } else {
+            renderPage(num);
+        }
+    }
+
+    /**
+     * Halaman sebelumnya
+     */
+    function onPrevPage() {
+        if (pageNum <= 1) {
+            return;
+        }
+        pageNum--;
+        queueRenderPage(pageNum);
+        updateButtons();
+    }
+
+    /**
+     * Halaman berikutnya
+     */
+    function onNextPage() {
+        if (pageNum >= pdfDoc.numPages) {
+            return;
+        }
+        pageNum++;
+        queueRenderPage(pageNum);
+        updateButtons();
+    }
+
+    /**
+     * Update button states
+     */
+    function updateButtons() {
+        document.getElementById('prev-page').disabled = (pageNum <= 1);
+        document.getElementById('next-page').disabled = (pageNum >= pdfDoc.numPages);
+    }
+
+    /**
+     * Zoom in
+     */
+    function zoomIn() {
+        if (scale < 3.0) {
+            scale += 0.25;
+            queueRenderPage(pageNum);
+            document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%';
+        }
+    }
+
+    /**
+     * Zoom out
+     */
+    function zoomOut() {
+        if (scale > 0.5) {
+            scale -= 0.25;
+            queueRenderPage(pageNum);
+            document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%';
+        }
+    }
+
+    /**
+     * Show fallback
+     */
     function showFallback() {
-        console.log('PDF iframe failed to load, showing fallback');
-        document.getElementById('pdf-iframe').style.display = 'none';
+        document.getElementById('pdf-loading').classList.add('hidden');
+        document.getElementById('pdf-viewer').classList.add('hidden');
         document.getElementById('pdf-fallback').classList.remove('hidden');
     }
-    
-    // Deteksi jika iframe gagal load setelah 5 detik
-    setTimeout(function() {
-        if (!iframeLoaded) {
-            console.log('PDF iframe timeout, showing fallback');
-            showFallback();
-        }
-    }, 5000);
-    
-    // Deteksi X-Frame-Options error
-    window.addEventListener('message', function(event) {
-        if (event.data === 'iframe-blocked') {
-            showFallback();
-        }
+
+    // Load PDF
+    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
+        pdfDoc = pdfDoc_;
+        document.getElementById('page-count').textContent = pdfDoc.numPages;
+
+        // Hide loading, show viewer
+        document.getElementById('pdf-loading').classList.add('hidden');
+        document.getElementById('pdf-viewer').classList.remove('hidden');
+
+        // Initial render
+        renderPage(pageNum);
+        updateButtons();
+        
+        console.log('PDF loaded successfully with PDF.js');
+    }).catch(function(error) {
+        console.error('Error loading PDF:', error);
+        showFallback();
     });
-    
-    // Alternative detection method untuk X-Frame-Options
+
+    // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
-        const iframe = document.getElementById('pdf-iframe');
-        
-        iframe.addEventListener('load', function() {
-            try {
-                // Coba akses iframe content untuk deteksi blocking
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                if (!iframeDoc) {
-                    throw new Error('Cannot access iframe content');
-                }
-                iframeLoaded = true;
-            } catch (e) {
-                console.log('Iframe blocked:', e.message);
-                showFallback();
-            }
-        });
-        
-        iframe.addEventListener('error', function() {
-            console.log('Iframe error event fired');
-            showFallback();
-        });
+        document.getElementById('prev-page').addEventListener('click', onPrevPage);
+        document.getElementById('next-page').addEventListener('click', onNextPage);
+        document.getElementById('zoom-in').addEventListener('click', zoomIn);
+        document.getElementById('zoom-out').addEventListener('click', zoomOut);
     });
     </script>
     
