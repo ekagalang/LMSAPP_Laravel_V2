@@ -38,6 +38,8 @@ trait Duplicateable
                 if ($addCopyToTitle) {
                     $newQuiz->title .= ' (Copy)';
                 }
+                // PERBAIKAN: Set user_id quiz yang baru ke user yang sedang login
+                $newQuiz->user_id = auth()->id();
                 $newQuiz->save();
 
                 // Hubungkan konten baru dengan kuis baru
