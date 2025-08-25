@@ -21,11 +21,11 @@ class Course extends Model
 
     /**
      * Define which relations to duplicate.
-     * We duplicate lessons, instructors, and event organizers.
-     * We DO NOT duplicate participants/enrolledUsers.
+     * We duplicate lessons, instructors, event organizers, and participants.
+     * PERBAIKAN: Menambahkan participants agar course yang diduplikasi bisa diakses oleh participant yang sama.
      * @var array
      */
-    protected $duplicateRelations = ['lessons', 'instructors', 'eventOrganizers'];
+    protected $duplicateRelations = ['lessons', 'instructors', 'eventOrganizers', 'participants'];
 
     /**
      * Define which attribute contains a file to be duplicated.
