@@ -149,14 +149,16 @@ class ProgressController extends Controller
                 'issued_at' => now(),
             ]);
 
-            // Generate PDF using the certificate render view
-            $pdf = Pdf::loadView('certificates.render', compact('certificate'))
+            // Generate PDF using the enhanced certificate render view
+            $pdf = Pdf::loadView('certificates.template-render', compact('certificate'))
                 ->setPaper('a4', 'landscape')
                 ->setOptions([
-                    'dpi' => 150,
+                    'dpi' => 96, // Match screen DPI for consistent sizing
                     'defaultFont' => 'times',
                     'isHtml5ParserEnabled' => true,
                     'isRemoteEnabled' => true,
+                    'enable_local_file_access' => true,
+                    'chroot' => public_path(),
                 ]);
 
             // Create certificates directory if it doesn't exist

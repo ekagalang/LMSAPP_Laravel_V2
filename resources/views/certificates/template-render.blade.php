@@ -7,24 +7,27 @@
     <style>
         @page {
             margin: 0;
-            size: A4 landscape;
+            padding: 0;
+            size: 1123px 794px;
         }
         
-        body { 
+        html, body { 
             margin: 0; 
+            padding: 0;
             font-family: 'Times New Roman', serif; 
-            width: 1122px; 
+            width: 1123px; 
             height: 794px; 
             position: relative; 
             overflow: hidden;
-            padding: 0;
             background: white;
         }
         
         .certificate-container {
-            width: 100%;
-            height: 100%;
+            width: 1123px;
+            height: 794px;
             position: relative;
+            margin: 0;
+            padding: 0;
         }
         
         .bg { 
@@ -48,6 +51,24 @@
             position: absolute; 
             word-wrap: break-word; 
             white-space: pre-wrap;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+        }
+        
+        .text-left {
+            justify-content: flex-start;
+            text-align: left;
+        }
+        
+        .text-center {
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .text-right {
+            justify-content: flex-end;
+            text-align: right;
         }
         
         .default-cert {
@@ -67,7 +88,7 @@
         @php
             $hasTemplate = $certificate->certificateTemplate && $certificate->certificateTemplate->layout_data;
             $layoutData = $hasTemplate ? $certificate->certificateTemplate->layout_data : null;
-            $scale = 1.286; // Scale untuk positioning yang tepat
+            $scale = 1.0; // No scale needed - 1:1 matching with template editor
         @endphp
         
         @if($hasTemplate && is_array($layoutData))
@@ -123,8 +144,9 @@
                             @php
                                 $text = $element['content'] ?? $element['text'] ?? '';
                                 
-                                // Placeholder replacement
+                                // Placeholder replacement - handle both formats
                                 $replacements = [
+                                    // Standard format with braces
                                     '{{name}}' => $certificate->user->name,
                                     '{{participant_name}}' => $certificate->user->name,
                                     '{{course}}' => $certificate->course->title,
@@ -135,12 +157,16 @@
                                     '{{certificate_code}}' => $certificate->certificate_code,
                                     '{{instructor_name}}' => $certificate->course->instructors->first()?->name ?? 'Instructor',
                                     '{{instructor}}' => $certificate->course->instructors->first()?->name ?? 'Instructor',
-                                    '{{place_of_birth}}' => $certificate->place_of_birth ?? '',
-                                    '{{date_of_birth}}' => $certificate->date_of_birth ? \Carbon\Carbon::parse($certificate->date_of_birth)->format('d F Y') : '',
-                                    '{{identity_number}}' => $certificate->identity_number ?? '',
-                                    '{{institution_name}}' => $certificate->institution_name ?? '',
                                     '{{score}}' => '100',
-                                    '{{course_summary}}' => 'Course completed successfully',
+                                    '{{course_summary}}' => strip_tags($certificate->course->description) ?: 'Course completed successfully',
+                                    
+                                    // Enhanced template format with @ prefix
+                                    '@{{name}}' => $certificate->user->name,
+                                    '@{{course}}' => $certificate->course->title,
+                                    '@{{date}}' => $certificate->issued_at->format('F j, Y'),
+                                    '@{{score}}' => '100',
+                                    '@{{certificate_code}}' => $certificate->certificate_code,
+                                    '@{{course_summary}}' => strip_tags($certificate->course->description) ?: 'Course completed successfully',
                                 ];
                                 
                                 foreach ($replacements as $placeholder => $value) {
@@ -153,15 +179,23 @@
                                 $fontSize = ($element['fontSize'] ?? 16) * $scale;
                             @endphp
                             
-                            <div class="element" style="
+                            @php
+                                $textAlign = $element['textAlign'] ?? 'left';
+                                $width = ($element['width'] ?? 200) * $scale;
+                                $height = ($element['height'] ?? 40) * $scale;
+                            @endphp
+                            
+                            <div class="element text-{{ $textAlign }}" style="
                                 left: {{ $x }}px;
                                 top: {{ $y }}px;
+                                width: {{ $width }}px;
+                                height: {{ $height }}px;
                                 font-size: {{ $fontSize }}px;
                                 color: {{ $element['color'] ?? '#000' }};
                                 font-weight: {{ ($element['isBold'] ?? false) ? 'bold' : 'normal' }};
-                                text-align: {{ $element['textAlign'] ?? 'left' }};
+                                font-style: {{ ($element['isItalic'] ?? false) ? 'italic' : 'normal' }};
+                                text-decoration: {{ ($element['isUnderline'] ?? false) ? 'underline' : 'none' }};
                                 font-family: {{ $element['fontFamily'] ?? 'Times New Roman' }};
-                                line-height: 1.2;
                             ">{{ $text }}</div>
                         @endforeach
                     @endif

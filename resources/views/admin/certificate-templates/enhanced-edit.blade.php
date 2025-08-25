@@ -252,14 +252,14 @@
                                 
                                 <!-- Canvas Container -->
                                 <div class="relative overflow-auto border border-gray-300 rounded-lg landscape-canvas" :style="{ height: '70vh', minWidth: '100%' }">
-                                    <div x-ref="canvasContainer" 
-                                         class="relative mx-auto bg-gray-100" 
+                                    <div class="relative mx-auto bg-gray-100 canvas-wrapper" 
                                          :style="{ 
-                                             width: (1123 * zoom) + 'px', 
-                                             height: (794 * zoom) + 'px',
                                              transform: `scale(${zoom})`,
-                                             transformOrigin: 'top left'
-                                         }"
+                                             transformOrigin: 'top center'
+                                         }">
+                                        <div x-ref="canvasContainer" 
+                                             class="relative bg-white" 
+                                             style="width: 1123px; height: 794px;"
                                          @click="deselectElement">
                                         
                                         <!-- Grid overlay -->
@@ -348,6 +348,7 @@
                                                 </template>
                                             </div>
                                         </template>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -388,7 +389,7 @@
             selectedElement: null,
             nextElementId: 1,
             customText: '',
-            zoom: 0.6,
+            zoom: 1.0,
             showGrid: true,
             snapToGrid: true,
             gridSize: 10,
@@ -493,7 +494,7 @@
             },
 
             resetZoom() {
-                this.zoom = 0.6;
+                this.zoom = 1.0;
             },
 
             // Element Management
@@ -928,6 +929,13 @@
     .landscape-canvas {
         min-width: 100%;
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    /* Canvas wrapper styling */
+    .canvas-wrapper {
+        padding: 40px;
+        display: inline-block;
+        min-width: 100%;
     }
     </style>
     @endpush
