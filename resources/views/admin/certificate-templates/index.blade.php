@@ -5,9 +5,9 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-12 min-h-screen">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg" style="min-height: calc(100vh - 200px);">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <div class="flex justify-end mb-4 space-x-2">
                         <div class="relative group">
@@ -40,7 +40,7 @@
                         </div>
                     @endif
 
-                    <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+                    <div class="relative shadow-md sm:rounded-lg" style="overflow: visible;">
                         <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>

@@ -24,7 +24,7 @@
             padding: 0.25rem 0.5rem;
             padding-top: 0.25rem;
             border-bottom: 2px solid transparent;
-            font-size: 1.5rem !important;
+            font-size: 1.125rem !important;
             font-weight: 600 !important;
             line-height: 1.25;
             transition: all 0.15s ease-in-out;
@@ -47,7 +47,7 @@
             align-items: center;
             padding: 0.5rem 0.75rem;
             border: 1px solid transparent;
-            font-size: 1.1rem !important;
+            font-size: 1rem !important;
             font-weight: 600 !important;
             border-radius: 0.375rem;
             color: #000000 !important;
@@ -80,7 +80,7 @@
             padding-top: 0.5rem;
             padding-bottom: 0.5rem;
             border-left: 4px solid transparent;
-            font-size: 1rem !important;
+            font-size: 0.9rem !important;
             font-weight: 600 !important;
             color: #000000 !important;
             transition: all 0.15s ease-in-out;
