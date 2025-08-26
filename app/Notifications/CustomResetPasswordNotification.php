@@ -2,13 +2,12 @@
 
 namespace App\Notifications;
 
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class CustomResetPasswordNotification extends ResetPassword
+class CustomResetPasswordNotification extends Notification
 {
     use Queueable;
 
@@ -24,8 +23,6 @@ class CustomResetPasswordNotification extends ResetPassword
 
     /**
      * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
      */
     public function via($notifiable)
     {
@@ -42,19 +39,36 @@ class CustomResetPasswordNotification extends ResetPassword
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
-        return $this->buildMailMessage($resetUrl);
+        // Check if custom template exists, otherwise use default Laravel template
+        if (view()->exists('emails.reset-password')) {
+            return (new MailMessage)
+                ->subject('Reset Password - BASS Training Center')
+                ->view('emails.reset-password', [
+                    'url' => $resetUrl,
+                    'user' => $notifiable
+                ]);
+        }
+
+        // Fallback to default Laravel email template
+        return (new MailMessage)
+            ->subject('Reset Password - BASS Training Center')
+            ->greeting('Halo!')
+            ->line('Anda menerima email ini karena kami menerima permintaan reset password untuk akun Anda.')
+            ->action('Reset Password', $resetUrl)
+            ->line('Link reset password ini akan kedaluwarsa dalam :count menit.', [
+                'count' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire')
+            ])
+            ->line('Jika Anda tidak meminta reset password, tidak ada tindakan lebih lanjut yang diperlukan.')
+            ->salutation('Salam, Tim BASS Training Center');
     }
 
     /**
-     * Build the mail message.
+     * Get the array representation of the notification.
      */
-    protected function buildMailMessage($url)
+    public function toArray($notifiable)
     {
-        return (new MailMessage)
-            ->subject('Reset Password - BASS Training Center')
-            ->view('emails.reset-password', [
-                'url' => $url,
-                'user' => null
-            ]);
+        return [
+            //
+        ];
     }
 }
