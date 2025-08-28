@@ -2,7 +2,6 @@
 
 use Illuminate\Foundation\Application;
 use App\Http\Middleware\ForceJsonResponse;
-use App\Http\Middleware\HoneypotMiddleware; // Import HoneypotMiddleware
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -20,15 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'force.json' => ForceJsonResponse::class,
-            // 🍯 Tambahkan honeypot middleware alias
-            'honeypot' => HoneypotMiddleware::class,
         ]);
-
-        // 🍯 Opsional: Terapkan honeypot secara global pada web group
-        // Uncomment baris di bawah jika ingin honeypot aktif di semua routes
-        // $middleware->web(append: [
-        //     HoneypotMiddleware::class,
-        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

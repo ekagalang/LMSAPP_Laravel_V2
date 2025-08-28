@@ -18,13 +18,6 @@
         <form method="POST" action="{{ route('login') }}">
             @csrf
 
-            <!-- 🍯 HONEYPOT FIELDS untuk LOGIN -->
-            <div style="position: absolute; left: -5000px; top: -5000px;">
-                <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-                <input type="url" name="company_url" tabindex="-1" autocomplete="off" aria-hidden="true">
-                <input type="text" name="phone_number" tabindex="-1" autocomplete="nope" aria-hidden="true">
-            </div>
-
             <div>
                 <x-input-label for="email" :value="__('Email')" />
                 <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
@@ -63,14 +56,6 @@
         @if (Route::has('register'))
             <form method="POST" action="{{ route('register') }}">
                 @csrf
-
-                <!-- 🍯 HONEYPOT FIELDS untuk REGISTER -->
-                <div style="position: absolute; left: -5000px; top: -5000px;">
-                    <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-                    <input type="url" name="company_url" tabindex="-1" autocomplete="off" aria-hidden="true">
-                    <input type="text" name="phone_number" tabindex="-1" autocomplete="nope" aria-hidden="true">
-                    <input type="text" name="username" tabindex="-1" autocomplete="off" aria-hidden="true">
-                </div>
 
                 <div>
                     <x-input-label for="register_name" :value="__('Nama')" />
@@ -223,20 +208,6 @@
         #login-form, #signup-form {
             opacity: 1;
             transition: opacity 0.2s ease-in-out;
-        }
-        
-        /* 🍯 Extra honeypot protection dengan CSS yang lebih canggih */
-        input[name="website"],
-        input[name="company_url"], 
-        input[name="phone_number"],
-        input[name="username"] {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            position: absolute !important;
-            left: -9999px !important;
-            width: 0 !important;
-            height: 0 !important;
         }
     </style>
 </x-guest-layout>
