@@ -1,6 +1,7 @@
 <x-app-layout>
     <div x-data="{
         sidebarOpen: window.innerWidth >= 768,
+        sidebarOpen: false,
         showProgress: false,
         // [LOGIKA BARU] Menentukan apakah konten ini dianggap selesai.
         // Untuk kuis, harus lulus. Untuk esai, sudah submit (bukan harus dinilai).

@@ -2,6 +2,14 @@
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
+        <!-- 🍯 HONEYPOT FIELDS -->
+        <div style="position: absolute; left: -5000px; top: -5000px;">
+            <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <input type="url" name="company_url" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <input type="text" name="phone_number" tabindex="-1" autocomplete="nope" aria-hidden="true">
+            <input type="text" name="username" tabindex="-1" autocomplete="off" aria-hidden="true">
+        </div>
+
         <div>
             <x-input-label for="name" :value="__('Nama')" />
             <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
@@ -36,4 +44,20 @@
             </x-primary-button>
         </div>
     </form>
+
+    <style>
+        /* 🍯 Honeypot protection */
+        input[name="website"],
+        input[name="company_url"], 
+        input[name="phone_number"],
+        input[name="username"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            position: absolute !important;
+            left: -9999px !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+    </style>
 </x-guest-layout>
