@@ -50,6 +50,16 @@
                             {{ __('Manajemen Sertifikat') }}
                         </a>
                     @endcan
+
+                    @can('view progress reports')
+                        <a href="{{ route('instructor-analytics.index') }}" 
+                           class="inline-flex items-center px-1 pt-1 border-b-2 text-base font-semibold leading-5 transition duration-150 ease-in-out
+                                  {{ request()->routeIs('instructor-analytics.*') 
+                                      ? 'border-red-900 text-red-900' 
+                                      : 'border-transparent text-black hover:text-red-900 hover:border-red-300' }}">
+                            {{ __('Analytics Instruktur') }}
+                        </a>
+                    @endcan
                     
                     <!-- Menu Admin khusus Super Admin menjadi dropdown -->
                     @role('super-admin')
@@ -175,6 +185,16 @@
                               ? 'border-red-900 text-red-900 bg-red-50' 
                               : 'border-transparent text-black hover:text-red-900 hover:bg-red-50 hover:border-red-300' }}">
                     {{ __('Manajemen Sertifikat') }}
+                </a>
+            @endcan
+
+            @can('view progress reports')
+                <a href="{{ route('instructor-analytics.index') }}" 
+                   class="block pl-3 pr-4 py-2 border-l-4 text-base font-semibold transition duration-150 ease-in-out
+                          {{ request()->routeIs('instructor-analytics.*') 
+                              ? 'border-red-900 text-red-900 bg-red-50' 
+                              : 'border-transparent text-black hover:text-red-900 hover:bg-red-50 hover:border-red-300' }}">
+                    {{ __('Analytics Instruktur') }}
                 </a>
             @endcan
 

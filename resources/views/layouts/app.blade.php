@@ -134,10 +134,14 @@
                             @endcan
 
                             {{-- Menu "Pemantauan" untuk Event Organizer (dan Admin) --}}
-                             @can('view progress reports')
+                            @can('view progress reports')
                                 <a href="{{ route('eo.courses.index') }}" 
-                                   class="nav-link-custom {{ request()->routeIs('eo.*') ? 'active' : '' }}">
+                                class="nav-link-custom {{ request()->routeIs('eo.*') ? 'active' : '' }}">
                                     {{ __('Pemantauan Kursus') }}
+                                </a>
+                                <a href="{{ route('instructor-analytics.index') }}" 
+                                class="nav-link-custom {{ request()->routeIs('instructor-analytics.*') ? 'active' : '' }}">
+                                    {{ __('Analytics Instruktur') }}
                                 </a>
                             @endcan
 
@@ -264,10 +268,15 @@
                         </a>
                     @endcan
 
+                    {{-- Menu "Pemantauan" untuk Event Organizer (dan Admin) --}}
                     @can('view progress reports')
                         <a href="{{ route('eo.courses.index') }}" 
-                           class="responsive-nav-link-custom {{ request()->routeIs('eo.*') ? 'active' : '' }}">
+                           class="nav-link-custom {{ request()->routeIs('eo.*') ? 'active' : '' }}">
                             {{ __('Pemantauan Kursus') }}
+                        </a>
+                        <a href="{{ route('instructor-analytics.index') }}" 
+                        class="nav-link-custom {{ request()->routeIs('instructor-analytics.*') ? 'active' : '' }}">
+                            {{ __('Analytics Instruktur') }}
                         </a>
                     @endcan
 

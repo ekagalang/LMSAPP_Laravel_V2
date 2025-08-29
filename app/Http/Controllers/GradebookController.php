@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // <-- TAMBAHKAN USE STATEMENT
 use Illuminate\Support\Facades\Storage; // <-- TAMBAHKAN USE STATEMENT
+use App\Models\DiscussionReply;
+use App\Models\EssayAnswer;
 use PDF;
 
 class GradebookController extends Controller
@@ -394,5 +396,303 @@ class GradebookController extends Controller
         $scoringEnabled = $submission->content->scoring_enabled ?? true;
         
         return view('gradebook.essay_detail', compact('submission', 'gradingMode', 'scoringEnabled'));
+    }
+
+    /**
+     * Instructor Analytics Dashboard - Menampilkan keaktifan semua instruktur
+     */
+    public function instructorAnalytics(Request $request)
+    {
+        // Cek authorization
+        if (!Auth::user()->hasAnyRole(['super-admin', 'event-organizer'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        $dateFrom = $request->get('date_from', now()->subMonth()->toDateString());
+        $dateTo = $request->get('date_to', now()->toDateString());
+        
+        // Get all instructors
+        $instructors = User::role('instructor')->with(['courses' => function($query) {
+            $query->select('courses.id', 'courses.title');
+        }])->get();
+
+        $instructorStats = [];
+
+        foreach ($instructors as $instructor) {
+            // Get courses taught by instructor
+            $courseIds = $instructor->courses->pluck('id');
+
+            // Discussion replies count
+            $discussionReplies = DiscussionReply::where('user_id', $instructor->id)
+                ->whereBetween('created_at', [$dateFrom, $dateTo])
+                ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })->count();
+
+            // Essay grading count (essays that have been graded)
+            $essayGraded = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })
+                ->where(function($query) {
+                    $query->whereNotNull('score')->orWhereNotNull('feedback');
+                })
+                ->whereBetween('updated_at', [$dateFrom, $dateTo])
+                ->count();
+
+            // Essay submissions pending (need grading)
+            $essayPending = EssaySubmission::whereHas('content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })
+                ->where(function($query) {
+                    $query->whereDoesntHave('answers', function($subQuery) {
+                        $subQuery->whereNotNull('score')->orWhereNotNull('feedback');
+                    });
+                })
+                ->count();
+
+            // Recent activity (last 7 days)
+            $recentDiscussions = DiscussionReply::where('user_id', $instructor->id)
+                ->whereBetween('created_at', [now()->subDays(7), now()])
+                ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })->count();
+
+            $recentGrading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })
+                ->where(function($query) {
+                    $query->whereNotNull('score')->orWhereNotNull('feedback');
+                })
+                ->whereBetween('updated_at', [now()->subDays(7), now()])
+                ->count();
+
+            $instructorStats[] = [
+                'instructor' => $instructor,
+                'courses' => $instructor->courses,
+                'discussion_replies' => $discussionReplies,
+                'essay_graded' => $essayGraded,
+                'essay_pending' => $essayPending,
+                'recent_discussions' => $recentDiscussions,
+                'recent_grading' => $recentGrading,
+                'total_activity' => $discussionReplies + $essayGraded,
+                'recent_activity' => $recentDiscussions + $recentGrading,
+            ];
+        }
+
+        // Sort by total activity
+        usort($instructorStats, function($a, $b) {
+            return $b['total_activity'] <=> $a['total_activity'];
+        });
+
+        // Overall statistics
+        $overallStats = [
+            'total_instructors' => $instructors->count(),
+            'active_instructors' => collect($instructorStats)->where('recent_activity', '>', 0)->count(),
+            'total_discussion_replies' => collect($instructorStats)->sum('discussion_replies'),
+            'total_essays_graded' => collect($instructorStats)->sum('essay_graded'),
+            'total_essays_pending' => collect($instructorStats)->sum('essay_pending'),
+        ];
+
+        return view('instructor-analytics.index', compact(
+            'instructorStats', 
+            'overallStats', 
+            'dateFrom', 
+            'dateTo'
+        ));
+    }
+
+    /**
+     * Detail analytics untuk instruktur tertentu
+     */
+    public function instructorDetail(Request $request, User $user)
+    {
+        // Cek authorization
+        if (!Auth::user()->hasAnyRole(['super-admin', 'event-organizer'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Pastikan user adalah instruktur
+        if (!$user->hasRole('instructor')) {
+            abort(404, 'Instructor not found');
+        }
+
+        $dateFrom = $request->get('date_from', now()->subMonth()->toDateString());
+        $dateTo = $request->get('date_to', now()->toDateString());
+        $courseId = $request->get('course_id');
+
+        // Get courses taught by instructor
+        $courses = $user->courses;
+        $courseIds = $courses->pluck('id');
+
+        // Filter by specific course if requested
+        if ($courseId) {
+            $courseIds = $courseIds->filter(function($id) use ($courseId) {
+                return $id == $courseId;
+            });
+        }
+
+        // Discussion activity with details
+        $discussionReplies = DiscussionReply::where('user_id', $user->id)
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            })
+            ->with(['discussion.content.lesson.course'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Essay grading activity with details
+        $essayGrading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            })
+            ->where(function($query) {
+                $query->whereNotNull('score')->orWhereNotNull('feedback');
+            })
+            ->whereBetween('updated_at', [$dateFrom, $dateTo])
+            ->with(['submission.user', 'submission.content.lesson.course', 'question'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        // Monthly statistics
+        $monthlyStats = [];
+        $currentDate = now()->parse($dateFrom);
+        $endDate = now()->parse($dateTo);
+
+        while ($currentDate->lte($endDate)) {
+            $month = $currentDate->format('Y-m');
+            $monthStart = $currentDate->startOfMonth()->toDateString();
+            $monthEnd = $currentDate->endOfMonth()->toDateString();
+
+            $discussions = DiscussionReply::where('user_id', $user->id)
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })->count();
+
+            $grading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })
+                ->where(function($query) {
+                    $query->whereNotNull('score')->orWhereNotNull('feedback');
+                })
+                ->whereBetween('updated_at', [$monthStart, $monthEnd])
+                ->count();
+
+            $monthlyStats[] = [
+                'month' => $currentDate->format('M Y'),
+                'discussions' => $discussions,
+                'grading' => $grading,
+                'total' => $discussions + $grading
+            ];
+
+            $currentDate->addMonth();
+        }
+
+        // Course-wise statistics
+        $courseStats = [];
+        foreach ($courses as $course) {
+            if ($courseId && $course->id != $courseId) continue;
+
+            $discussions = DiscussionReply::where('user_id', $user->id)
+                ->whereBetween('created_at', [$dateFrom, $dateTo])
+                ->whereHas('discussion.content.lesson', function($query) use ($course) {
+                    $query->where('course_id', $course->id);
+                })->count();
+
+            $grading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($course) {
+                    $query->where('course_id', $course->id);
+                })
+                ->where(function($query) {
+                    $query->whereNotNull('score')->orWhereNotNull('feedback');
+                })
+                ->whereBetween('updated_at', [$dateFrom, $dateTo])
+                ->count();
+
+            $courseStats[] = [
+                'course' => $course,
+                'discussions' => $discussions,
+                'grading' => $grading,
+                'total' => $discussions + $grading
+            ];
+        }
+
+        $stats = [
+            'discussion_replies' => $discussionReplies->count(),
+            'essay_graded' => $essayGrading->count(),
+            'total_activity' => $discussionReplies->count() + $essayGrading->count(),
+        ];
+
+        return view('instructor-analytics.detail', compact(
+            'user',
+            'courses',
+            'discussionReplies',
+            'essayGrading',
+            'monthlyStats',
+            'courseStats',
+            'stats',
+            'dateFrom',
+            'dateTo',
+            'courseId'
+        ));
+    }
+
+    /**
+     * Compare multiple instructors
+     */
+    public function instructorCompare(Request $request)
+    {
+        // Cek authorization
+        if (!Auth::user()->hasAnyRole(['super-admin', 'event-organizer'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        $instructorIds = $request->get('instructors', []);
+        $dateFrom = $request->get('date_from', now()->subMonth()->toDateString());
+        $dateTo = $request->get('date_to', now()->toDateString());
+
+        $allInstructors = User::role('instructor')->orderBy('name')->get();
+        
+        if (empty($instructorIds)) {
+            return view('instructor-analytics.compare', compact('allInstructors', 'dateFrom', 'dateTo'));
+        }
+
+        $compareData = [];
+        foreach ($instructorIds as $instructorId) {
+            $instructor = User::find($instructorId);
+            if (!$instructor || !$instructor->hasRole('instructor')) continue;
+
+            $courseIds = $instructor->courses->pluck('id');
+
+            $discussions = DiscussionReply::where('user_id', $instructor->id)
+                ->whereBetween('created_at', [$dateFrom, $dateTo])
+                ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })->count();
+
+            $grading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                })
+                ->where(function($query) {
+                    $query->whereNotNull('score')->orWhereNotNull('feedback');
+                })
+                ->whereBetween('updated_at', [$dateFrom, $dateTo])
+                ->count();
+
+            $compareData[] = [
+                'instructor' => $instructor,
+                'discussions' => $discussions,
+                'grading' => $grading,
+                'total' => $discussions + $grading,
+                'courses_count' => $instructor->courses->count(),
+            ];
+        }
+
+        return view('instructor-analytics.compare', compact(
+            'allInstructors',
+            'compareData',
+            'instructorIds',
+            'dateFrom',
+            'dateTo'
+        ));
     }
 }

@@ -294,6 +294,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/bulk-action', [CertificateController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/{certificate}/update-template', [CertificateController::class, 'updateTemplate'])->name('update-template');
     });
+
+    // Instructor Analytics Routes
+    Route::middleware(['permission:view progress reports'])->prefix('instructor-analytics')->name('instructor-analytics.')->group(function () {
+        Route::get('/', [GradebookController::class, 'instructorAnalytics'])->name('index');
+        Route::get('/instructor/{user}', [GradebookController::class, 'instructorDetail'])->name('detail');
+        Route::get('/compare', [GradebookController::class, 'instructorCompare'])->name('compare');
+    });
 });
 
 // ============================================================================
