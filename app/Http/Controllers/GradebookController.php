@@ -411,8 +411,8 @@ class GradebookController extends Controller
         $dateFrom = $request->get('date_from', now()->subMonth()->toDateString());
         $dateTo = $request->get('date_to', now()->toDateString());
         
-        // Get all instructors
-        $instructors = User::role('instructor')->with(['courses' => function($query) {
+        // Get all instructors with their taught courses (using course_instructor table)
+        $instructors = User::role('instructor')->with(['instructorCourses' => function($query) {
             $query->select('courses.id', 'courses.title');
         }])->get();
 
@@ -420,7 +420,7 @@ class GradebookController extends Controller
 
         foreach ($instructors as $instructor) {
             // Get courses taught by instructor
-            $courseIds = $instructor->courses->pluck('id');
+            $courseIds = $instructor->instructorCourses->pluck('id');
 
             // Discussion replies count
             $discussionReplies = DiscussionReply::where('user_id', $instructor->id)
@@ -468,7 +468,7 @@ class GradebookController extends Controller
 
             $instructorStats[] = [
                 'instructor' => $instructor,
-                'courses' => $instructor->courses,
+                'courses' => $instructor->instructorCourses,
                 'discussion_replies' => $discussionReplies,
                 'essay_graded' => $essayGraded,
                 'essay_pending' => $essayPending,
@@ -521,7 +521,7 @@ class GradebookController extends Controller
         $courseId = $request->get('course_id');
 
         // Get courses taught by instructor
-        $courses = $user->courses;
+        $courses = $user->instructorCourses;
         $courseIds = $courses->pluck('id');
 
         // Filter by specific course if requested
@@ -661,7 +661,7 @@ class GradebookController extends Controller
             $instructor = User::find($instructorId);
             if (!$instructor || !$instructor->hasRole('instructor')) continue;
 
-            $courseIds = $instructor->courses->pluck('id');
+            $courseIds = $instructor->instructorCourses->pluck('id');
 
             $discussions = DiscussionReply::where('user_id', $instructor->id)
                 ->whereBetween('created_at', [$dateFrom, $dateTo])
@@ -683,7 +683,7 @@ class GradebookController extends Controller
                 'discussions' => $discussions,
                 'grading' => $grading,
                 'total' => $discussions + $grading,
-                'courses_count' => $instructor->courses->count(),
+                'courses_count' => $instructor->instructorCourses->count(),
             ];
         }
 

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(php artisan route:list:*)",
       "Bash(php artisan config:clear:*)",
-      "Bash(php artisan view:clear:*)"
+      "Bash(php artisan view:clear:*)",
+      "Bash(php:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

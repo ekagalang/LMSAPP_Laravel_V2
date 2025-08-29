@@ -84,6 +84,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Relasi ke kursus yang diajar (untuk instruktur)
+     */
+    public function instructorCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_instructor')->withTimestamps();
+    }
+
+    /**
      * Relasi ke konten yang sudah diselesaikan
      */
     public function completedContents()
