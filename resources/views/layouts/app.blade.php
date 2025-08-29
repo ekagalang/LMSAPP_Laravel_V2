@@ -180,6 +180,10 @@
                                                    class="dropdown-item-custom">
                                                     {{ __('Certificate Template') }}
                                                 </a>
+                                                <a href="{{ route('certificate-management.index') }}" 
+                                                    class="dropdown-item-custom">
+                                                    {{ __('Manajemen Sertifikat') }}
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -288,6 +292,10 @@
                                 <a href="{{ route('admin.certificate-templates.index') }}" 
                                    class="responsive-nav-link-custom">
                                     {{ __('Certificate Template') }}
+                                </a>
+                                <a href="{{ route('certificate-management.index') }}" 
+                                    class="responsive-nav-link-custom">
+                                    {{ __('Manajemen Sertifikat') }}
                                 </a>
                             </div>
                         </div>

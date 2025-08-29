@@ -285,6 +285,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
         ->name('certificates.destroy');
+
+    // Certificate Management Routes
+    Route::middleware(['permission:view progress reports'])->prefix('certificate-management')->name('certificate-management.')->group(function () {
+        Route::get('/', [CertificateController::class, 'managementIndex'])->name('index');
+        Route::get('/analytics', [CertificateController::class, 'analytics'])->name('analytics');
+        Route::get('/by-course/{course}', [CertificateController::class, 'byCourse'])->name('by-course');
+        Route::post('/bulk-action', [CertificateController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('/{certificate}/update-template', [CertificateController::class, 'updateTemplate'])->name('update-template');
+    });
 });
 
 // ============================================================================

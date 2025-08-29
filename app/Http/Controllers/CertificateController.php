@@ -417,4 +417,224 @@ class CertificateController extends Controller
 
         return back()->with('success', "Berhasil membuat {$generated} sertifikat dari " . count($eligibleUsers) . " peserta yang memenuhi syarat.");
     }
+
+    /**
+     * Certificate Management Index - Main dashboard
+     */
+    public function managementIndex(Request $request)
+    {
+        $this->authorize('viewAny', Certificate::class);
+
+        $query = Certificate::with(['user', 'course', 'certificateTemplate']);
+
+        // Filter by course
+        if ($request->has('course_id') && $request->course_id) {
+            $query->where('course_id', $request->course_id);
+        }
+
+        // Filter by name
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        $certificates = $query->orderBy('issued_at', 'desc')->paginate(15);
+        $courses = Course::whereHas('certificates')->with('certificates')->get();
+
+        // Analytics data
+        $analytics = [
+            'total_certificates' => Certificate::count(),
+            'certificates_this_month' => Certificate::whereMonth('issued_at', now()->month)
+                ->whereYear('issued_at', now()->year)
+                ->count(),
+            'courses_with_certificates' => Course::whereHas('certificates')->count(),
+            'recent_certificates' => Certificate::with(['user', 'course'])
+                ->orderBy('issued_at', 'desc')
+                ->limit(5)
+                ->get()
+        ];
+
+        return view('certificate-management.index', compact('certificates', 'courses', 'analytics'));
+    }
+
+    /**
+     * Analytics dashboard
+     */
+    public function analytics()
+    {
+        $this->authorize('viewAny', Certificate::class);
+
+        // Monthly certificate generation stats
+        $monthlyStats = Certificate::selectRaw('YEAR(issued_at) as year, MONTH(issued_at) as month, COUNT(*) as count')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->limit(12)
+            ->get();
+
+        // Course-wise statistics
+        $courseStats = Course::withCount('certificates')
+            ->having('certificates_count', '>', 0)
+            ->orderBy('certificates_count', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Template usage statistics
+        $templateStats = \App\Models\CertificateTemplate::withCount('certificates')
+            ->having('certificates_count', '>', 0)
+            ->orderBy('certificates_count', 'desc')
+            ->get();
+
+        $analytics = [
+            'total_certificates' => Certificate::count(),
+            'total_courses_with_certificates' => Course::whereHas('certificates')->count(),
+            'total_templates' => \App\Models\CertificateTemplate::count(),
+            'certificates_today' => Certificate::whereDate('issued_at', today())->count(),
+            'certificates_this_week' => Certificate::whereBetween('issued_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'certificates_this_month' => Certificate::whereMonth('issued_at', now()->month)
+                ->whereYear('issued_at', now()->year)
+                ->count(),
+        ];
+
+        return view('certificate-management.analytics', compact('analytics', 'monthlyStats', 'courseStats', 'templateStats'));
+    }
+
+    /**
+     * Show certificates by course
+     */
+    public function byCourse(Course $course, Request $request)
+    {
+        $this->authorize('viewAny', Certificate::class);
+
+        $query = Certificate::where('course_id', $course->id)
+            ->with(['user', 'certificateTemplate']);
+
+        // Filter by name
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        $certificates = $query->orderBy('issued_at', 'desc')->paginate(15);
+
+        return view('certificate-management.by-course', compact('course', 'certificates'));
+    }
+
+    /**
+     * Bulk actions for certificates
+     */
+    public function bulkAction(Request $request)
+    {
+        $this->authorize('update', Certificate::class);
+
+        $request->validate([
+            'action' => 'required|in:delete,update_template',
+            'certificate_ids' => 'required|array',
+            'certificate_ids.*' => 'exists:certificates,id'
+        ]);
+
+        $certificates = Certificate::whereIn('id', $request->certificate_ids)->get();
+
+        if ($request->action === 'delete') {
+            foreach ($certificates as $certificate) {
+                // Delete file if exists
+                if ($certificate->fileExists()) {
+                    Storage::disk('public')->delete($certificate->path);
+                }
+                $certificate->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Berhasil menghapus ' . count($certificates) . ' sertifikat.'
+            ]);
+        }
+
+        if ($request->action === 'update_template') {
+            $updated = 0;
+            foreach ($certificates as $certificate) {
+                try {
+                    // Regenerate certificate with current template
+                    $course = $certificate->course;
+                    $user = $certificate->user;
+
+                    // Delete old file
+                    if ($certificate->fileExists()) {
+                        Storage::disk('public')->delete($certificate->path);
+                    }
+
+                    // Generate new PDF
+                    $pdf = Pdf::loadView('certificates.template-render', compact('certificate'))
+                        ->setPaper('a4', 'landscape')
+                        ->setOptions([
+                            'dpi' => 150,
+                            'defaultFont' => 'times',
+                            'isHtml5ParserEnabled' => true,
+                            'isRemoteEnabled' => false,
+                            'isPhpEnabled' => true,
+                        ]);
+
+                    $fileName = $certificate->certificate_code . '.pdf';
+                    $filePath = 'certificates/' . $fileName;
+                    Storage::disk('public')->put($filePath, $pdf->output());
+
+                    $certificate->update(['path' => $filePath]);
+                    $updated++;
+                } catch (\Exception $e) {
+                    \Log::error("Failed to update certificate {$certificate->id}: " . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil memperbarui {$updated} dari " . count($certificates) . " sertifikat."
+            ]);
+        }
+    }
+
+    /**
+     * Update certificate template manually
+     */
+    public function updateTemplate(Certificate $certificate)
+    {
+        $this->authorize('update', $certificate);
+
+        try {
+            // Check if template exists
+            if (!$certificate->certificateTemplate) {
+                return back()->with('error', 'Template sertifikat tidak ditemukan.');
+            }
+
+            // Delete old file
+            if ($certificate->fileExists()) {
+                Storage::disk('public')->delete($certificate->path);
+            }
+
+            // Generate new PDF with current template
+            $pdf = Pdf::loadView('certificates.template-render', compact('certificate'))
+                ->setPaper('a4', 'landscape')
+                ->setOptions([
+                    'dpi' => 150,
+                    'defaultFont' => 'times',
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => false,
+                    'isPhpEnabled' => true,
+                ]);
+
+            $fileName = $certificate->certificate_code . '.pdf';
+            $filePath = 'certificates/' . $fileName;
+            Storage::disk('public')->put($filePath, $pdf->output());
+
+            $certificate->update(['path' => $filePath]);
+
+            return back()->with('success', 'Sertifikat berhasil diperbarui dengan template terbaru.');
+        } catch (\Exception $e) {
+            \Log::error("Failed to update certificate template for {$certificate->id}: " . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui sertifikat: ' . $e->getMessage());
+        }
+    }
 }
