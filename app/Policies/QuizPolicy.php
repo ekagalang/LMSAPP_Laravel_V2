@@ -31,18 +31,20 @@ class QuizPolicy
      */
     public function start(User $user, Quiz $quiz): bool
     {
-        // Izinkan instruktur untuk memulai kuisnya sendiri
-        if ($user->hasRole('instructor')) {
-            return $quiz->user_id === $user->id;
-        }
-
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             return false;
         }
 
-        // Izinkan peserta jika terdaftar di kursus
         $course = $quiz->lesson->course;
+
+        // PERBAIKAN: Izinkan instruktur yang assigned ke course ini atau pemilik quiz
+        if ($user->hasRole('instructor')) {
+            return $quiz->user_id === $user->id || 
+                   $course->instructors()->where('user_id', $user->id)->exists();
+        }
+
+        // Izinkan peserta jika terdaftar di kursus
         return $user->courses()->where('course_id', $course->id)->exists();
     }
 
@@ -59,9 +61,17 @@ class QuizPolicy
      */
     public function view(User $user, Quiz $quiz): bool
     {
-        // Jika pengguna adalah instruktur, dia hanya bisa melihat kuisnya sendiri.
+        // Pastikan kuis terhubung ke kursus
+        if (!$quiz->lesson || !$quiz->lesson->course) {
+            return false;
+        }
+
+        $course = $quiz->lesson->course;
+
+        // PERBAIKAN: Instruktur bisa melihat quiz jika pemilik quiz atau assigned ke course ini
         if ($user->hasRole('instructor')) {
-            return $quiz->user_id === $user->id;
+            return $quiz->user_id === $user->id || 
+                   $course->instructors()->where('user_id', $user->id)->exists();
         }
 
         // Peserta bisa melihat kuis jika terdaftar di kursus.
@@ -85,7 +95,17 @@ class QuizPolicy
      */
     public function update(User $user, Quiz $quiz): bool
     {
-        return $user->hasRole('instructor') && $quiz->user_id === $user->id;
+        // Pastikan kuis terhubung ke kursus
+        if (!$quiz->lesson || !$quiz->lesson->course) {
+            return $user->hasRole('instructor') && $quiz->user_id === $user->id;
+        }
+
+        $course = $quiz->lesson->course;
+
+        // PERBAIKAN: Instruktur bisa update quiz jika pemilik quiz atau assigned ke course ini
+        return $user->hasRole('instructor') && 
+               ($quiz->user_id === $user->id || 
+                $course->instructors()->where('user_id', $user->id)->exists());
     }
 
     /**
@@ -93,12 +113,30 @@ class QuizPolicy
      */
     public function delete(User $user, Quiz $quiz): bool
     {
-        return $user->hasRole('instructor') && $quiz->user_id === $user->id;
+        // Pastikan kuis terhubung ke kursus
+        if (!$quiz->lesson || !$quiz->lesson->course) {
+            return $user->hasRole('instructor') && $quiz->user_id === $user->id;
+        }
+
+        $course = $quiz->lesson->course;
+
+        // PERBAIKAN: Instruktur bisa delete quiz jika pemilik quiz atau assigned ke course ini
+        return $user->hasRole('instructor') && 
+               ($quiz->user_id === $user->id || 
+                $course->instructors()->where('user_id', $user->id)->exists());
     }
 
     public function attempt(User $user, Quiz $quiz)
     {
+        // Pastikan kuis terhubung ke kursus
+        if (!$quiz->lesson || !$quiz->lesson->course) {
+            return false;
+        }
+
+        $course = $quiz->lesson->course;
+
         // Izinkan jika pengguna adalah peserta dan terdaftar di kursus ini
-        return $user->hasRole('participant') && $user->courses()->where('course_id', $quiz->course_id)->exists();
+        return $user->hasRole('participant') && 
+               $user->courses()->where('course_id', $course->id)->exists();
     }
 }

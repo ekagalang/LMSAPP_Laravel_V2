@@ -39,7 +39,8 @@ trait Duplicateable
                     $newQuiz->title .= ' (Copy)';
                 }
                 // PERBAIKAN: Set user_id quiz yang baru ke user yang sedang login
-                $newQuiz->user_id = auth()->id();
+                // Jika tidak ada user yang login, gunakan user_id dari quiz asli
+                $newQuiz->user_id = auth()->id() ?? $originalQuiz->user_id;
                 $newQuiz->save();
 
                 // Hubungkan konten baru dengan kuis baru
