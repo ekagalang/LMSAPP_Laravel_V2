@@ -132,7 +132,7 @@
                     <h3 class="text-lg font-medium text-gray-900">Aktivitas Bulanan</h3>
                 </div>
                 <div class="p-6">
-                    @if(count($monthlyStats) > 0)
+                    @if(!empty($monthlyStats) && count($monthlyStats) > 0)
                         <div class="space-y-3">
                             @foreach($monthlyStats as $stat)
                                 <div class="flex items-center justify-between">
@@ -169,9 +169,9 @@
                     <h3 class="text-lg font-medium text-gray-900">Aktivitas per Kursus</h3>
                 </div>
                 <div class="p-6">
-                    @if(count($courseStats) > 0)
+                    @if(!empty($periodStats) && count($periodStats) > 0)
                         <div class="space-y-4">
-                            @foreach($courseStats as $stat)
+                            @foreach($periodStats as $stat)
                                 <div class="border border-gray-200 rounded-lg p-4">
                                     <div class="font-medium text-gray-900 mb-2">{{ $stat['course']->title }}</div>
                                     <div class="grid grid-cols-3 gap-4 text-sm">

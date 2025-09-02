@@ -158,7 +158,7 @@
                                     Instruktur
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Kursus
+                                    Periode yang Ditugaskan
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Diskusi (Period)
@@ -201,20 +201,31 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <div class="max-w-48">
-                                            @if($stat['courses']->count() > 0)
-                                                @foreach($stat['courses']->take(2) as $course)
-                                                    <div class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1">
-                                                        {{ Str::limit($course->title, 25) }}
-                                                    </div>
+                                        <div class="max-w-64">
+                                            @if(!empty($stat['period_breakdown']) && is_array($stat['period_breakdown']) && count($stat['period_breakdown']) > 0)
+                                                @foreach($stat['period_breakdown'] as $index => $breakdown)
+                                                    @if($index < 2)
+                                                        <div class="text-xs mb-2 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-2 border-blue-400 rounded">
+                                                            <div class="font-medium text-blue-800">
+                                                                {{ Str::limit($breakdown['course']->title, 20) }}
+                                                            </div>
+                                                            <div class="text-blue-600 font-semibold">
+                                                                {{ $breakdown['period']->name }}
+                                                            </div>
+                                                            <div class="text-xs text-gray-600 mt-1">
+                                                                👥 {{ $breakdown['participants_count'] }} peserta | 
+                                                                ⚡ {{ $breakdown['activity_score'] }} aktivitas
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                 @endforeach
-                                                @if($stat['courses']->count() > 2)
-                                                    <div class="text-xs text-gray-500">
-                                                        +{{ $stat['courses']->count() - 2 }} lainnya
+                                                @if(!empty($stat['period_breakdown']) && count($stat['period_breakdown']) > 2)
+                                                    <div class="text-xs text-gray-500 font-medium">
+                                                        +{{ count($stat['period_breakdown']) - 2 }} periode lainnya
                                                     </div>
                                                 @endif
                                             @else
-                                                <span class="text-gray-400 text-xs">Tidak ada kursus</span>
+                                                <span class="text-gray-400 text-xs">Tidak ada periode yang ditugaskan</span>
                                             @endif
                                         </div>
                                     </td>

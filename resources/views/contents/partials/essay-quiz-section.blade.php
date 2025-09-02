@@ -11,27 +11,30 @@
                 <p class="font-bold">Anda Sudah Mengumpulkan Jawaban</p>
                 <p>Jawaban Anda dikumpulkan pada: {{ $submission->created_at->format('d F Y, H:i') }}</p>
 
-                {{-- Tampilkan score hanya jika scoring enabled --}}
-                @if ($content->scoring_enabled)
-                    @php
+                @php
                         // Logic untuk cek apakah essay sudah diproses
                         $isProcessed = false;
                         
-                        if ($submission->content->scoring_enabled) {
-                            // Dengan scoring
-                            if ($submission->content->grading_mode === 'overall') {
-                                $isProcessed = $submission->answers()->whereNotNull('score')->count() > 0;
-                            } else {
-                                $isProcessed = $submission->is_fully_graded;
-                            }
+                        // FITUR BARU: Jika essay tidak perlu review (latihan mandiri), langsung dianggap sudah diproses
+                        if (!($content->requires_review ?? true)) {
+                            $isProcessed = true; // Auto-processed tanpa review instruktur
                         } else {
-                            // Tanpa scoring
-                            if ($submission->content->grading_mode === 'overall') {
-                                $isProcessed = $submission->answers()->whereNotNull('feedback')->count() > 0;
+                            if ($submission->content->scoring_enabled) {
+                                // Dengan scoring
+                                if ($submission->content->grading_mode === 'overall') {
+                                    $isProcessed = $submission->answers()->whereNotNull('score')->count() > 0;
+                                } else {
+                                    $isProcessed = $submission->is_fully_graded;
+                                }
                             } else {
-                                $totalQuestions = $submission->content->essayQuestions()->count();
-                                $answersWithFeedback = $submission->answers()->whereNotNull('feedback')->count();
-                                $isProcessed = $answersWithFeedback >= $totalQuestions;
+                                // Tanpa scoring
+                                if ($submission->content->grading_mode === 'overall') {
+                                    $isProcessed = $submission->answers()->whereNotNull('feedback')->count() > 0;
+                                } else {
+                                    $totalQuestions = $submission->content->essayQuestions()->count();
+                                    $answersWithFeedback = $submission->answers()->whereNotNull('feedback')->count();
+                                    $isProcessed = $answersWithFeedback >= $totalQuestions;
+                                }
                             }
                         }
                     @endphp
@@ -85,27 +88,6 @@
                             </p>
                         @endif
                     @endif
-                @else
-                    {{-- Fallback untuk essay tanpa scoring --}}
-                    <div class="mt-4">
-                        <div class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Essay Berhasil Dikumpulkan
-                        </div>
-                        <p class="mt-2 text-sm">Essay ini tidak memerlukan penilaian.</p>
-                        
-                        {{-- Link untuk melihat feedback jika ada --}}
-                        @if ($submission->answers()->whereNotNull('feedback')->exists())
-                            <div class="mt-3">
-                                <a href="{{ route('essays.result', $submission->id) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md inline-block">
-                                    Lihat Catatan Instruktur
-                                </a>
-                            </div>
-                        @endif
-                    </div>
-                @endif
             </div>
 
         {{-- JIKA BELUM ADA JAWABAN DAN USER ADALAH PESERTA --}}

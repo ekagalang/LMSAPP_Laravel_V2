@@ -460,6 +460,24 @@ class GradebookController extends Controller
             $totalRecentGrading = 0;
             $periodBreakdown = [];
             
+            // If instructor has no assigned periods, still create entry but with empty data
+            if ($assignedPeriods->isEmpty()) {
+                $instructorStats[] = [
+                    'instructor' => $instructor,
+                    'courses' => $instructor->instructorCourses,
+                    'periods' => collect([]),
+                    'period_breakdown' => [],
+                    'discussion_replies' => 0,
+                    'essay_graded' => 0,
+                    'essay_pending' => 0,
+                    'recent_discussions' => 0,
+                    'recent_grading' => 0,
+                    'total_activity' => 0,
+                    'recent_activity' => 0,
+                ];
+                continue;
+            }
+            
             foreach ($assignedPeriods as $period) {
                 // Get participant IDs for this specific period
                 $periodParticipantIds = $period->participants()->pluck('users.id');
@@ -598,8 +616,9 @@ class GradebookController extends Controller
         $dateTo = $request->get('date_to', now()->toDateString());
         $courseId = $request->get('course_id');
 
-        // Get courses taught by instructor
-        $courses = $user->instructorCourses;
+        // Get periods assigned to this instructor
+        $assignedPeriods = $user->instructorPeriods()->get();
+        $courses = $assignedPeriods->pluck('course')->unique('id');
         $courseIds = $courses->pluck('id');
 
         // Filter by specific course if requested
@@ -607,21 +626,35 @@ class GradebookController extends Controller
             $courseIds = $courseIds->filter(function($id) use ($courseId) {
                 return $id == $courseId;
             });
+            $assignedPeriods = $assignedPeriods->where('course_id', $courseId);
         }
 
-        // Discussion activity with details
+        // Get all participant IDs from instructor's assigned periods
+        $allParticipantIds = collect();
+        foreach ($assignedPeriods as $period) {
+            $allParticipantIds = $allParticipantIds->merge($period->participants()->pluck('users.id'));
+        }
+        $allParticipantIds = $allParticipantIds->unique();
+
+        // Discussion activity with details - only from assigned period participants
         $discussionReplies = DiscussionReply::where('user_id', $user->id)
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
                 $query->whereIn('course_id', $courseIds);
             })
-            ->with(['discussion.content.lesson.course'])
+            ->whereHas('discussion', function($query) use ($allParticipantIds) {
+                $query->whereIn('user_id', $allParticipantIds);
+            })
+            ->with(['discussion.content.lesson.course', 'discussion.user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Essay grading activity with details
-        $essayGrading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
-                $query->whereIn('course_id', $courseIds);
+        // Essay grading activity with details - only from assigned period participants
+        $essayGrading = EssayAnswer::whereHas('submission', function($query) use ($allParticipantIds, $courseIds) {
+                $query->whereIn('user_id', $allParticipantIds)
+                    ->whereHas('content.lesson', function($subQuery) use ($courseIds) {
+                        $subQuery->whereIn('course_id', $courseIds);
+                    });
             })
             ->where(function($query) {
                 $query->whereNotNull('score')->orWhereNotNull('feedback');
@@ -645,10 +678,16 @@ class GradebookController extends Controller
                 ->whereBetween('created_at', [$monthStart, $monthEnd])
                 ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
                     $query->whereIn('course_id', $courseIds);
+                })
+                ->whereHas('discussion', function($query) use ($allParticipantIds) {
+                    $query->whereIn('user_id', $allParticipantIds);
                 })->count();
 
-            $grading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
+            $grading = EssayAnswer::whereHas('submission', function($query) use ($allParticipantIds, $courseIds) {
+                    $query->whereIn('user_id', $allParticipantIds)
+                        ->whereHas('content.lesson', function($subQuery) use ($courseIds) {
+                            $subQuery->whereIn('course_id', $courseIds);
+                        });
                 })
                 ->where(function($query) {
                     $query->whereNotNull('score')->orWhereNotNull('feedback');
@@ -666,19 +705,27 @@ class GradebookController extends Controller
             $currentDate->addMonth();
         }
 
-        // Course-wise statistics
-        $courseStats = [];
-        foreach ($courses as $course) {
-            if ($courseId && $course->id != $courseId) continue;
+        // Period-wise statistics (replacing course-wise)
+        $periodStats = [];
+        foreach ($assignedPeriods as $period) {
+            if ($courseId && $period->course_id != $courseId) continue;
+
+            $periodParticipantIds = $period->participants()->pluck('users.id');
 
             $discussions = DiscussionReply::where('user_id', $user->id)
                 ->whereBetween('created_at', [$dateFrom, $dateTo])
-                ->whereHas('discussion.content.lesson', function($query) use ($course) {
-                    $query->where('course_id', $course->id);
+                ->whereHas('discussion.content.lesson', function($query) use ($period) {
+                    $query->where('course_id', $period->course_id);
+                })
+                ->whereHas('discussion', function($query) use ($periodParticipantIds) {
+                    $query->whereIn('user_id', $periodParticipantIds);
                 })->count();
 
-            $grading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($course) {
-                    $query->where('course_id', $course->id);
+            $grading = EssayAnswer::whereHas('submission', function($query) use ($periodParticipantIds, $period) {
+                    $query->whereIn('user_id', $periodParticipantIds)
+                        ->whereHas('content.lesson', function($subQuery) use ($period) {
+                            $subQuery->where('course_id', $period->course_id);
+                        });
                 })
                 ->where(function($query) {
                     $query->whereNotNull('score')->orWhereNotNull('feedback');
@@ -686,8 +733,10 @@ class GradebookController extends Controller
                 ->whereBetween('updated_at', [$dateFrom, $dateTo])
                 ->count();
 
-            $courseStats[] = [
-                'course' => $course,
+            $periodStats[] = [
+                'period' => $period,
+                'course' => $period->course,
+                'participants_count' => $period->participants()->count(),
                 'discussions' => $discussions,
                 'grading' => $grading,
                 'total' => $discussions + $grading
@@ -703,10 +752,11 @@ class GradebookController extends Controller
         return view('instructor-analytics.detail', compact(
             'user',
             'courses',
+            'assignedPeriods',
             'discussionReplies',
             'essayGrading',
             'monthlyStats',
-            'courseStats',
+            'periodStats',
             'stats',
             'dateFrom',
             'dateTo',

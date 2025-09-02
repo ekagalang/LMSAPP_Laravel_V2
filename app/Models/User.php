@@ -669,6 +669,11 @@ class User extends Authenticatable
                     continue;
                 }
 
+                // FITUR BARU: Jika essay tidak perlu review (latihan mandiri), langsung lanjut
+                if (!($item->requires_review ?? true)) {
+                    continue; // Skip validasi grading untuk latihan mandiri
+                }
+
                 // New system - check berdasarkan grading mode dan scoring
                 if (!$item->scoring_enabled) {
                     // Tanpa scoring - cek feedback
@@ -832,6 +837,11 @@ class User extends Authenticatable
 
             // Legacy system
             if ($totalQuestions === 0) {
+                return $submission->answers()->count() > 0 ? 'completed' : 'not_started';
+            }
+
+            // FITUR BARU: Jika essay tidak perlu review (latihan mandiri), langsung completed
+            if (!($content->requires_review ?? true)) {
                 return $submission->answers()->count() > 0 ? 'completed' : 'not_started';
             }
 
