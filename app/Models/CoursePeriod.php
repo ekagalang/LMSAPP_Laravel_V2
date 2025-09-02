@@ -48,6 +48,21 @@ class CoursePeriod extends Model
         return $this->hasMany(Chat::class);
     }
 
+    public function instructors()
+    {
+        return $this->belongsToMany(User::class, 'course_period_instructor');
+    }
+
+    public function participants()
+    {
+        return $this->belongsToMany(User::class, 'course_period_user')->withPivot('feedback')->withTimestamps();
+    }
+
+    public function enrolledUsers()
+    {
+        return $this->participants();
+    }
+
     // ========================================
     // SCOPES
     // ========================================
@@ -127,7 +142,42 @@ class CoursePeriod extends Model
 
     public function hasUser($userId): bool
     {
-        return $this->course->hasUser($userId);
+        return $this->participants()->where('users.id', $userId)->exists() ||
+               $this->instructors()->where('users.id', $userId)->exists() ||
+               $this->course->eventOrganizers()->where('users.id', $userId)->exists();
+    }
+
+    public function isInstructor($userId): bool
+    {
+        return $this->instructors()->where('users.id', $userId)->exists();
+    }
+
+    public function isParticipant($userId): bool
+    {
+        return $this->participants()->where('users.id', $userId)->exists();
+    }
+
+    public function getParticipantCount(): int
+    {
+        return $this->participants()->count();
+    }
+
+    public function hasAvailableSlots(): bool
+    {
+        if (!$this->max_participants) {
+            return true;
+        }
+        
+        return $this->getParticipantCount() < $this->max_participants;
+    }
+
+    public function getAvailableSlots(): int
+    {
+        if (!$this->max_participants) {
+            return PHP_INT_MAX;
+        }
+        
+        return max(0, $this->max_participants - $this->getParticipantCount());
     }
 
     public function getStatusBadgeAttribute(): string

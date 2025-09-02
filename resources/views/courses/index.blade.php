@@ -66,7 +66,7 @@
                         </div>
                     @else
                         <!-- Courses Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                        <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-8">
                             @foreach ($courses as $course)
                                 <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:border-indigo-200">
                                     <!-- Course Image -->

@@ -123,7 +123,7 @@ class CourseController extends Controller
 
                     // Jika content pertama ditemukan, langsung redirect.
                     if ($firstContent) {
-                        return redirect()->route('contents.show', $firstContent->id);
+                        return redirect()->route('contents.show', $firstContent);
                     }
                 }
             }
@@ -132,6 +132,15 @@ class CourseController extends Controller
         // Jika bukan peserta, atau jika tidak ada content, atau jika tidak terdaftar,
         // tampilkan halaman detail seperti biasa.
         $course->load('lessons.contents', 'instructors', 'enrolledUsers');
+
+        // Filter periods for instructors - only show periods they are assigned to
+        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+            // Replace the periods relation with filtered periods
+            $course->setRelation('periods', $course->getUserInstructorPeriods($user->id));
+        } else {
+            // Load all periods for super-admin, event-organizer, or other roles
+            $course->load('periods');
+        }
 
         $availableInstructors = User::role('instructor')
             ->whereNotIn('id', $course->instructors->pluck('id'))
@@ -331,8 +340,26 @@ class CourseController extends Controller
             $instructorCourses->push($course);
         }
 
-        // Search functionality tetap sama
-        $enrolledUsersQuery = $course->enrolledUsers();
+        // Filter participants by instructor's assigned periods
+        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+            // Get periods where this instructor is assigned for this course
+            $instructorPeriods = $user->instructorPeriods()
+                ->where('course_id', $course->id)
+                ->pluck('course_periods.id');
+            
+            if ($instructorPeriods->isNotEmpty()) {
+                // Get participants only from instructor's assigned periods
+                $enrolledUsersQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                    $query->whereIn('course_periods.id', $instructorPeriods);
+                });
+            } else {
+                // If instructor is not assigned to any periods, show course-level participants
+                $enrolledUsersQuery = $course->enrolledUsers();
+            }
+        } else {
+            // For super-admin, event-organizer, or other roles, show all participants
+            $enrolledUsersQuery = $course->enrolledUsers();
+        }
 
         if ($request->filled('search')) {
             $searchTerm = $request->input('search');

@@ -58,15 +58,35 @@
                             @endif
                         </div>
                     @else
-                        <p class="mt-2">
-                            @if($submission->content->scoring_enabled)
-                                Jawaban Anda sedang menunggu penilaian dari instruktur.
-                            @else
-                                Jawaban Anda sedang menunggu tinjauan dari instruktur.
-                            @endif
-                        </p>
+                        @if(!($submission->content->requires_review ?? true))
+                            {{-- Essay latihan mandiri - tidak perlu review --}}
+                            <div class="mt-4">
+                                <div class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    ✅ Latihan Selesai
+                                </div>
+                                <p class="mt-2 text-sm text-gray-600">Essay latihan mandiri telah berhasil dikumpulkan dan langsung selesai.</p>
+                                <div class="mt-3">
+                                    <a href="{{ route('essays.result', $submission->id) }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md inline-block">
+                                        Lihat Jawaban Saya
+                                    </a>
+                                </div>
+                            </div>
+                        @else
+                            {{-- Essay yang masih menunggu review --}}
+                            <p class="mt-2">
+                                @if($submission->content->scoring_enabled)
+                                    Jawaban Anda sedang menunggu penilaian dari instruktur.
+                                @else
+                                    Jawaban Anda sedang menunggu tinjauan dari instruktur.
+                                @endif
+                            </p>
+                        @endif
                     @endif
                 @else
+                    {{-- Fallback untuk essay tanpa scoring --}}
                     <div class="mt-4">
                         <div class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

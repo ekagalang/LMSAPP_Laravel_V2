@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Content;
 use App\Models\Course;
 use App\Models\Discussion;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,12 +16,38 @@ class DiscussionController extends Controller
         // ✅ FIX: Use proper discussion authorization instead of course update
         $this->authorize('viewCourseDiscussions', [Discussion::class, $course]);
 
+        $user = Auth::user();
+
         // Ambil semua ID konten yang ada di dalam kursus ini
         $contentIds = $course->lessons()->with('contents')->get()->pluck('contents.*.id')->flatten();
 
+        // Build base query for discussions
+        $discussionsQuery = Discussion::whereIn('content_id', $contentIds)
+            ->with(['user', 'replies', 'content.lesson']);
+
+        // Filter discussions by instructor's assigned period participants
+        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+            // Get periods where this instructor is assigned for this course
+            $instructorPeriods = $user->instructorPeriods()
+                ->where('course_id', $course->id)
+                ->pluck('course_periods.id');
+            
+            if ($instructorPeriods->isNotEmpty()) {
+                // Get participant IDs only from instructor's assigned periods
+                $allowedParticipantIds = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                    $query->whereIn('course_periods.id', $instructorPeriods);
+                })->pluck('id');
+
+                // Also include instructor's own discussions and replies
+                $allowedParticipantIds->push($user->id);
+
+                // Filter discussions to only show from allowed users
+                $discussionsQuery->whereIn('user_id', $allowedParticipantIds);
+            }
+        }
+
         // Ambil semua diskusi yang terkait dengan konten-konten tersebut
-        $discussions = Discussion::whereIn('content_id', $contentIds)
-            ->with(['user', 'replies', 'content.lesson']) // Muat relasi yang dibutuhkan
+        $discussions = $discussionsQuery
             ->latest() // Urutkan dari yang terbaru
             ->paginate(15); // Gunakan paginasi
 

@@ -150,7 +150,7 @@
                             <label for="type" class="block text-sm font-semibold text-gray-700 mb-3">
                                 🎯 Tipe Konten
                             </label>
-                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 <label class="cursor-pointer">
                                     <input type="radio" name="type" value="text" x-model="content.type" class="sr-only">
                                     <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
@@ -216,7 +216,7 @@
                             </div>
 
                             <div x-show="content.type === 'essay'" x-transition class="mb-6">
-                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
                                         <div class="mb-4">
                                             <h4 class="text-sm font-medium text-indigo-900 mb-1">Model Penilaian Essay</h4>
@@ -264,35 +264,79 @@
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center justify-between">
+                                    <div class="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
                                         <div>
-                                            <h4 class="text-sm font-medium text-blue-900 mb-1">Pengaturan Penilaian Essay</h4>
-                                            <p class="text-xs text-blue-700">Pilih apakah essay ini memerlukan penilaian atau tidak</p>
+                                            <h4 class="text-sm font-medium text-blue-900 mb-1">Mode Essay</h4>
+                                            <p class="text-xs text-blue-700">Pilih mode essay berdasarkan kebutuhan pembelajaran</p>
                                         </div>
-                                        <div class="flex items-center space-x-3">
-                                            <label class="inline-flex items-center">
+                                        
+                                        @php
+                                            // Tentukan review mode berdasarkan existing data
+                                            $currentReviewMode = 'scoring'; // default
+                                            if (isset($content)) {
+                                                if (!($content->requires_review ?? true)) {
+                                                    $currentReviewMode = 'no_review';
+                                                } elseif (!($content->scoring_enabled ?? true)) {
+                                                    $currentReviewMode = 'feedback_only';
+                                                } else {
+                                                    $currentReviewMode = 'scoring';
+                                                }
+                                            }
+                                        @endphp
+
+                                        <div class="space-y-2">
+                                            <label class="flex items-start p-3 border border-gray-200 rounded-lg hover:border-indigo-300 transition-colors cursor-pointer">
                                                 <input type="radio" 
-                                                    name="scoring_enabled" 
-                                                    value="1" 
-                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) == '1' ? 'checked' : '' }}
-                                                    x-model="content.scoring_enabled"
-                                                    class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                                                <span class="ml-2 text-sm text-gray-700">Dengan Penilaian</span>
+                                                    name="review_mode" 
+                                                    value="scoring" 
+                                                    {{ old('review_mode', $currentReviewMode) == 'scoring' ? 'checked' : '' }}
+                                                    class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
+                                                <div class="ml-3">
+                                                    <span class="text-sm font-medium text-gray-900">🏆 Dengan Penilaian</span>
+                                                    <p class="text-xs text-gray-500 mt-1">Instruktur memberikan nilai dan feedback. Peserta menunggu hasil penilaian.</p>
+                                                </div>
                                             </label>
-                                            <label class="inline-flex items-center">
+                                            
+                                            <label class="flex items-start p-3 border border-gray-200 rounded-lg hover:border-indigo-300 transition-colors cursor-pointer">
                                                 <input type="radio" 
-                                                    name="scoring_enabled" 
-                                                    value="0" 
-                                                    {{ old('scoring_enabled', $content->scoring_enabled ?? true) == '0' ? 'checked' : '' }}
-                                                    x-model="content.scoring_enabled"
-                                                    class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                                                <span class="ml-2 text-sm text-gray-700">Tanpa Penilaian</span>
+                                                    name="review_mode" 
+                                                    value="feedback_only" 
+                                                    {{ old('review_mode', $currentReviewMode) == 'feedback_only' ? 'checked' : '' }}
+                                                    class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
+                                                <div class="ml-3">
+                                                    <span class="text-sm font-medium text-gray-900">📝 Tanpa Penilaian</span>
+                                                    <p class="text-xs text-gray-500 mt-1">Instruktur bisa memberikan feedback tanpa nilai. Peserta menunggu tinjauan.</p>
+                                                </div>
+                                            </label>
+                                            
+                                            <label class="flex items-start p-3 border border-gray-200 rounded-lg hover:border-indigo-300 transition-colors cursor-pointer">
+                                                <input type="radio" 
+                                                    name="review_mode" 
+                                                    value="no_review" 
+                                                    {{ old('review_mode', $currentReviewMode) == 'no_review' ? 'checked' : '' }}
+                                                    class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
+                                                <div class="ml-3">
+                                                    <span class="text-sm font-medium text-gray-900">✅ Latihan Mandiri</span>
+                                                    <p class="text-xs text-gray-500 mt-1">Essay untuk latihan. Langsung selesai setelah dikumpulkan, tanpa review instruktur.</p>
+                                                </div>
                                             </label>
                                         </div>
-                                    </div>
-                                    <div class="mt-3 text-xs text-blue-600">
-                                        <p><strong>Dengan Penilaian:</strong> Instruktur dapat memberikan nilai dan feedback pada essay siswa</p>
-                                        <p><strong>Tanpa Penilaian:</strong> Essay hanya sebagai tugas pengumpulan, tanpa scoring</p>
+                                        
+                                        <div class="p-3 bg-blue-50 rounded-lg">
+                                            <div class="flex items-start">
+                                                <svg class="w-4 h-4 text-blue-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <div class="text-xs text-blue-800">
+                                                    <p class="font-medium mb-1">Tips pemilihan mode:</p>
+                                                    <ul class="space-y-1">
+                                                        <li>• <strong>Dengan Penilaian:</strong> Untuk tugas formal, ujian essay, atau karya yang perlu dinilai</li>
+                                                        <li>• <strong>Tanpa Penilaian:</strong> Untuk tugas diskusi atau karya yang perlu feedback tanpa nilai</li>
+                                                        <li>• <strong>Latihan Mandiri:</strong> Untuk latihan pribadi, refleksi, atau tugas yang tidak perlu direview</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

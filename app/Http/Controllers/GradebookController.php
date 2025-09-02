@@ -35,7 +35,26 @@ class GradebookController extends Controller
             })->orderBy('title')->get();
         }
 
-        $participantsQuery = $course->enrolledUsers();
+        // If user is instructor, only show participants from periods they are assigned to
+        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+            // Get periods where this instructor is assigned for this course
+            $instructorPeriods = $user->instructorPeriods()
+                ->where('course_id', $course->id)
+                ->pluck('course_periods.id');
+            
+            if ($instructorPeriods->isNotEmpty()) {
+                // Get participants only from instructor's assigned periods
+                $participantsQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                    $query->whereIn('course_periods.id', $instructorPeriods);
+                });
+            } else {
+                // If instructor is not assigned to any periods, show course-level participants
+                $participantsQuery = $course->enrolledUsers();
+            }
+        } else {
+            // For super-admin, event-organizer, or other roles, show all participants
+            $participantsQuery = $course->enrolledUsers();
+        }
 
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->search;
@@ -51,8 +70,20 @@ class GradebookController extends Controller
         $essayContentIds = $course->lessons()->with('contents')
             ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
 
-        $participantsWithEssaysQuery = $course->enrolledUsers()
-            ->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
+        // Apply same filtering logic for participants with essays
+        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+            if ($instructorPeriods->isNotEmpty()) {
+                $participantsWithEssaysQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                    $query->whereIn('course_periods.id', $instructorPeriods);
+                })->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
+            } else {
+                $participantsWithEssaysQuery = $course->enrolledUsers()
+                    ->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
+            }
+        } else {
+            $participantsWithEssaysQuery = $course->enrolledUsers()
+                ->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
+        }
 
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->input('search');
@@ -419,63 +450,110 @@ class GradebookController extends Controller
         $instructorStats = [];
 
         foreach ($instructors as $instructor) {
-            // Get courses taught by instructor
-            $courseIds = $instructor->instructorCourses->pluck('id');
+            // Get periods assigned to this instructor
+            $assignedPeriods = $instructor->instructorPeriods()->get();
+            
+            $totalDiscussionReplies = 0;
+            $totalEssayGraded = 0;
+            $totalEssayPending = 0;
+            $totalRecentDiscussions = 0;
+            $totalRecentGrading = 0;
+            $periodBreakdown = [];
+            
+            foreach ($assignedPeriods as $period) {
+                // Get participant IDs for this specific period
+                $periodParticipantIds = $period->participants()->pluck('users.id');
+                
+                // Only count interactions with participants from THIS period
+                $periodDiscussionReplies = DiscussionReply::where('user_id', $instructor->id)
+                    ->whereBetween('created_at', [$dateFrom, $dateTo])
+                    ->whereHas('discussion.content.lesson', function($query) use ($period) {
+                        $query->where('course_id', $period->course_id);
+                    })
+                    ->whereHas('discussion', function($query) use ($periodParticipantIds) {
+                        $query->whereIn('user_id', $periodParticipantIds);
+                    })->count();
 
-            // Discussion replies count
-            $discussionReplies = DiscussionReply::where('user_id', $instructor->id)
-                ->whereBetween('created_at', [$dateFrom, $dateTo])
-                ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                })->count();
+                // Essay grading count - only essays from this period's participants
+                $periodEssayGraded = EssayAnswer::whereHas('submission', function($query) use ($periodParticipantIds, $period) {
+                        $query->whereIn('user_id', $periodParticipantIds)
+                            ->whereHas('content.lesson', function($subQuery) use ($period) {
+                                $subQuery->where('course_id', $period->course_id);
+                            });
+                    })
+                    ->where(function($query) {
+                        $query->whereNotNull('score')->orWhereNotNull('feedback');
+                    })
+                    ->whereBetween('updated_at', [$dateFrom, $dateTo])
+                    ->count();
 
-            // Essay grading count (essays that have been graded)
-            $essayGraded = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                })
-                ->where(function($query) {
-                    $query->whereNotNull('score')->orWhereNotNull('feedback');
-                })
-                ->whereBetween('updated_at', [$dateFrom, $dateTo])
-                ->count();
+                // Essay submissions pending - only from this period's participants
+                $periodEssayPending = EssaySubmission::whereIn('user_id', $periodParticipantIds)
+                    ->whereHas('content.lesson', function($query) use ($period) {
+                        $query->where('course_id', $period->course_id);
+                    })
+                    ->where(function($query) {
+                        $query->whereDoesntHave('answers', function($subQuery) {
+                            $subQuery->whereNotNull('score')->orWhereNotNull('feedback');
+                        });
+                    })
+                    ->count();
 
-            // Essay submissions pending (need grading)
-            $essayPending = EssaySubmission::whereHas('content.lesson', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                })
-                ->where(function($query) {
-                    $query->whereDoesntHave('answers', function($subQuery) {
-                        $subQuery->whereNotNull('score')->orWhereNotNull('feedback');
-                    });
-                })
-                ->count();
+                // Recent activity (last 7 days) - only from this period
+                $periodRecentDiscussions = DiscussionReply::where('user_id', $instructor->id)
+                    ->whereBetween('created_at', [now()->subDays(7), now()])
+                    ->whereHas('discussion.content.lesson', function($query) use ($period) {
+                        $query->where('course_id', $period->course_id);
+                    })
+                    ->whereHas('discussion', function($query) use ($periodParticipantIds) {
+                        $query->whereIn('user_id', $periodParticipantIds);
+                    })->count();
 
-            // Recent activity (last 7 days)
-            $recentDiscussions = DiscussionReply::where('user_id', $instructor->id)
-                ->whereBetween('created_at', [now()->subDays(7), now()])
-                ->whereHas('discussion.content.lesson', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                })->count();
+                $periodRecentGrading = EssayAnswer::whereHas('submission', function($query) use ($periodParticipantIds, $period) {
+                        $query->whereIn('user_id', $periodParticipantIds)
+                            ->whereHas('content.lesson', function($subQuery) use ($period) {
+                                $subQuery->where('course_id', $period->course_id);
+                            });
+                    })
+                    ->where(function($query) {
+                        $query->whereNotNull('score')->orWhereNotNull('feedback');
+                    })
+                    ->whereBetween('updated_at', [now()->subDays(7), now()])
+                    ->count();
 
-            $recentGrading = EssayAnswer::whereHas('submission.content.lesson', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                })
-                ->where(function($query) {
-                    $query->whereNotNull('score')->orWhereNotNull('feedback');
-                })
-                ->whereBetween('updated_at', [now()->subDays(7), now()])
-                ->count();
+                // Accumulate totals
+                $totalDiscussionReplies += $periodDiscussionReplies;
+                $totalEssayGraded += $periodEssayGraded;
+                $totalEssayPending += $periodEssayPending;
+                $totalRecentDiscussions += $periodRecentDiscussions;
+                $totalRecentGrading += $periodRecentGrading;
+                
+                // Store period breakdown
+                $periodBreakdown[] = [
+                    'period' => $period,
+                    'course' => $period->course,
+                    'participants_count' => $period->participants()->count(),
+                    'discussion_replies' => $periodDiscussionReplies,
+                    'essay_graded' => $periodEssayGraded,
+                    'essay_pending' => $periodEssayPending,
+                    'recent_discussions' => $periodRecentDiscussions,
+                    'recent_grading' => $periodRecentGrading,
+                    'activity_score' => $periodDiscussionReplies + $periodEssayGraded,
+                ];
+            }
 
             $instructorStats[] = [
                 'instructor' => $instructor,
                 'courses' => $instructor->instructorCourses,
-                'discussion_replies' => $discussionReplies,
-                'essay_graded' => $essayGraded,
-                'essay_pending' => $essayPending,
-                'recent_discussions' => $recentDiscussions,
-                'recent_grading' => $recentGrading,
-                'total_activity' => $discussionReplies + $essayGraded,
-                'recent_activity' => $recentDiscussions + $recentGrading,
+                'periods' => $assignedPeriods,
+                'period_breakdown' => $periodBreakdown,
+                'discussion_replies' => $totalDiscussionReplies,
+                'essay_graded' => $totalEssayGraded,
+                'essay_pending' => $totalEssayPending,
+                'recent_discussions' => $totalRecentDiscussions,
+                'recent_grading' => $totalRecentGrading,
+                'total_activity' => $totalDiscussionReplies + $totalEssayGraded,
+                'recent_activity' => $totalRecentDiscussions + $totalRecentGrading,
             ];
         }
 

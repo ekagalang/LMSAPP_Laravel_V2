@@ -31,6 +31,7 @@ class Content extends Model
         'timezone_offset',
         'scoring_enabled',
         'grading_mode',
+        'requires_review',
     ];
 
     protected $casts = [
@@ -38,6 +39,7 @@ class Content extends Model
         'scheduled_end' => 'datetime',
         'is_scheduled' => 'boolean',
         'scoring_enabled' => 'boolean',
+        'requires_review' => 'boolean',
     ];
 
     /**

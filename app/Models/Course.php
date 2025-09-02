@@ -155,13 +155,91 @@ class Course extends Model
     }
 
     /**
-     * Check if user has any role in this course
+     * Check if user has any role in this course (legacy method - checks course level only)
      */
     public function hasUser($userId): bool
     {
         return  $this->enrolledUsers()->where('users.id', $userId)->exists() ||
             $this->instructors()->where('users.id', $userId)->exists() ||
             $this->eventOrganizers()->where('users.id', $userId)->exists();
+    }
+
+    /**
+     * Check if user has access to any period in this course
+     */
+    public function hasUserInAnyPeriod($userId): bool
+    {
+        return $this->periods()->whereHas('participants', function ($query) use ($userId) {
+            $query->where('users.id', $userId);
+        })->exists() || 
+        $this->periods()->whereHas('instructors', function ($query) use ($userId) {
+            $query->where('users.id', $userId);
+        })->exists() ||
+        $this->eventOrganizers()->where('users.id', $userId)->exists();
+    }
+
+    /**
+     * Get periods where user is enrolled as participant
+     */
+    public function getUserPeriods($userId)
+    {
+        return $this->periods()->whereHas('participants', function ($query) use ($userId) {
+            $query->where('users.id', $userId);
+        })->get();
+    }
+
+    /**
+     * Get periods where user is assigned as instructor
+     */
+    public function getUserInstructorPeriods($userId)
+    {
+        return $this->periods()->whereHas('instructors', function ($query) use ($userId) {
+            $query->where('users.id', $userId);
+        })->get();
+    }
+
+    /**
+     * Get all participants across all periods
+     */
+    public function getAllPeriodParticipants()
+    {
+        $userIds = collect();
+        
+        foreach ($this->periods as $period) {
+            $userIds = $userIds->merge($period->participants()->pluck('users.id'));
+        }
+        
+        return User::whereIn('id', $userIds->unique())->get();
+    }
+
+    /**
+     * Check if course uses period-based enrollment
+     */
+    public function usesPeriodEnrollment(): bool
+    {
+        return $this->periods()->exists();
+    }
+
+    /**
+     * Get effective participants (period-based if available, otherwise course-level)
+     */
+    public function getEffectiveParticipants()
+    {
+        if ($this->usesPeriodEnrollment()) {
+            return $this->getAllPeriodParticipants();
+        }
+        
+        return $this->participants;
+    }
+
+    /**
+     * Get active periods with available slots
+     */
+    public function getAvailablePeriods()
+    {
+        return $this->periods()->where('status', 'active')->get()->filter(function ($period) {
+            return $period->hasAvailableSlots();
+        });
     }
 
     /**

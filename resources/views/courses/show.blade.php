@@ -422,13 +422,53 @@
                 </div>
 
                 {{-- 🆕 NEW: Periods & Chat Tab --}}
-                <div x-show="currentTab === 'periods'" x-cloak class="p-8">
+                <div x-show="currentTab === 'periods'" x-cloak class="p-8" 
+                     x-data="periodManager({{ $course->id }}, @js($course->periods->toArray() ?? []))">
                     <div class="mb-8">
                         <h3 class="text-2xl font-bold text-gray-900">Periode & Komunikasi Kursus</h3>
                         <p class="text-gray-600 mt-1">Kelola periode kursus dan akses chat realtime</p>
                     </div>
 
                     @if($course->periods && $course->periods->count() > 0)
+                        <!-- Search and Bulk Actions -->
+                        <div class="mb-6 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                                <!-- Search -->
+                                <div class="flex-1 max-w-md">
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                            </svg>
+                                        </div>
+                                        <input x-model="searchTerm" type="text" 
+                                               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                               placeholder="Cari periode berdasarkan nama atau deskripsi...">
+                                    </div>
+                                </div>
+
+                                <!-- Bulk Actions -->
+                                @can('update', $course)
+                                <div class="flex items-center space-x-3">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()" 
+                                               class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                        <span class="ml-2 text-sm text-gray-600">Pilih Semua</span>
+                                    </label>
+                                    
+                                    <button @click="deleteSelected()" x-show="selectedPeriods.length > 0"
+                                            class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 shadow-md transition-all duration-200">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        <span x-text="`Hapus (${selectedPeriods.length})`"></span>
+                                    </button>
+                                </div>
+                                @endcan
+                            </div>
+                        </div>
+
+                        <!-- Status Summary -->
                         <div class="mb-6 flex items-center justify-between">
                             <div class="flex items-center space-x-4">
                                 <div class="flex items-center space-x-2">
@@ -447,7 +487,7 @@
 
                             <div class="flex space-x-2">
                                 @can('update', $course)
-                                    <a href="{{ route('courses.edit', ['course' => $course->id]) }}"
+                                    <a href="{{ route('course-periods.create', $course) }}"
                                         class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-md transition-all duration-200">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -468,12 +508,28 @@
                             </div>
                         </div>
 
+                        <!-- Period Cards with Search Filtering -->
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            @foreach($course->periods as $period)
-                                <div class="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 {{ $period->isActive() ? 'ring-2 ring-green-300 border-green-200' : '' }}">
+                            <template x-for="period in filteredPeriods" :key="period.id">
+                                <div class="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300"
+                                     :class="period.status === 'active' ? 'ring-2 ring-green-300 border-green-200' : ''">
                                     <div class="flex items-center justify-between mb-4">
-                                        <h4 class="text-lg font-bold text-gray-900">{{ $period->name }}</h4>
-                                        {!! $period->status_badge !!}
+                                        <div class="flex items-center space-x-3">
+                                            @can('update', $course)
+                                                <input type="checkbox" :value="period.id" x-model="selectedPeriods"
+                                                       class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                            @endcan
+                                            <h4 class="text-lg font-bold text-gray-900" x-text="period.name"></h4>
+                                        </div>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                              :class="{
+                                                  'bg-green-100 text-green-800': period.status === 'active',
+                                                  'bg-blue-100 text-blue-800': period.status === 'upcoming',
+                                                  'bg-gray-100 text-gray-800': period.status === 'completed',
+                                                  'bg-red-100 text-red-800': period.status === 'cancelled'
+                                              }"
+                                              x-text="period.status === 'active' ? '🟢 Aktif' : period.status === 'upcoming' ? '🔵 Akan Datang' : period.status === 'completed' ? '✅ Selesai' : '❌ Dibatalkan'">
+                                        </span>
                                     </div>
 
                                     <div class="space-y-3 mb-6">
@@ -482,80 +538,77 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                             </svg>
                                             <div>
-                                                <div class="font-medium">{{ $period->start_date->format('d M Y') }} - {{ $period->end_date->format('d M Y') }}</div>
-                                                <div class="text-xs text-gray-500">{{ $period->getDurationInDays() }} hari</div>
+                                                <div class="font-medium" x-text="`${new Date(period.start_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})} - ${new Date(period.end_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}`"></div>
+                                                <div class="text-xs text-gray-500" x-text="`${Math.ceil((new Date(period.end_date) - new Date(period.start_date)) / (1000 * 60 * 60 * 24))} hari`"></div>
                                             </div>
                                         </div>
 
-                                        @if($period->isActive())
+                                        <template x-if="period.status === 'active'">
                                             <div class="flex items-center text-sm text-green-600">
                                                 <svg class="w-4 h-4 mr-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                 </svg>
-                                                <span class="font-medium">{{ abs($period->getRemainingDays()) }} hari tersisa</span>
+                                                <span class="font-medium" x-text="`${Math.max(0, Math.ceil((new Date(period.end_date) - new Date()) / (1000 * 60 * 60 * 24)))} hari tersisa`"></span>
                                             </div>
-                                        @endif
+                                        </template>
 
-                                        @if($period->chats && $period->chats->count() > 0)
-                                            <div class="flex items-center text-sm text-blue-600">
-                                                <svg class="w-4 h-4 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                                                </svg>
-                                                <span class="font-medium">{{ $period->chats->count() }} ruang chat aktif</span>
-                                            </div>
-                                        @endif
-
-                                        @if($period->description)
-                                            <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                                {{ Str::limit($period->description, 100) }}
-                                            </div>
-                                        @endif
+                                        <template x-if="period.description">
+                                            <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg" x-text="period.description.substring(0, 100) + (period.description.length > 100 ? '...' : '')"></div>
+                                        </template>
                                     </div>
 
                                     <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                                         <div>
-                                            @if($period->isActive())
-                                                <a href="{{ route('chat.index') }}?period={{ $period->id }}"
+                                            <template x-if="period.status === 'active'">
+                                                <a :href="`{{ route('chat.index') }}?period=${period.id}`"
                                                    class="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-800 transition-colors">
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                                     </svg>
                                                     Masuk Chat
                                                 </a>
-                                            @elseif($period->isUpcoming())
+                                            </template>
+                                            <template x-if="period.status === 'upcoming'">
                                                 <span class="inline-flex items-center text-sm text-blue-600">
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                     </svg>
                                                     Belum dimulai
                                                 </span>
-                                            @else
+                                            </template>
+                                            <template x-if="period.status === 'completed' || period.status === 'cancelled'">
                                                 <span class="inline-flex items-center text-sm text-gray-500">
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                     </svg>
                                                     Selesai
                                                 </span>
-                                            @endif
+                                            </template>
                                         </div>
 
                                         @can('update', $course)
                                             <div class="flex items-center space-x-2">
-                                                <a a href="{{ route('courses.edit', ['course' => $course->id]) }}"
+                                                <a :href="`{{ url('courses/' . $course->id . '/periods') }}/${period.id}/manage`"
+                                                   class="text-xs text-green-600 hover:text-green-800 font-medium">Kelola</a>
+                                                <a :href="`{{ url('courses/' . $course->id . '/periods') }}/${period.id}/edit`"
                                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</a>
-                                                @if(!$period->chats || $period->chats->count() === 0)
-                                                    <form action="{{ route('course-periods.destroy', $period) }}" method="POST" class="inline"
-                                                          onsubmit="return confirm('Yakin ingin menghapus periode ini?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">Hapus</button>
-                                                    </form>
-                                                @endif
+                                                <button @click="deletePeriod(period.id)" class="text-xs text-red-600 hover:text-red-800 font-medium">Hapus</button>
                                             </div>
                                         @endcan
                                     </div>
                                 </div>
-                            @endforeach
+                            </template>
+                        </div>
+
+                        <!-- No results message -->
+                        <div x-show="filteredPeriods.length === 0 && searchTerm !== ''" class="text-center py-8">
+                            <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Tidak ada periode yang ditemukan</h4>
+                            <p class="text-gray-600" x-text="`Tidak ada periode yang cocok dengan "${searchTerm}"`"></p>
                         </div>
 
                         @if($course->periods->where('status', 'active')->count() === 0)
@@ -997,6 +1050,70 @@
     </div>
 
     <script>
+        function periodManager(courseId, initialPeriods) {
+            return {
+                selectedPeriods: [],
+                searchTerm: '',
+                selectAll: false,
+                periods: initialPeriods || [],
+                
+                get filteredPeriods() {
+                    if (!this.searchTerm) return this.periods;
+                    return this.periods.filter(period => 
+                        period.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+                        (period.description && period.description.toLowerCase().includes(this.searchTerm.toLowerCase()))
+                    );
+                },
+                
+                toggleSelectAll() {
+                    if (this.selectAll) {
+                        this.selectedPeriods = this.filteredPeriods.map(p => p.id);
+                    } else {
+                        this.selectedPeriods = [];
+                    }
+                },
+                
+                deleteSelected() {
+                    if (this.selectedPeriods.length === 0) {
+                        alert('Pilih periode yang ingin dihapus');
+                        return;
+                    }
+                    
+                    if (confirm(`Yakin ingin menghapus ${this.selectedPeriods.length} periode yang dipilih?`)) {
+                        // Create forms and submit them
+                        this.selectedPeriods.forEach(periodId => {
+                            this.deletePeriod(periodId);
+                        });
+                    }
+                },
+                
+                deletePeriod(periodId) {
+                    if (confirm('Yakin ingin menghapus periode ini?')) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = `/courses/${courseId}/periods/${periodId}`;
+                        
+                        // Add CSRF token
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = '{{ csrf_token() }}';
+                        form.appendChild(tokenInput);
+                        
+                        // Add method override
+                        const methodInput = document.createElement('input');
+                        methodInput.type = 'hidden';
+                        methodInput.name = '_method';
+                        methodInput.value = 'DELETE';
+                        form.appendChild(methodInput);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                }
+            }
+        }
+
         function isLessonUnlocked(lesson, index) {
             // Simple unlock logic - you can modify this based on your requirements
             // For now, lessons are unlocked sequentially

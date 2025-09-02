@@ -132,11 +132,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
 
     // Course Period routes
-    Route::resource('course-periods', CoursePeriodController::class);
-    Route::get('/course-periods/create/{course}', [CoursePeriodController::class, 'create'])
+    Route::get('/courses/{course}/periods', [CoursePeriodController::class, 'index'])
+        ->name('course-periods.index');
+    Route::get('/courses/{course}/periods/create', [CoursePeriodController::class, 'create'])
         ->name('course-periods.create');
-    Route::post('/course-periods/create/{course}', [CoursePeriodController::class, 'store'])
+    Route::post('/courses/{course}/periods', [CoursePeriodController::class, 'store'])
         ->name('course-periods.store');
+    Route::get('/courses/{course}/periods/{period}', [CoursePeriodController::class, 'show'])
+        ->name('course-periods.show');
+    Route::get('/courses/{course}/periods/{period}/edit', [CoursePeriodController::class, 'edit'])
+        ->name('course-periods.edit');
+    Route::put('/courses/{course}/periods/{period}', [CoursePeriodController::class, 'update'])
+        ->name('course-periods.update');
+    Route::delete('/courses/{course}/periods/{period}', [CoursePeriodController::class, 'destroy'])
+        ->name('course-periods.destroy');
+    Route::post('/courses/{course}/periods/{period}/duplicate', [CoursePeriodController::class, 'duplicate'])
+        ->name('course-periods.duplicate');
+    
+    // Period management routes
+    Route::get('/courses/{course}/periods/{period}/manage', [CoursePeriodController::class, 'manage'])
+        ->name('course-periods.manage');
+    Route::post('/courses/{course}/periods/{period}/instructors', [CoursePeriodController::class, 'addInstructor'])
+        ->name('course-periods.add-instructor');
+    Route::delete('/courses/{course}/periods/{period}/instructors/{user}', [CoursePeriodController::class, 'removeInstructor'])
+        ->name('course-periods.remove-instructor');
+    Route::post('/courses/{course}/periods/{period}/participants', [CoursePeriodController::class, 'addParticipant'])
+        ->name('course-periods.add-participant');
+    Route::delete('/courses/{course}/periods/{period}/participants/{user}', [CoursePeriodController::class, 'removeParticipant'])
+        ->name('course-periods.remove-participant');
+    Route::delete('/courses/{course}/periods/{period}/participants', [CoursePeriodController::class, 'bulkRemoveParticipants'])
+        ->name('course-periods.bulk-remove-participants');
+    Route::post('/courses/{course}/periods/{period}/enroll', [CoursePeriodController::class, 'enroll'])
+        ->name('course-periods.enroll');
 
     // ============================================================================
     // 🔥 UPDATED CHAT ROUTES - Layout Terpadu dengan Sidebar + Main Chat Area

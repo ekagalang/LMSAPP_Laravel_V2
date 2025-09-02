@@ -645,13 +645,28 @@ class DashboardController extends Controller
             })->with(['user', 'content.lesson.course'])->latest()->take(5)->get();
 
             // Course performance data
-            $coursePerformance = $instructorCourses->map(function ($course) {
-                $totalStudents = $course->enrolledUsers->count();
+            $coursePerformance = $instructorCourses->map(function ($course) use ($user) {
+                // Get participants only from periods assigned to this instructor
+                $instructorPeriods = $user->instructorPeriods()
+                    ->where('course_id', $course->id)
+                    ->pluck('course_periods.id');
+                
+                if ($instructorPeriods->isNotEmpty()) {
+                    // Get participants only from instructor's assigned periods
+                    $participants = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                        $query->whereIn('course_periods.id', $instructorPeriods);
+                    })->get();
+                } else {
+                    // Fallback to course-level participants if no periods assigned
+                    $participants = $course->enrolledUsers;
+                }
+                
+                $totalStudents = $participants->count();
                 $averageProgress = 0;
 
                 if ($totalStudents > 0) {
                     // Panggil fungsi getProgressForCourse yang sudah benar untuk setiap peserta
-                    $totalProgressSum = $course->enrolledUsers->sum(function ($participant) use ($course) {
+                    $totalProgressSum = $participants->sum(function ($participant) use ($course) {
                         return $participant->getProgressForCourse($course)['progress_percentage'];
                     });
                     // Hitung rata-ratanya

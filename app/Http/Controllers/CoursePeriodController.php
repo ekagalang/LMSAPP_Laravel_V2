@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\CoursePeriod;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,38 @@ class CoursePeriodController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+    }
+
+    /**
+     * Display a listing of course periods.
+     */
+    public function index(Course $course)
+    {
+        $this->authorize('view', $course);
+        
+        $periods = $course->periods()
+            ->with(['instructors', 'participants', 'chats'])
+            ->orderBy('start_date', 'desc')
+            ->paginate(12);
+
+        return view('course-periods.index', compact('course', 'periods'));
+    }
+
+    /**
+     * Display the specified course period.
+     */
+    public function show(Course $course, CoursePeriod $period)
+    {
+        $this->authorize('view', $course);
+
+        // Ensure the period belongs to the course
+        if ($period->course_id !== $course->id) {
+            abort(404, 'Periode tidak ditemukan untuk kursus ini.');
+        }
+
+        $period->load(['instructors', 'participants', 'chats']);
+
+        return view('course-periods.show', compact('course', 'period'));
     }
 
     /**
@@ -147,7 +180,7 @@ class CoursePeriodController extends Controller
     /**
      * Remove the specified course period from storage.
      */
-    public function destroy(CoursePeriod $period, Course $course)
+    public function destroy(Course $course, CoursePeriod $period)
 {
     $this->authorize('update', $course);
 
@@ -228,5 +261,246 @@ class CoursePeriodController extends Controller
                 'error' => 'Gagal menduplikasi periode: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Show period management page (instructors and participants)
+     */
+    public function manage(Course $course, CoursePeriod $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404, 'Periode tidak ditemukan untuk kursus ini.');
+        }
+
+        $period->load(['instructors', 'participants']);
+        
+        // Get instructors who are already assigned to ANY period of this course
+        $assignedInstructorIds = DB::table('course_period_instructor')
+            ->join('course_periods', 'course_period_instructor.course_period_id', '=', 'course_periods.id')
+            ->where('course_periods.course_id', $course->id)
+            ->pluck('course_period_instructor.user_id')
+            ->unique();
+        
+        // Get available instructors (from course instructors, excluding those assigned to any period)
+        $availableInstructors = $course->instructors()
+            ->whereNotIn('users.id', $assignedInstructorIds)
+            ->get();
+        
+        // Get participants who are already assigned to ANY period of this course
+        $assignedParticipantIds = DB::table('course_period_user')
+            ->join('course_periods', 'course_period_user.course_period_id', '=', 'course_periods.id')
+            ->where('course_periods.course_id', $course->id)
+            ->pluck('course_period_user.user_id')
+            ->unique();
+        
+        // Get available participants (from course participants, excluding those assigned to any period)
+        $availableParticipants = $course->participants()
+            ->whereNotIn('users.id', $assignedParticipantIds)
+            ->get();
+
+        return view('course-periods.manage', compact(
+            'course', 
+            'period', 
+            'availableInstructors', 
+            'availableParticipants'
+        ));
+    }
+
+    /**
+     * Add instructor to period
+     */
+    public function addInstructor(Request $request, Course $course, CoursePeriod $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id'
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+
+        // Check if user is course instructor
+        if (!$course->instructors()->where('users.id', $user->id)->exists()) {
+            return back()->withErrors([
+                'error' => 'User harus menjadi instructor dari course ini terlebih dahulu.'
+            ]);
+        }
+
+        // Check if already assigned
+        if ($period->instructors()->where('users.id', $user->id)->exists()) {
+            return back()->withErrors([
+                'error' => 'Instructor sudah terdaftar di periode ini.'
+            ]);
+        }
+
+        $period->instructors()->attach($user->id);
+
+        return back()->with('success', "Instructor {$user->name} berhasil ditambahkan ke periode {$period->name}.");
+    }
+
+    /**
+     * Remove instructor from period
+     */
+    public function removeInstructor(Course $course, CoursePeriod $period, User $user)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        $period->instructors()->detach($user->id);
+
+        return back()->with('success', "Instructor {$user->name} berhasil dihapus dari periode {$period->name}.");
+    }
+
+    /**
+     * Add participant(s) to period - supports multiple selection
+     */
+    public function addParticipant(Request $request, Course $course, CoursePeriod $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id'
+        ]);
+
+        $userIds = $request->user_ids;
+        $addedCount = 0;
+        $errors = [];
+
+        foreach ($userIds as $userId) {
+            $user = User::find($userId);
+            
+            // Check if user is course participant
+            if (!$course->participants()->where('users.id', $userId)->exists()) {
+                $errors[] = "{$user->name} harus menjadi participant dari course ini terlebih dahulu.";
+                continue;
+            }
+
+            // Check if already enrolled
+            if ($period->participants()->where('users.id', $userId)->exists()) {
+                $errors[] = "{$user->name} sudah terdaftar di periode ini.";
+                continue;
+            }
+
+            // Check available slots
+            if (!$period->hasAvailableSlots()) {
+                $errors[] = "Periode sudah penuh. Maksimal {$period->max_participants} participants.";
+                break;
+            }
+
+            $period->participants()->attach($userId);
+            $addedCount++;
+        }
+
+        if ($addedCount > 0) {
+            $message = "Berhasil menambahkan {$addedCount} participant ke periode {$period->name}.";
+            if (count($errors) > 0) {
+                $message .= " Beberapa participant tidak bisa ditambahkan: " . implode(', ', array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $message .= " dan " . (count($errors) - 3) . " lainnya.";
+                }
+            }
+            return back()->with('success', $message);
+        }
+
+        return back()->withErrors(['error' => implode(' ', $errors)]);
+    }
+
+    /**
+     * Remove participant from period
+     */
+    public function removeParticipant(Course $course, CoursePeriod $period, User $user)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        $period->participants()->detach($user->id);
+
+        return back()->with('success', "Participant {$user->name} berhasil dihapus dari periode {$period->name}.");
+    }
+
+    /**
+     * Bulk remove participants from period
+     */
+    public function bulkRemoveParticipants(Request $request, Course $course, CoursePeriod $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'participant_ids' => 'required|array|min:1',
+            'participant_ids.*' => 'exists:users,id'
+        ]);
+
+        $participantIds = $request->participant_ids;
+        $removedCount = 0;
+
+        foreach ($participantIds as $participantId) {
+            if ($period->participants()->where('users.id', $participantId)->exists()) {
+                $period->participants()->detach($participantId);
+                $removedCount++;
+            }
+        }
+
+        return back()->with('success', "Berhasil menghapus {$removedCount} participant dari periode {$period->name}.");
+    }
+
+    /**
+     * Enroll user to a specific period (for public enrollment)
+     */
+    public function enroll(Course $course, CoursePeriod $period)
+    {
+        $user = Auth::user();
+
+        // Check if period is available for enrollment
+        if (!in_array($period->status, ['active', 'upcoming'])) {
+            return back()->withErrors([
+                'error' => 'Periode tidak tersedia untuk pendaftaran.'
+            ]);
+        }
+
+        // Check if user is already course participant
+        if (!$course->participants()->where('users.id', $user->id)->exists()) {
+            return back()->withErrors([
+                'error' => 'Anda harus terdaftar di course ini untuk bergabung dengan periode.'
+            ]);
+        }
+
+        // Check if already enrolled in this period
+        if ($period->participants()->where('users.id', $user->id)->exists()) {
+            return back()->withErrors([
+                'error' => 'Anda sudah terdaftar di periode ini.'
+            ]);
+        }
+
+        // Check available slots
+        if (!$period->hasAvailableSlots()) {
+            return back()->withErrors([
+                'error' => 'Periode sudah penuh. Maksimal ' . $period->max_participants . ' participants.'
+            ]);
+        }
+
+        $period->participants()->attach($user->id);
+
+        return back()->with('success', "Berhasil bergabung dengan periode {$period->name}!");
     }
 }

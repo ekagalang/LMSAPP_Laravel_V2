@@ -423,18 +423,39 @@ class ContentController extends Controller
             $content->lesson_id = $lesson->id;
             $content->fill($validated);
 
-            // 🆕 TAMBAHAN: Set scoring_enabled untuk essay (default true untuk backward compatibility)
+            // 🆕 TAMBAHAN: Set essay settings berdasarkan review_mode
             if ($validated['type'] === 'essay') {
-                // PERBAIKAN: Konversi dan simpan dengan benar
-                $content->scoring_enabled = $request->boolean('scoring_enabled', true);
+                $reviewMode = $request->input('review_mode', 'scoring');
+                
+                // Set properties berdasarkan review mode
+                switch ($reviewMode) {
+                    case 'scoring':
+                        $content->scoring_enabled = true;
+                        $content->requires_review = true;
+                        break;
+                    case 'feedback_only':
+                        $content->scoring_enabled = false;
+                        $content->requires_review = true;
+                        break;
+                    case 'no_review':
+                        $content->scoring_enabled = false;
+                        $content->requires_review = false;
+                        break;
+                    default:
+                        // Fallback to old system if review_mode not provided
+                        $content->scoring_enabled = $request->boolean('scoring_enabled', true);
+                        $content->requires_review = true;
+                        break;
+                }
+                
                 $content->grading_mode = $request->input('grading_mode', 'individual');
                 
                 // Log untuk debug
                 Log::info('Essay settings saved', [
+                    'review_mode' => $reviewMode,
                     'scoring_enabled' => $content->scoring_enabled,
-                    'grading_mode' => $content->grading_mode,
-                    'request_scoring' => $request->input('scoring_enabled'),
-                    'request_grading' => $request->input('grading_mode')
+                    'requires_review' => $content->requires_review,
+                    'grading_mode' => $content->grading_mode
                 ]);
             }
 

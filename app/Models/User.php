@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Feedback;
+use App\Models\CoursePeriod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -89,6 +90,32 @@ class User extends Authenticatable
     public function instructorCourses()
     {
         return $this->belongsToMany(Course::class, 'course_instructor')->withTimestamps();
+    }
+
+    /**
+     * Relasi ke periode sebagai instruktur
+     */
+    public function instructorPeriods()
+    {
+        return $this->belongsToMany(CoursePeriod::class, 'course_period_instructor');
+    }
+
+    /**
+     * Relasi ke periode sebagai participant
+     */
+    public function participantPeriods()
+    {
+        return $this->belongsToMany(CoursePeriod::class, 'course_period_user')->withPivot('feedback')->withTimestamps();
+    }
+
+    /**
+     * Get all periods where user is involved (either as instructor or participant)
+     */
+    public function allPeriods()
+    {
+        $instructorPeriods = $this->instructorPeriods()->get();
+        $participantPeriods = $this->participantPeriods()->get();
+        return $instructorPeriods->merge($participantPeriods)->unique('id');
     }
 
     /**

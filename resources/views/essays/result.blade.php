@@ -58,7 +58,9 @@
                                     }
                                 @endphp
                                 
-                                @if($submission->content->scoring_enabled)
+                                @if(!($submission->content->requires_review ?? true))
+                                    <span class="text-green-600">✅ Latihan Selesai</span>
+                                @elseif($submission->content->scoring_enabled)
                                     @if($isFullyProcessed)
                                         <span class="text-green-600">Sudah Dinilai</span>
                                     @else

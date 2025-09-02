@@ -92,6 +92,11 @@ class EssaySubmission extends Model
             return $this->answers()->count() > 0;
         }
 
+        // FITUR BARU: Jika essay tidak perlu review (latihan mandiri), langsung dianggap selesai
+        if (!($content->requires_review ?? true)) {
+            return true; // Auto-complete tanpa review instruktur
+        }
+
         // PERBAIKAN UTAMA: Logic berdasarkan grading_mode dan scoring_enabled
         if (!$content->scoring_enabled) {
             // Tanpa scoring - cek feedback
@@ -220,6 +225,11 @@ class EssaySubmission extends Model
 
     public function needsGrading()
     {
+        // Jika essay tidak perlu review (latihan mandiri), tidak perlu grading
+        if (!($this->content->requires_review ?? true)) {
+            return false;
+        }
+
         return $this->content->scoring_enabled && !$this->is_fully_graded;
     }
 
@@ -228,6 +238,11 @@ class EssaySubmission extends Model
     $content = $this->content;
     
     if ($this->answers->count() === 0) return false;
+
+    // FITUR BARU: Jika essay tidak perlu review (latihan mandiri), langsung dianggap sudah diproses
+    if (!($content->requires_review ?? true)) {
+        return true; // Auto-processed tanpa review instruktur
+    }
 
     if (!$content->scoring_enabled) {
         // Tanpa scoring - cek ada feedback
