@@ -442,6 +442,7 @@ class CertificateController extends Controller
 
         $certificates = $query->orderBy('issued_at', 'desc')->paginate(15);
         $courses = Course::whereHas('certificates')->with('certificates')->get();
+        $templates = \App\Models\CertificateTemplate::orderBy('name')->get();
 
         // Analytics data
         $analytics = [
@@ -456,7 +457,7 @@ class CertificateController extends Controller
                 ->get()
         ];
 
-        return view('certificate-management.index', compact('certificates', 'courses', 'analytics'));
+        return view('certificate-management.index', compact('certificates', 'courses', 'templates', 'analytics'));
     }
 
     /**
@@ -520,8 +521,9 @@ class CertificateController extends Controller
         }
 
         $certificates = $query->orderBy('issued_at', 'desc')->paginate(15);
+        $templates = \App\Models\CertificateTemplate::orderBy('name')->get();
 
-        return view('certificate-management.by-course', compact('course', 'certificates'));
+        return view('certificate-management.by-course', compact('course', 'certificates', 'templates'));
     }
 
     /**
@@ -599,11 +601,25 @@ class CertificateController extends Controller
     /**
      * Update certificate template manually
      */
-    public function updateTemplate(Certificate $certificate)
+    public function updateTemplate(Request $request, Certificate $certificate)
     {
         $this->authorize('update', $certificate);
 
+        // Validate request if new template is provided
+        $request->validate([
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id'
+        ]);
+
         try {
+            // If new template is provided, update the certificate's template
+            if ($request->has('certificate_template_id') && $request->certificate_template_id) {
+                $certificate->update([
+                    'certificate_template_id' => $request->certificate_template_id
+                ]);
+                // Reload the certificate to get the new template relationship
+                $certificate = $certificate->fresh(['certificateTemplate']);
+            }
+
             // Check if template exists
             if (!$certificate->certificateTemplate) {
                 return back()->with('error', 'Template sertifikat tidak ditemukan.');
@@ -614,7 +630,7 @@ class CertificateController extends Controller
                 Storage::disk('public')->delete($certificate->path);
             }
 
-            // Generate new PDF with current template
+            // Generate new PDF with current/new template
             $pdf = Pdf::loadView('certificates.template-render', compact('certificate'))
                 ->setPaper('a4', 'landscape')
                 ->setOptions([
@@ -631,7 +647,11 @@ class CertificateController extends Controller
 
             $certificate->update(['path' => $filePath]);
 
-            return back()->with('success', 'Sertifikat berhasil diperbarui dengan template terbaru.');
+            $message = $request->has('certificate_template_id') && $request->certificate_template_id 
+                ? 'Sertifikat berhasil diperbarui dengan template baru.'
+                : 'Sertifikat berhasil diperbarui dengan template terbaru.';
+
+            return back()->with('success', $message);
         } catch (\Exception $e) {
             \Log::error("Failed to update certificate template for {$certificate->id}: " . $e->getMessage());
             return back()->with('error', 'Gagal memperbarui sertifikat: ' . $e->getMessage());

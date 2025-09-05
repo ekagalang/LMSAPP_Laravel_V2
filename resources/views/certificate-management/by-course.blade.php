@@ -182,7 +182,7 @@
                                         Lihat
                                     </a>
                                     
-                                    <button onclick="updateTemplate({{ $certificate->id }})" 
+                                    <button onclick="showUpdateTemplateModal({{ $certificate->id }}, '{{ $certificate->user->name }}', '{{ $certificate->certificateTemplate->name ?? 'Template Tidak Ada' }}')" 
                                             class="bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium py-1 px-3 rounded text-sm transition duration-150 ease-in-out"
                                             title="Update Template">
                                         Update
@@ -224,6 +224,64 @@
                     </div>
                 </div>
             @endif
+        </div>
+    </div>
+</div>
+
+<!-- Update Template Modal -->
+<div id="updateTemplateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900" id="modal-title">Update Template Sertifikat</h3>
+                <button onclick="closeUpdateTemplateModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="sr-only">Close</span>
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="updateTemplateForm" method="POST">
+                @csrf
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Peserta</label>
+                    <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded" id="participant-name"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Template Saat Ini</label>
+                    <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded" id="current-template"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="certificate_template_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Pilih Template Baru (Opsional)
+                    </label>
+                    <select name="certificate_template_id" id="certificate_template_id" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
+                        <option value="">-- Gunakan template yang sama --</option>
+                        @foreach($templates as $template)
+                            <option value="{{ $template->id }}">{{ $template->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Kosongkan jika hanya ingin meregenerasi dengan template saat ini
+                    </p>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeUpdateTemplateModal()" 
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">
+                        Update Template
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -297,24 +355,24 @@ function bulkAction(action) {
     });
 }
 
-function updateTemplate(certificateId) {
-    if (!confirm('Apakah Anda yakin ingin memperbarui template sertifikat ini?')) {
-        return;
-    }
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/certificate-management/${certificateId}/update-template`;
-    
-    const csrfToken = document.createElement('input');
-    csrfToken.type = 'hidden';
-    csrfToken.name = '_token';
-    csrfToken.value = '{{ csrf_token() }}';
-    form.appendChild(csrfToken);
-    
-    document.body.appendChild(form);
-    form.submit();
+function showUpdateTemplateModal(certificateId, participantName, currentTemplate) {
+    document.getElementById('participant-name').textContent = participantName;
+    document.getElementById('current-template').textContent = currentTemplate;
+    document.getElementById('updateTemplateForm').action = `/certificate-management/${certificateId}/update-template`;
+    document.getElementById('certificate_template_id').value = '';
+    document.getElementById('updateTemplateModal').classList.remove('hidden');
 }
+
+function closeUpdateTemplateModal() {
+    document.getElementById('updateTemplateModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('updateTemplateModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeUpdateTemplateModal();
+    }
+});
 
 function deleteCertificate(certificateId) {
     if (!confirm('Apakah Anda yakin ingin menghapus sertifikat ini? File PDF juga akan dihapus.')) {

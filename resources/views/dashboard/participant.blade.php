@@ -424,7 +424,7 @@
                                                         title="Download certificate">
                                                             📥 Unduh
                                                         </a>
-                                                        <a href="{{ route('certificates.show', $certificate) }}" 
+                                                        <a href="{{ route('certificates.verify', $certificate->certificate_code) }}" target="_blank"
                                                         class="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-semibold transition-colors duration-200"
                                                         title="View certificate">
                                                             👁️ Lihat
