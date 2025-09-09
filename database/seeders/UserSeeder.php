@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
         // Buat Super Admin
         $admin = User::factory()->create([
             'name' => 'Admin User',
-            'email' => 'admin@lms.com',
+            'email' => 'admin@example.com',
             'password' => $defaultPassword, // Menetapkan password secara eksplisit
         ]);
         $admin->assignRole('super-admin'); // Berikan peran super-admin
@@ -27,7 +27,7 @@ class UserSeeder extends Seeder
         // Buat Instructor
         $instructor = User::factory()->create([
             'name' => 'Instructor User',
-            'email' => 'instructor@lms.com',
+            'email' => 'instructor@example.com',
             'password' => $defaultPassword, // Menetapkan password secara eksplisit
         ]);
         $instructor->assignRole('instructor'); // Berikan peran instructor
@@ -35,7 +35,7 @@ class UserSeeder extends Seeder
         // Buat Participant
         $participant = User::factory()->create([
             'name' => 'Participant User',
-            'email' => 'participant@lms.com',
+            'email' => 'participant@example.com',
             'password' => $defaultPassword, // Menetapkan password secara eksplisit
         ]);
         $participant->assignRole('participant'); // Berikan peran participant
@@ -43,7 +43,7 @@ class UserSeeder extends Seeder
         // Buat Event Organizer
         $eventorganizer = User::factory()->create([
             'name' => 'Event Organizer',
-            'email' => 'eo@lms.com',
+            'email' => 'eo@example.com',
             'password' => $defaultPassword,
         ]);
     }
