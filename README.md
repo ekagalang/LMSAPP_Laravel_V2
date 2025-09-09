@@ -125,12 +125,12 @@ Aplikasi akan berjalan di: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
 Setelah menjalankan `php artisan db:seed`, Anda dapat login dengan akun berikut:
 
-| Role            | Email                    | Password  |
-|-----------------|--------------------------|-----------|
-| Admin           | admin@lms.com            | password  |
-| Instructor      | instructor@lms.com       | password  |
-| Participant     | participant@lms.com      | password  |
-| Event Organizer | eo@lms.com               | password  |
+| Role            | Email                        | Password  |
+|-----------------|------------------------------|-----------|
+| Admin           | admin@example.com            | password  |
+| Instructor      | instructor@example.com       | password  |
+| Participant     | participant@example.com      | password  |
+| Event Organizer | eo@example.com               | password  |
 
 ---
 
