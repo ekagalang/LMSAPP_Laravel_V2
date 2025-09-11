@@ -40,26 +40,37 @@ class AutoGradeController extends Controller
     private function getParticipantsWithSubmissions(Course $course)
     {
         try {
+            // Get all essay content IDs for this course
+            $essayContentIds = $course->lessons()->with('contents')
+                ->get()
+                ->pluck('contents')
+                ->flatten()
+                ->where('type', 'essay')
+                ->pluck('id');
+
+            if ($essayContentIds->isEmpty()) {
+                Log::info("No essay contents found for course: " . $course->title);
+                return collect();
+            }
+
             // Get all participants for this course who have essay submissions
             $participants = $course->enrolledUsers()
-                ->whereHas('essaySubmissions', function($query) use ($course) {
-                    // Get all essay content IDs for this course
-                    $essayContentIds = $course->lessons()->with('contents')
-                        ->get()
-                        ->pluck('contents')
-                        ->flatten()
-                        ->where('type', 'essay')
-                        ->pluck('id');
-                        
+                ->whereHas('essaySubmissions', function($query) use ($essayContentIds) {
                     $query->whereIn('content_id', $essayContentIds);
                 })
-                ->with('essaySubmissions.content')
+                ->with(['essaySubmissions' => function($query) use ($essayContentIds) {
+                    // Only load submissions for this course
+                    $query->whereIn('content_id', $essayContentIds)
+                          ->with('content');
+                }])
                 ->get();
 
             // Process participants
             $processedParticipants = collect();
             
             foreach ($participants as $participant) {
+                // Get submissions for this course only
+                $allSubmissionsForCourse = $participant->essaySubmissions;
                 $pendingSubmissions = $this->getPendingSubmissionsForParticipant($participant, $course);
                 
                 // Get progress information
@@ -68,7 +79,7 @@ class AutoGradeController extends Controller
                 $processedParticipants->push([
                     'user' => $participant,
                     'pending_submissions' => $pendingSubmissions,
-                    'all_submissions' => $participant->essaySubmissions,
+                    'all_submissions' => $allSubmissionsForCourse, // Now only contains submissions for this course
                     'progress' => $progress,
                     'total_contents' => $progress['total_count'] ?? 0,
                     'completed_contents' => $progress['completed_count'] ?? 0,
@@ -78,7 +89,8 @@ class AutoGradeController extends Controller
 
             return $processedParticipants;
         } catch (\Exception $e) {
-            \Log::error('Error in getParticipantsWithSubmissions: ' . $e->getMessage());
+            Log::error('Error in getParticipantsWithSubmissions: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return collect(); // Return empty collection on error
         }
     }
@@ -116,7 +128,7 @@ class AutoGradeController extends Controller
 
             return $pendingSubmissions;
         } catch (\Exception $e) {
-            \Log::error('Error in getPendingSubmissionsForParticipant: ' . $e->getMessage());
+            Log::error('Error in getPendingSubmissionsForParticipant: ' . $e->getMessage());
             return collect(); // Return empty collection on error
         }
     }
