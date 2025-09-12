@@ -180,6 +180,7 @@
                                                    class="dropdown-item-custom">
                                                     {{ __('Manajemen Pengumuman') }}
                                                 </a>
+                                                <div class="border-t my-1"></div>
                                                 <a href="{{ route('admin.certificate-templates.index') }}" 
                                                    class="dropdown-item-custom">
                                                     {{ __('Certificate Template') }}
@@ -187,6 +188,15 @@
                                                 <a href="{{ route('certificate-management.index') }}" 
                                                     class="dropdown-item-custom">
                                                     {{ __('Manajemen Sertifikat') }}
+                                                </a>
+                                                <div class="border-t my-1"></div>
+                                                <a href="{{ route('admin.auto-grade.index') }}" 
+                                                   class="dropdown-item-custom">
+                                                    {{ __('Penyelesaian Penilaian Otomatis') }}
+                                                </a>
+                                                <a href="{{ route('admin.force-complete.index') }}" 
+                                                   class="dropdown-item-custom">
+                                                    {{ __('Force Complete Konten') }}
                                                 </a>
                                             </div>
                                         </div>
@@ -305,6 +315,14 @@
                                 <a href="{{ route('certificate-management.index') }}" 
                                     class="responsive-nav-link-custom">
                                     {{ __('Manajemen Sertifikat') }}
+                                </a>
+                                <a href="{{ route('admin.auto-grade.index') }}" 
+                                   class="responsive-nav-link-custom">
+                                    {{ __('Penyelesaian Penilaian Otomatis') }}
+                                </a>
+                                <a href="{{ route('admin.force-complete.index') }}" 
+                                   class="responsive-nav-link-custom">
+                                    {{ __('Force Complete Konten') }}
                                 </a>
                             </div>
                         </div>

@@ -247,6 +247,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('announcements', AdminAnnouncementController::class);
         Route::patch('announcements/{announcement}/toggle-status', [AdminAnnouncementController::class, 'toggleStatus'])
             ->name('announcements.toggle-status');
+
+        // Automatic Grading Completion
+        Route::get('/auto-grade', [\App\Http\Controllers\Admin\AutoGradeController::class, 'index'])->name('auto-grade.index');
+        Route::post('/auto-grade/complete', [\App\Http\Controllers\Admin\AutoGradeController::class, 'processAutoGrade'])->name('auto-grade.complete');
+        Route::post('/auto-grade/complete-all', [\App\Http\Controllers\Admin\AutoGradeController::class, 'processAutoGradeAll'])->name('auto-grade.complete-all');
+
+        // Force Complete (mark all contents completed)
+        Route::get('/force-complete', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'index'])->name('force-complete.index');
+        Route::post('/force-complete/complete', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'processForceComplete'])->name('force-complete.complete');
+        Route::post('/force-complete/complete-all', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'processForceCompleteAll'])->name('force-complete.complete-all');
     });
 
     // Route untuk Gradebook

@@ -91,6 +91,10 @@
                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
                                             {{ __('Certificate Template') }}
                                         </a>
+                                        <a href="{{ route('admin.auto-grade.index') }}" 
+                                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
+                                            {{ __('Auto Complete Grading') }}
+                                        </a>
                                     </div>
                                 </x-slot>
                             </x-dropdown>
@@ -219,6 +223,10 @@
                         <a href="{{ route('admin.certificates.index') }}" 
                            class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-black hover:text-red-900 hover:bg-red-50 hover:border-red-300 transition duration-150 ease-in-out">
                             {{ __('Certificate Template') }}
+                        </a>
+                        <a href="{{ route('admin.auto-grade.index') }}" 
+                           class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-black hover:text-red-900 hover:bg-red-50 hover:border-red-300 transition duration-150 ease-in-out">
+                            {{ __('Auto Complete Grading') }}
                         </a>
                     </div>
                 </div>
