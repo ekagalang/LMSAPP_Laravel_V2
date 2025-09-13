@@ -76,22 +76,25 @@
                     // Initialize interactive video player
                     const playerContainer = 'interactive-video-player-{{ $content->id }}';
                     
-                    // Load video interactions from API
-                    console.log('Fetching interactions from API...');
+                    // Load video interactions from API with timeout for better performance
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                    
                     fetch(`/api/video-interactions/content/{{ $content->id }}`, {
                         headers: {
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        }
+                        },
+                        signal: controller.signal
                     })
                     .then(response => {
-                        console.log('API Response status:', response.status);
-                        console.log('API Response headers:', response.headers);
+                        clearTimeout(timeoutId);
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
                         return response.json();
                     })
                     .then(data => {
-                        console.log('API Response data:', data);
-                        console.log('Interactions found:', data.interactions ? data.interactions.length : 0);
                         
                         // Update interaction count immediately
                         const countElement = document.getElementById('interaction-count');
@@ -101,7 +104,6 @@
                         
                         // Initialize player with interactions
                         if (typeof InteractiveVideoPlayer !== 'undefined') {
-                            console.log('Initializing InteractiveVideoPlayer...');
                             window.videoPlayer = new InteractiveVideoPlayer(playerContainer, {
                                 contentId: {{ $content->id }},
                                 userId: {{ $userId }},
@@ -116,13 +118,16 @@
                             // Load user progress
                             loadUserProgress();
                         } else {
-                            console.error('InteractiveVideoPlayer class not found, falling back to regular player');
+                            // Fallback to regular player if InteractiveVideoPlayer not available
                             showFallbackPlayer();
                         }
                     })
                     .catch(error => {
-                        console.error('Error loading video interactions:', error);
-                        console.error('Error details:', error.message);
+                        clearTimeout(timeoutId);
+                        // Log only in development
+                        if (window.location.hostname === 'localhost' || window.location.hostname.includes('dev')) {
+                            console.error('Error loading video interactions:', error.message);
+                        }
                         // Fallback to regular YouTube player
                         showFallbackPlayer();
                     });
@@ -141,7 +146,7 @@
                             }
                         })
                         .catch(error => {
-                            console.error('Error loading progress:', error);
+                            // Silent fail for progress loading
                         });
                     }
 
@@ -156,7 +161,6 @@
                     }
 
                     function showFallbackPlayer() {
-                        console.log('Showing fallback player...');
                         const container = document.getElementById(playerContainer);
                         if (container) {
                             container.innerHTML = `
@@ -170,9 +174,6 @@
                                     </iframe>
                                 </div>
                             `;
-                            console.log('Fallback player loaded with URL:', '{{ $content->youtube_embed_url }}');
-                        } else {
-                            console.error('Player container not found:', playerContainer);
                         }
                     }
                 });

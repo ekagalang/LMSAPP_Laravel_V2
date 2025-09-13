@@ -7,6 +7,7 @@ use App\Models\VideoInteraction;
 use App\Models\Content;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class VideoInteractionController extends Controller
@@ -55,27 +56,7 @@ class VideoInteractionController extends Controller
      */
     public function store(Request $request, Content $content)
     {
-        \Log::info('=== VideoInteraction Store Method Called ===', [
-            'content_id' => $content->id,
-            'method' => $request->method(),
-            'url' => $request->url(),
-            'user_id' => auth()->id() ?? 'guest'
-        ]);
-
-        try {
-            // Temporarily disable authorization check for debugging
-            // $this->authorize('update', $content);
-            \Log::info('Authorization bypassed for debugging', ['content_id' => $content->id]);
-        } catch (\Exception $e) {
-            \Log::error('Authorization failed', ['error' => $e->getMessage(), 'content_id' => $content->id]);
-            return redirect()->back()->withErrors(['error' => 'Unauthorized to manage this content.']);
-        }
-
-        // Debug: log all request data
-        \Log::info('VideoInteraction Store Request Data', [
-            'all_data' => $request->all(),
-            'content_id' => $content->id
-        ]);
+        $this->authorize('update', $content);
 
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in(['quiz', 'reflection', 'annotation', 'hotspot', 'overlay', 'pause'])],
@@ -89,10 +70,6 @@ class VideoInteractionController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::error('VideoInteraction validation failed', [
-                'errors' => $validator->errors()->toArray(),
-                'request_data' => $request->all()
-            ]);
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
@@ -130,9 +107,7 @@ class VideoInteractionController extends Controller
         }
 
         try {
-            \Log::info('Attempting to create video interaction', ['data' => $data]);
             $interaction = VideoInteraction::create($data);
-            \Log::info('Video interaction created successfully', ['id' => $interaction->id, 'data' => $data]);
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database error creating video interaction', [
                 'error' => $e->getMessage(),
@@ -144,11 +119,17 @@ class VideoInteractionController extends Controller
                 ->withErrors(['error' => 'Database error: ' . $e->getMessage()])
                 ->withInput();
         } catch (\Exception $e) {
-            \Log::error('Failed to create video interaction', ['error' => $e->getMessage(), 'data' => $data, 'trace' => $e->getTraceAsString()]);
+            \Log::error('Failed to create video interaction', [
+                'error' => $e->getMessage(),
+                'content_id' => $content->id
+            ]);
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to save interaction: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Failed to save interaction. Please try again.'])
                 ->withInput();
         }
+
+        // Clear cache for this content
+        Cache::forget("video_interactions_content_{$content->id}");
 
         return redirect()->route('admin.video-interactions.index', $content)
             ->with('success', 'Video interaction created successfully.');
@@ -173,9 +154,7 @@ class VideoInteractionController extends Controller
      */
     public function update(Request $request, Content $content, VideoInteraction $videoInteraction)
     {
-        // Temporarily disable authorization check for debugging
-        // $this->authorize('update', $content);
-        \Log::info('Update authorization bypassed for debugging', ['content_id' => $content->id]);
+        $this->authorize('update', $content);
 
         if ($videoInteraction->content_id !== $content->id) {
             abort(404);
@@ -228,9 +207,7 @@ class VideoInteractionController extends Controller
         }
 
         try {
-            \Log::info('Attempting to update video interaction', ['id' => $videoInteraction->id, 'data' => $data]);
             $videoInteraction->update($data);
-            \Log::info('Video interaction updated successfully', ['id' => $videoInteraction->id, 'data' => $data]);
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database error updating video interaction', [
                 'error' => $e->getMessage(),
@@ -243,12 +220,18 @@ class VideoInteractionController extends Controller
                 ->withErrors(['error' => 'Database error: ' . $e->getMessage()])
                 ->withInput();
         } catch (\Exception $e) {
-            \Log::error('Failed to update video interaction', ['error' => $e->getMessage(), 'data' => $data, 'id' => $videoInteraction->id, 'trace' => $e->getTraceAsString()]);
+            \Log::error('Failed to update video interaction', [
+                'error' => $e->getMessage(),
+                'interaction_id' => $videoInteraction->id
+            ]);
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to update interaction: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Failed to update interaction. Please try again.'])
                 ->withInput();
         }
 
+        // Clear cache for this content
+        Cache::forget("video_interactions_content_{$content->id}");
+        
         return redirect()->route('admin.video-interactions.index', $content)
             ->with('success', 'Video interaction updated successfully.');
     }
@@ -265,6 +248,9 @@ class VideoInteractionController extends Controller
         }
 
         $videoInteraction->delete();
+
+        // Clear cache for this content
+        Cache::forget("video_interactions_content_{$content->id}");
 
         return redirect()->route('admin.video-interactions.index', $content)
             ->with('success', 'Video interaction deleted successfully.');
@@ -394,7 +380,6 @@ class VideoInteractionController extends Controller
 
         // Process options
         $options = $request->input('options', []);
-        \Log::info('Processing quiz options', ['options' => $options]);
         
         foreach ($options as $index => $option) {
             if (!empty($option['text'])) {
@@ -405,7 +390,6 @@ class VideoInteractionController extends Controller
             }
         }
 
-        \Log::info('Processed quiz data', ['quiz_data' => $quizData]);
         return $quizData;
     }
 
@@ -431,7 +415,6 @@ class VideoInteractionController extends Controller
 
             // Process options
             $options = $request->input('reflection_options', []);
-            \Log::info('Processing reflection options', ['options' => $options]);
             
             foreach ($options as $index => $option) {
                 if (!empty($option['text'])) {
@@ -443,7 +426,6 @@ class VideoInteractionController extends Controller
             }
         }
 
-        \Log::info('Processed reflection data', ['reflection_data' => $reflectionData]);
         return $reflectionData;
     }
 

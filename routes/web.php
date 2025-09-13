@@ -359,9 +359,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // ============================================================================
 Route::middleware('auth')->prefix('api')->group(function () {
     // Video Interaction API Routes untuk web frontend
-    Route::prefix('video-interactions')->group(function () {
+    Route::prefix('video-interactions')->middleware('throttle:60,1')->group(function () {
         Route::get('/content/{contentId}', [App\Http\Controllers\Api\VideoInteractionController::class, 'getContentInteractions']);
-        Route::post('/response', [App\Http\Controllers\Api\VideoInteractionController::class, 'storeResponse']);
+        Route::post('/response', [App\Http\Controllers\Api\VideoInteractionController::class, 'storeResponse'])->middleware('throttle:30,1');
         Route::get('/progress/{contentId}', [App\Http\Controllers\Api\VideoInteractionController::class, 'getUserProgress']);
         Route::get('/stats/{contentId}', [App\Http\Controllers\Api\VideoInteractionController::class, 'getContentStats']);
     });

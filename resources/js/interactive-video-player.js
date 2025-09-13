@@ -24,7 +24,10 @@ class InteractiveVideoPlayer {
         });
         this.loadYouTubeAPI();
         this.showInteractionInfo();
-        console.log('Interactive video player initialized with', this.interactions.length, 'interactions');
+        // Only log in development mode
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('dev')) {
+            console.log('Interactive video player initialized with', this.interactions.length, 'interactions');
+        }
     }
 
     loadYouTubeAPI() {
@@ -95,7 +98,10 @@ class InteractiveVideoPlayer {
     }
 
     onPlayerReady(event) {
-        console.log('YouTube player ready');
+        // Only log in development mode
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('dev')) {
+            console.log('YouTube player ready');
+        }
         this.startTimeTracking();
     }
 
@@ -112,12 +118,18 @@ class InteractiveVideoPlayer {
             clearInterval(this.timeTracker);
         }
         
+        // Optimize interval timing - use 250ms instead of 100ms for better performance
+        // while still maintaining smooth interaction triggering
         this.timeTracker = setInterval(() => {
             if (this.player && this.player.getCurrentTime) {
-                this.currentTime = this.player.getCurrentTime();
-                this.checkForInteractions();
+                const newTime = this.player.getCurrentTime();
+                // Only process if time actually changed significantly (avoid redundant checks)
+                if (Math.abs(newTime - this.currentTime) > 0.1) {
+                    this.currentTime = newTime;
+                    this.checkForInteractions();
+                }
             }
-        }, 100); // Check every 100ms for smooth interaction triggering
+        }, 250); // Reduced from 100ms to 250ms for better performance
     }
 
     stopTimeTracking() {
@@ -127,7 +139,17 @@ class InteractiveVideoPlayer {
     }
 
     checkForInteractions() {
-        this.interactions.forEach(interaction => {
+        // Early exit if no interactions
+        if (!this.interactions || this.interactions.length === 0) return;
+        
+        // Pre-filter interactions that are within reasonable time range (performance optimization)
+        const timeWindow = 2; // Look ahead/behind 2 seconds
+        const relevantInteractions = this.interactions.filter(interaction => 
+            Math.abs(this.currentTime - interaction.timestamp) <= timeWindow
+        );
+        
+        // Only check relevant interactions
+        relevantInteractions.forEach(interaction => {
             // Check if interaction should be triggered (within 0.5 second tolerance)
             // Skip if user already responded to this interaction
             if (Math.abs(this.currentTime - interaction.timestamp) <= 0.5 && 
@@ -514,7 +536,10 @@ class InteractiveVideoPlayer {
             progressPercentage.textContent = completionPercentage + '%';
         }
         
-        console.log(`Progress updated: ${completedInteractions}/${totalInteractions} = ${completionPercentage}%`);
+        // Only log in development mode
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('dev')) {
+            console.log(`Progress updated: ${completedInteractions}/${totalInteractions} = ${completionPercentage}%`);
+        }
     }
 
     showPause(interaction) {
@@ -677,8 +702,11 @@ class InteractiveVideoPlayer {
     }
 
     showInteractionInfo() {
-        console.log(`Interactive video loaded for content ${this.contentId}`);
-        console.log('Interactions:', this.interactions);
+        // Only log in development mode
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('dev')) {
+            console.log(`Interactive video loaded for content ${this.contentId}`);
+            console.log('Interactions:', this.interactions);
+        }
         
         // Update the interaction count in the UI if element exists
         const countElement = document.getElementById('interaction-count');
@@ -686,14 +714,15 @@ class InteractiveVideoPlayer {
             countElement.textContent = this.interactions.length;
         }
         
-        // Show interaction details
-        if (this.interactions.length > 0) {
-            console.log('Interaction timestamps:');
-            this.interactions.forEach(interaction => {
-                const minutes = Math.floor(interaction.timestamp / 60);
-                const seconds = Math.floor(interaction.timestamp % 60);
-                console.log(`- ${interaction.title} at ${minutes}:${seconds.toString().padStart(2, '0')} (${interaction.type})`);
-            });
+            // Show interaction details in development mode only
+            if (this.interactions.length > 0) {
+                console.log('Interaction timestamps:');
+                this.interactions.forEach(interaction => {
+                    const minutes = Math.floor(interaction.timestamp / 60);
+                    const seconds = Math.floor(interaction.timestamp % 60);
+                    console.log(`- ${interaction.title} at ${minutes}:${seconds.toString().padStart(2, '0')} (${interaction.type})`);
+                });
+            }
         }
     }
 
@@ -718,7 +747,10 @@ class InteractiveVideoPlayer {
         if (this.player && this.player.destroy) {
             this.player.destroy();
         }
-        console.log('Interactive video player destroyed');
+        // Only log in development mode
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('dev')) {
+            console.log('Interactive video player destroyed');
+        }
     }
 }
 

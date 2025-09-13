@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class VideoInteractionController extends Controller
@@ -19,34 +20,38 @@ class VideoInteractionController extends Controller
      */
     public function getContentInteractions($contentId): JsonResponse
     {
-        \Log::info('=== API: getContentInteractions called ===', [
-            'content_id' => $contentId,
-            'user_id' => Auth::id(),
-            'user_email' => Auth::user()?->email ?? 'guest'
-        ]);
-        
         try {
             $content = Content::findOrFail($contentId);
-            \Log::info('Content found', ['content_title' => $content->title, 'content_type' => $content->type]);
             
             // Check if user has access to this content
             if (!$this->userHasAccessToContent($content)) {
-                \Log::warning('User does not have access to content', ['content_id' => $contentId, 'user_id' => Auth::id()]);
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
             
-            \Log::info('User has access to content');
+            // Cache key for interactions (without user-specific responses)
+            $cacheKey = "video_interactions_content_{$content->id}";
             
-            $interactions = $content->videoInteractions()
-                ->with(['responses' => function($query) {
-                    $query->where('user_id', Auth::id());
-                }])
-                ->get();
-                
-            \Log::info('Raw interactions found', ['count' => $interactions->count()]);
+            $interactions = Cache::remember($cacheKey, 300, function() use ($content) { // 5 minutes cache
+                return $content->videoInteractions()
+                    ->select('id', 'content_id', 'type', 'timestamp', 'title', 'description', 'data', 'position', 'is_active')
+                    ->where('is_active', true)
+                    ->orderBy('timestamp')
+                    ->get();
+            });
             
-            $formattedInteractions = $interactions->map(function ($interaction) {
-                $userResponse = $interaction->responses->first();
+            // Load user responses separately (can't cache user-specific data)
+            $userResponses = collect();
+            if (!$interactions->isEmpty()) {
+                $interactionIds = $interactions->pluck('id')->toArray();
+                $userResponses = VideoInteractionResponse::whereIn('video_interaction_id', $interactionIds)
+                    ->where('user_id', Auth::id())
+                    ->select('id', 'video_interaction_id', 'user_id', 'response_data', 'is_correct', 'answered_at')
+                    ->get()
+                    ->keyBy('video_interaction_id');
+            }
+            
+            $formattedInteractions = $interactions->map(function ($interaction) use ($userResponses) {
+                $userResponse = $userResponses->get($interaction->id);
                 
                 return [
                     'id' => $interaction->id,
@@ -64,8 +69,6 @@ class VideoInteractionController extends Controller
                 ];
             });
             
-            \Log::info('Formatted interactions', ['count' => $formattedInteractions->count(), 'data' => $formattedInteractions->toArray()]);
-            
             return response()->json([
                 'interactions' => $formattedInteractions,
                 'content_id' => $content->id
@@ -74,10 +77,9 @@ class VideoInteractionController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error in getContentInteractions', [
                 'content_id' => $contentId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
-            return response()->json(['error' => 'Content not found: ' . $e->getMessage()], 404);
+            return response()->json(['error' => 'Content not found'], 404);
         }
     }
 
