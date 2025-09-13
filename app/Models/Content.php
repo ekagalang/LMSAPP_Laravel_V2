@@ -164,6 +164,109 @@ class Content extends Model
         return $this->hasMany(Discussion::class)->orderBy('created_at', 'desc');
     }
 
+    /**
+     * Relasi ke video interactions
+     */
+    public function videoInteractions()
+    {
+        return $this->hasMany(VideoInteraction::class)->active()->orderBy('timestamp');
+    }
+
+    /**
+     * Get all video interactions for this content
+     */
+    public function getAllVideoInteractions()
+    {
+        return $this->hasMany(VideoInteraction::class)->orderBy('timestamp');
+    }
+
+    /**
+     * Check if this content has interactive video features
+     */
+    public function hasInteractiveVideo()
+    {
+        return $this->type === 'video' && $this->videoInteractions()->count() > 0;
+    }
+
+    /**
+     * Get video interactions by type
+     */
+    public function getVideoInteractionsByType($type)
+    {
+        return $this->videoInteractions()->byType($type)->get();
+    }
+
+    /**
+     * Get user's responses to video interactions
+     */
+    public function getUserVideoResponses($userId)
+    {
+        return VideoInteractionResponse::whereHas('videoInteraction', function($query) {
+            $query->where('content_id', $this->id);
+        })->where('user_id', $userId)->get();
+    }
+
+    /**
+     * Check if user has completed all required video interactions
+     */
+    public function hasUserCompletedVideoInteractions($userId)
+    {
+        $requiredInteractions = $this->videoInteractions()
+            ->whereIn('type', ['quiz']) // Only quiz interactions are required
+            ->count();
+            
+        if ($requiredInteractions === 0) {
+            return true; // No required interactions
+        }
+        
+        $completedInteractions = VideoInteractionResponse::whereHas('videoInteraction', function($query) {
+                $query->where('content_id', $this->id)
+                      ->whereIn('type', ['quiz']);
+            })
+            ->where('user_id', $userId)
+            ->where('is_correct', true)
+            ->count();
+            
+        return $completedInteractions >= $requiredInteractions;
+    }
+
+    /**
+     * Get video interaction statistics for this content
+     */
+    public function getVideoInteractionStats()
+    {
+        $interactions = $this->videoInteractions;
+        
+        $stats = [
+            'total_interactions' => $interactions->count(),
+            'quiz_count' => $interactions->where('type', 'quiz')->count(),
+            'annotation_count' => $interactions->where('type', 'annotation')->count(),
+            'hotspot_count' => $interactions->where('type', 'hotspot')->count(),
+            'overlay_count' => $interactions->where('type', 'overlay')->count(),
+            'pause_count' => $interactions->where('type', 'pause')->count(),
+            'total_responses' => 0,
+            'average_success_rate' => 0
+        ];
+        
+        if ($stats['total_interactions'] > 0) {
+            $totalResponses = 0;
+            $totalSuccessRate = 0;
+            
+            foreach ($interactions as $interaction) {
+                $responses = $interaction->getTotalResponsesCount();
+                $successRate = $interaction->getSuccessRate();
+                
+                $totalResponses += $responses;
+                $totalSuccessRate += $successRate;
+            }
+            
+            $stats['total_responses'] = $totalResponses;
+            $stats['average_success_rate'] = $totalSuccessRate / $stats['total_interactions'];
+        }
+        
+        return $stats;
+    }
+
     public function getYoutubeVideoIdAttribute(): ?string
     {
         if ($this->type !== 'video' || empty($this->body)) {

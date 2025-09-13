@@ -336,40 +336,7 @@
                             <!-- Content Display Based on Type -->
                             <div class="content-display">
                                 @if($content->type == 'video')
-                                    <div class="prose max-w-none text-gray-700 leading-relaxed mb-8">
-                                        {!! $content->description !!}
-                                    </div>
-
-                                    {{-- Coba tampilkan video yang disematkan --}}
-                                    <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
-                                        <iframe
-                                            class="w-full h-full"
-                                            src="{{ $content->youtube_embed_url }}"
-                                            frameborder="0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowfullscreen
-                                            {{-- Tambahkan penanganan error sederhana jika iframe gagal dimuat --}}
-                                            onerror="this.style.display='none'; document.getElementById('youtube-fallback').style.display='block';"
-                                        ></iframe>
-                                    </div>
-
-                                    {{-- Tampilan Fallback jika video tidak bisa disematkan --}}
-                                    <div id="youtube-fallback" style="display:none;" class="mt-4">
-                                        <p class="text-center text-yellow-600 bg-yellow-100 p-4 rounded-lg">
-                                            Video tidak dapat diputar di sini.
-                                        </p>
-                                        <a href="{{ $content->body }}" target="_blank" rel="noopener noreferrer" class="block group mt-2">
-                                            <div class="relative rounded-2xl overflow-hidden shadow-lg">
-                                                <img src="{{ $content->youtube_thumbnail_url }}" alt="Video thumbnail" class="w-full h-full object-cover">
-                                                <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center group-hover:bg-opacity-60 transition-all duration-300">
-                                                    <div class="text-center text-white">
-                                                        <svg class="w-20 h-20 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"></path></svg>
-                                                        <p class="font-bold text-xl mt-2">Tonton di YouTube</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </div>
+                                    <x-interactive-video-player :content="$content" :userId="Auth::id()" />
 
                                 @elseif($content->type == 'image' && $content->file_path)
                                     <div class="text-center">

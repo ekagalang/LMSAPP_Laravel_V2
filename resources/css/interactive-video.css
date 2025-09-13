@@ -1,0 +1,373 @@
+/* Interactive Video Player Styles */
+@import 'video.js/dist/video-js.css';
+
+.interactive-video-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.interactive-video-container .video-js {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.video-interaction-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.video-quiz-overlay {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideInUp 0.3s ease-out;
+}
+
+.video-quiz-overlay h3 {
+    color: #1f2937;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.video-quiz-overlay p {
+    color: #6b7280;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.quiz-options {
+    margin-bottom: 24px;
+}
+
+.quiz-options label {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.quiz-options label:hover {
+    background-color: #f3f4f6;
+    border-color: #e5e7eb;
+}
+
+.quiz-options input[type="radio"]:checked + span {
+    font-weight: 600;
+}
+
+.quiz-options label:has(input:checked) {
+    background-color: #dbeafe;
+    border-color: #3b82f6;
+}
+
+.video-hotspot {
+    position: absolute;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.video-hotspot .w-8 {
+    background: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    animation: pulse 2s infinite;
+}
+
+.hotspot-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    margin-bottom: 8px;
+}
+
+.video-hotspot:hover .hotspot-tooltip {
+    opacity: 1;
+}
+
+.video-annotation {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.video-annotation h4 {
+    color: #92400e;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.video-annotation p {
+    color: #b45309;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.video-overlay {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 16px;
+    border-radius: 8px;
+    margin: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+}
+
+.video-overlay h4 {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.video-overlay p {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    line-height: 1.5;
+}
+
+.video-pause-message {
+    background: #3b82f6;
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+    text-align: center;
+    animation: slideInDown 0.3s ease-out;
+}
+
+.video-pause-message h3 {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.video-pause-message p {
+    color: #dbeafe;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.video-pause-message button {
+    background: white;
+    color: #3b82f6;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.video-pause-message button:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.hotspot-detail {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    animation: fadeInScale 0.3s ease-out;
+}
+
+.hotspot-detail h3 {
+    color: #1f2937;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.hotspot-detail p {
+    color: #6b7280;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.feedback-message {
+    animation: slideInRight 0.3s ease-out;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .video-quiz-overlay,
+    .hotspot-detail {
+        width: 95%;
+        padding: 20px;
+        margin: 16px;
+    }
+    
+    .video-quiz-overlay h3,
+    .hotspot-detail h3 {
+        font-size: 1.125rem;
+    }
+    
+    .quiz-options label {
+        padding: 10px;
+    }
+    
+    .video-hotspot .w-8 {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .hotspot-tooltip {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+}
+
+/* Animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Video.js custom styling */
+.video-js .vjs-big-play-button {
+    background: rgba(59, 130, 246, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    font-size: 28px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+}
+
+.video-js .vjs-big-play-button:hover {
+    background: rgba(59, 130, 246, 1);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.video-js .vjs-control-bar {
+    background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.8) 100%);
+    height: 50px;
+}
+
+.video-js .vjs-progress-control {
+    height: 6px;
+}
+
+.video-js .vjs-play-progress {
+    background: #3b82f6;
+}
+
+.video-js .vjs-volume-level {
+    background: #3b82f6;
+}
+
+/* Loading states */
+.video-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: #f3f4f6;
+}
+
+.video-loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

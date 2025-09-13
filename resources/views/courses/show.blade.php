@@ -359,6 +359,18 @@
                                                                             'bg-gray-100 text-gray-700': !['text', 'video', 'quiz'].includes(content.type)
                                                                           }"
                                                                           x-text="content.type.charAt(0).toUpperCase() + content.type.slice(1)"></span>
+                                                                    
+                                                                    <!-- Interactive Video Badge -->
+                                                                    <template x-if="content.type === 'video' && content.video_interactions && content.video_interactions.length > 0">
+                                                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border border-purple-200">
+                                                                            <span class="inline-flex items-center">
+                                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                                                </svg>
+                                                                                Interaktif
+                                                                            </span>
+                                                                        </span>
+                                                                    </template>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -381,6 +393,16 @@
                                                                 </svg>
                                                                 Edit
                                                             </a>
+
+                                                            <!-- Video Interactions Button - Show only for video content -->
+                                                            <template x-if="content.type === 'video'">
+                                                                <a :href="`/admin/contents/${content.id}/video-interactions`" class="inline-flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg hover:bg-purple-100 transition-colors">
+                                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                                                    </svg>
+                                                                    Interaktif
+                                                                </a>
+                                                            </template>
 
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
                                                                 @csrf @method('DELETE')

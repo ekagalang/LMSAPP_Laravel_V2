@@ -131,7 +131,7 @@ class CourseController extends Controller
 
         // Jika bukan peserta, atau jika tidak ada content, atau jika tidak terdaftar,
         // tampilkan halaman detail seperti biasa.
-        $course->load('lessons.contents', 'instructors', 'enrolledUsers');
+        $course->load('lessons.contents.videoInteractions', 'instructors', 'enrolledUsers');
 
         // Filter periods for instructors - only show periods they are assigned to
         if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
