@@ -722,7 +722,6 @@ class InteractiveVideoPlayer {
                     const seconds = Math.floor(interaction.timestamp % 60);
                     console.log(`- ${interaction.title} at ${minutes}:${seconds.toString().padStart(2, '0')} (${interaction.type})`);
                 });
-            }
         }
     }
 
