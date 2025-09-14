@@ -75,7 +75,14 @@ class CourseController extends Controller
                 'thumbnail' => $validatedData['thumbnail'] ?? null,
                 'status' => $validatedData['status'],
                 'certificate_template_id' => $validatedData['certificate_template_id'] ?? null,
+                'join_token' => null, // Will be set below if needed
             ]);
+
+            // Handle course join token
+            if ($request->boolean('generate_token') && $request->has('join_token') && !empty($request->join_token)) {
+                $course->join_token = strtoupper($request->join_token);
+                $course->save();
+            }
 
             // Assign creator as instructor
             $course->instructors()->attach(Auth::id());
@@ -564,5 +571,46 @@ class CourseController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('courses.index')->with('error', 'Failed to duplicate course. Please try again.');
         }
+    }
+
+    /**
+     * Generate token if course doesn't have one
+     */
+    public function generateToken(Course $course)
+    {
+        $this->authorize('update', $course);
+
+        if ($course->join_token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kursus sudah memiliki token'
+            ]);
+        }
+
+        $newToken = $course->generateJoinToken();
+        $course->save();
+
+        return response()->json([
+            'success' => true,
+            'token' => $newToken,
+            'message' => 'Token berhasil dibuat'
+        ]);
+    }
+
+    /**
+     * Regenerate join token for course
+     */
+    public function regenerateToken(Course $course)
+    {
+        $this->authorize('update', $course);
+
+        $newToken = $course->regenerateJoinToken();
+        $course->save();
+
+        return response()->json([
+            'success' => true,
+            'token' => $newToken,
+            'message' => 'Token berhasil diperbaharui'
+        ]);
     }
 }

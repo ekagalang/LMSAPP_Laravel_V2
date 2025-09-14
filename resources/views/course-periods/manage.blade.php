@@ -1,7 +1,25 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" x-data="{
+        showRegenerateModal: false,
+        isGenerating: false,
+        isRegenerating: false,
+
+        generateToken() {
+            this.isGenerating = true;
+            window.generateTokenHandler(this);
+        },
+
+        confirmRegenerateToken() {
+            this.isRegenerating = true;
+            window.confirmRegenerateTokenHandler(this);
+        },
+
+        copyToken() {
+            window.copyTokenHandler(this);
+        }
+    }">
     <div class="md:flex md:items-center md:justify-between mb-6">
         <div class="flex-1 min-w-0">
             <nav class="flex" aria-label="Breadcrumb">
@@ -35,11 +53,12 @@
 
     <!-- Period Info Header -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="flex items-center justify-between">
-            <div>
+        <!-- Top Section: Title and Action Buttons -->
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-6">
+            <div class="flex-1">
                 <h1 class="text-2xl font-bold text-gray-900">{{ $period->name }}</h1>
                 <p class="mt-1 text-sm text-gray-600">{{ $course->title }}</p>
-                <div class="mt-2 flex items-center space-x-4">
+                <div class="mt-3 flex flex-wrap items-center gap-4">
                     <span class="text-sm text-gray-500">
                         <i class="fas fa-calendar mr-1"></i>
                         {{ $period->start_date->format('d M Y') }} - {{ $period->end_date->format('d M Y') }}
@@ -53,18 +72,85 @@
                     @endif
                 </div>
             </div>
-            <div class="flex space-x-3">
-                <a href="{{ route('course-periods.edit', [$course, $period]) }}" 
-                   class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
+                <a href="{{ route('course-periods.edit', [$course, $period]) }}"
+                   class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                     <i class="fas fa-edit mr-2"></i>
                     Edit Periode
                 </a>
-                <a href="{{ route('courses.show', $course) }}" 
-                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <a href="{{ route('courses.show', $course) }}"
+                   class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
                     <i class="fas fa-arrow-left mr-2"></i>
                     Kembali ke Kursus
                 </a>
             </div>
+        </div>
+
+        <!-- Token Section -->
+        <div class="border-t border-gray-200 pt-6" id="token-section">
+            @if($period->join_token)
+            <div class="p-4 bg-green-50 border border-green-200 rounded-lg" id="token-display">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-green-900">Token Bergabung:</p>
+                        <p class="text-xl font-mono font-bold text-green-600 mt-1" id="current-token">{{ $period->join_token }}</p>
+                        <p class="text-xs text-green-700 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Bagikan token ini kepada peserta untuk bergabung ke periode
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2 ml-auto">
+                        <button type="button"
+                                @click="copyToken()"
+                                class="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                                id="copy-btn">
+                            <i class="fas fa-copy mr-2"></i>Salin Token
+                        </button>
+                        <button type="button"
+                                @click="showRegenerateModal = true"
+                                :disabled="isRegenerating"
+                                class="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="regenerate-btn">
+                            <template x-if="!isRegenerating">
+                                <span><i class="fas fa-sync mr-2"></i>Generate Baru</span>
+                            </template>
+                            <template x-if="isRegenerating">
+                                <span><i class="fas fa-spinner fa-spin mr-2"></i>Generating...</span>
+                            </template>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @else
+            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg" id="no-token-display">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-700">Token Bergabung:</p>
+                        <p class="text-sm text-gray-500 mt-1">Belum ada token untuk periode ini</p>
+                        <p class="text-xs text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Token diperlukan agar peserta dapat bergabung ke periode ini
+                        </p>
+                    </div>
+                    <div class="flex justify-end ml-auto">
+                        <button type="button"
+                                @click="generateToken()"
+                                :disabled="isGenerating"
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="generate-btn">
+                            <template x-if="!isGenerating">
+                                <span><i class="fas fa-plus mr-2"></i>Buat Token</span>
+                            </template>
+                            <template x-if="isGenerating">
+                                <span><i class="fas fa-spinner fa-spin mr-2"></i>Membuat...</span>
+                            </template>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -293,10 +379,211 @@
             <div class="text-2xl font-bold text-purple-600">{{ $period->getDurationInDays() }}</div>
             <div class="text-sm text-gray-500">Hari</div>
         </div>
+    <!-- Regenerate Token Confirmation Modal -->
+    <div x-show="showRegenerateModal"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         style="display: none;">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showRegenerateModal"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 transition-opacity">
+                <div class="absolute inset-0 bg-gray-500 opacity-75" @click="showRegenerateModal = false"></div>
+            </div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+
+            <div x-show="showRegenerateModal"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                            Generate Token Baru
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Yakin ingin membuat token baru? Token yang lama akan tidak bisa digunakan lagi dan peserta yang menggunakan token lama tidak akan bisa bergabung.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                    <button type="button"
+                            @click="confirmRegenerateToken()"
+                            :disabled="isRegenerating"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        <template x-if="!isRegenerating">
+                            <span>Ya, Generate Baru</span>
+                        </template>
+                        <template x-if="isRegenerating">
+                            <span><i class="fas fa-spinner fa-spin mr-2"></i>Generating...</span>
+                        </template>
+                    </button>
+                    <button type="button"
+                            @click="showRegenerateModal = false"
+                            :disabled="isRegenerating"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+// Global token management handlers
+window.generateTokenHandler = function(alpineComponent) {
+    fetch('{{ route('course-periods.generate-token', [$course, $period]) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Create new token display elements
+            const tokenSection = document.getElementById('token-section');
+
+            // Create the new token display div
+            const tokenDisplay = document.createElement('div');
+            tokenDisplay.className = 'p-4 bg-green-50 border border-green-200 rounded-lg';
+            tokenDisplay.id = 'token-display';
+
+            tokenDisplay.innerHTML = `
+                <div class='flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4'>
+                    <div>
+                        <p class='text-sm font-medium text-green-900'>Token Bergabung:</p>
+                        <p class='text-xl font-mono font-bold text-green-600 mt-1' id='current-token'>${data.token}</p>
+                        <p class='text-xs text-green-700 mt-2'>
+                            <i class='fas fa-info-circle mr-1'></i>
+                            Bagikan token ini kepada peserta untuk bergabung ke periode
+                        </p>
+                    </div>
+                    <div class='flex flex-wrap items-center justify-end gap-2 ml-auto'>
+                        <button type='button'
+                                onclick='copyTokenDirect("${data.token}")'
+                                class='px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium'
+                                id='copy-btn'>
+                            <i class='fas fa-copy mr-2'></i>Salin Token
+                        </button>
+                        <button type='button'
+                                onclick='showRegenerateModalDirect()'
+                                class='px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium'
+                                id='regenerate-btn'>
+                            <i class='fas fa-sync mr-2'></i>Generate Baru
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            tokenSection.innerHTML = '';
+            tokenSection.appendChild(tokenDisplay);
+            showToastGlobal('success', data.message || 'Token berhasil dibuat');
+        } else {
+            showToastGlobal('error', data.message || 'Gagal membuat token');
+        }
+        alpineComponent.isGenerating = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToastGlobal('error', 'Terjadi kesalahan saat membuat token');
+        alpineComponent.isGenerating = false;
+    });
+};
+
+window.confirmRegenerateTokenHandler = function(alpineComponent) {
+    fetch('{{ route('course-periods.regenerate-token', [$course, $period]) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update token display
+            const tokenElement = document.getElementById('current-token');
+            if (tokenElement) {
+                tokenElement.textContent = data.token;
+                // Update onclick handler for copy button
+                const copyButton = document.getElementById('copy-btn');
+                if (copyButton) {
+                    copyButton.setAttribute('onclick', `copyTokenDirect("${data.token}")`);
+                }
+            }
+            showToastGlobal('success', data.message || 'Token berhasil diperbaharui');
+        } else {
+            showToastGlobal('error', data.message || 'Gagal membuat token baru');
+        }
+        alpineComponent.isRegenerating = false;
+        alpineComponent.showRegenerateModal = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToastGlobal('error', 'Terjadi kesalahan saat membuat token baru');
+        alpineComponent.isRegenerating = false;
+        alpineComponent.showRegenerateModal = false;
+    });
+};
+
+window.copyTokenHandler = function(alpineComponent) {
+    const tokenElement = document.getElementById('current-token');
+    const token = tokenElement ? tokenElement.textContent : '';
+
+    if (navigator.clipboard && token) {
+        navigator.clipboard.writeText(token).then(() => {
+            // Show success feedback
+            const button = document.getElementById('copy-btn');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check mr-2"></i>Tersalin!';
+            button.classList.remove('bg-green-100', 'text-green-700');
+            button.classList.add('bg-green-600', 'text-white');
+
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('bg-green-600', 'text-white');
+                button.classList.add('bg-green-100', 'text-green-700');
+            }, 2000);
+
+            showToastGlobal('success', 'Token berhasil disalin!');
+        }).catch(() => {
+            // Fallback for older browsers
+            copyTokenFallbackGlobal(token);
+        });
+    } else {
+        copyTokenFallbackGlobal(token);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Search functionality
     const searchInput = document.getElementById('participant-search');
@@ -423,6 +710,87 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+
 });
+
+// Global functions for dynamically created buttons
+function copyTokenDirect(token) {
+    if (navigator.clipboard && token) {
+        navigator.clipboard.writeText(token).then(() => {
+            // Show success feedback
+            const button = document.getElementById('copy-btn');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check mr-2"></i>Tersalin!';
+            button.classList.remove('bg-green-100', 'text-green-700');
+            button.classList.add('bg-green-600', 'text-white');
+
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('bg-green-600', 'text-white');
+                button.classList.add('bg-green-100', 'text-green-700');
+            }, 2000);
+
+            showToastGlobal('success', 'Token berhasil disalin!');
+        }).catch(() => {
+            copyTokenFallbackGlobal(token);
+        });
+    } else {
+        copyTokenFallbackGlobal(token);
+    }
+}
+
+function copyTokenFallbackGlobal(token) {
+    const textArea = document.createElement('textarea');
+    textArea.value = token;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    showToastGlobal('success', 'Token berhasil disalin: ' + token);
+}
+
+function showRegenerateModalDirect() {
+    // Get Alpine component and set showRegenerateModal to true
+    const component = document.querySelector('[x-data]');
+    if (component && component._x_dataStack && component._x_dataStack[0]) {
+        component._x_dataStack[0].showRegenerateModal = true;
+    }
+}
+
+function showToastGlobal(type, message) {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white transition-all duration-300 transform translate-x-full ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    }`;
+    toast.innerHTML = `
+        <div class='flex items-center'>
+            <i class='fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2'></i>
+            <span>${message}</span>
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 100);
+
+    // Remove after delay
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
 </script>
+
+@push('scripts')
+<!-- Alpine.js CDN -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+@endpush
 @endsection

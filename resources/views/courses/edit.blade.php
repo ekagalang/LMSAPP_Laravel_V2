@@ -287,6 +287,175 @@
                                         </select>
                                     </div>
 
+                                    <!-- ===================================== -->
+                                    <!-- 🆕 COURSE TOKEN MANAGEMENT -->
+                                    <!-- ===================================== -->
+                                    <div class="group" x-data="{
+                                        hasToken: {{ $course->join_token ? 'true' : 'false' }},
+                                        showTokenSection: {{ $course->join_token ? 'true' : 'false' }},
+                                        currentToken: '{{ $course->join_token ?? '' }}',
+                                        isGenerating: false,
+                                        isRegenerating: false,
+
+                                        generateNewToken() {
+                                            this.isGenerating = true;
+                                            fetch('{{ route('courses.generate-token', $course) }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+                                                    'Accept': 'application/json'
+                                                }
+                                            })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    this.currentToken = data.token;
+                                                    this.hasToken = true;
+                                                    this.showTokenSection = true;
+                                                    showToast('success', data.message || 'Token berhasil dibuat');
+                                                } else {
+                                                    showToast('error', data.message || 'Gagal membuat token');
+                                                }
+                                                this.isGenerating = false;
+                                            })
+                                            .catch(error => {
+                                                console.error('Error:', error);
+                                                showToast('error', 'Terjadi kesalahan saat membuat token');
+                                                this.isGenerating = false;
+                                            });
+                                        },
+
+                                        regenerateToken() {
+                                            this.isRegenerating = true;
+                                            fetch('{{ route('courses.regenerate-token', $course) }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+                                                    'Accept': 'application/json'
+                                                }
+                                            })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    this.currentToken = data.token;
+                                                    showToast('success', data.message || 'Token berhasil diperbaharui');
+                                                } else {
+                                                    showToast('error', data.message || 'Gagal membuat token baru');
+                                                }
+                                                this.isRegenerating = false;
+                                            })
+                                            .catch(error => {
+                                                console.error('Error:', error);
+                                                showToast('error', 'Terjadi kesalahan saat membuat token baru');
+                                                this.isRegenerating = false;
+                                            });
+                                        },
+
+                                        copyToken() {
+                                            if (navigator.clipboard && this.currentToken) {
+                                                navigator.clipboard.writeText(this.currentToken).then(() => {
+                                                    showToast('success', 'Token berhasil disalin!');
+                                                }).catch(() => {
+                                                    this.copyTokenFallback();
+                                                });
+                                            } else {
+                                                this.copyTokenFallback();
+                                            }
+                                        },
+
+                                        copyTokenFallback() {
+                                            const textArea = document.createElement('textarea');
+                                            textArea.value = this.currentToken;
+                                            document.body.appendChild(textArea);
+                                            textArea.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(textArea);
+                                            showToast('success', 'Token berhasil disalin: ' + this.currentToken);
+                                        }
+                                    }">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <label class="flex items-center text-sm font-semibold text-gray-700">
+                                                <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m0 0a2 2 0 01-2 2m2-2a2 2 0 002 2M9 5a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9z"></path>
+                                                </svg>
+                                                Token Bergabung Kursus
+                                            </label>
+                                            <button type="button"
+                                                    x-show="!hasToken"
+                                                    @click="generateNewToken()"
+                                                    :disabled="isGenerating"
+                                                    class="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <template x-if="!isGenerating">
+                                                    <span><i class="fas fa-plus mr-1"></i>Buat Token</span>
+                                                </template>
+                                                <template x-if="isGenerating">
+                                                    <span><i class="fas fa-spinner fa-spin mr-1"></i>Membuat...</span>
+                                                </template>
+                                            </button>
+                                        </div>
+
+                                        <!-- Token Display -->
+                                        <div x-show="hasToken" x-transition class="space-y-3">
+                                            <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                                    <div class="flex-1">
+                                                        <p class="text-sm font-medium text-green-900 mb-1">Token Aktif:</p>
+                                                        <p class="text-xl font-mono font-bold text-green-600" x-text="currentToken"></p>
+                                                        <p class="text-xs text-green-700 mt-2">
+                                                            <i class="fas fa-info-circle mr-1"></i>
+                                                            Peserta dapat bergabung dengan memasukkan token ini
+                                                        </p>
+                                                    </div>
+                                                    <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                                                        <button type="button"
+                                                                @click="copyToken()"
+                                                                class="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium">
+                                                            <i class="fas fa-copy mr-1"></i>Salin Token
+                                                        </button>
+                                                        <button type="button"
+                                                                @click="regenerateToken()"
+                                                                :disabled="isRegenerating"
+                                                                class="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <template x-if="!isRegenerating">
+                                                                <span><i class="fas fa-sync mr-1"></i>Generate Baru</span>
+                                                            </template>
+                                                            <template x-if="isRegenerating">
+                                                                <span><i class="fas fa-spinner fa-spin mr-1"></i>Generating...</span>
+                                                            </template>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Token Usage Info -->
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                <div class="flex items-start">
+                                                    <svg class="w-4 h-4 text-blue-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                    <div>
+                                                        <p class="text-xs text-blue-800">
+                                                            <strong>URL Join:</strong> {{ url('/join-with') }}/<span x-text="currentToken"></span>
+                                                        </p>
+                                                        <p class="text-xs text-blue-700 mt-1">
+                                                            Bagikan URL ini atau token saja kepada peserta
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- No Token Message -->
+                                        <div x-show="!hasToken" class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <p class="text-sm text-gray-600">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Belum ada token untuk kursus ini. Klik "Buat Token" untuk membuat token bergabung.
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     <!-- Course Stats -->
                                     <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-4">
                                         <h4 class="text-indigo-800 font-medium text-sm mb-3 flex items-center">
@@ -537,6 +706,37 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <script>
+        // Toast notification function
+        function showToast(type, message) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white transition-all duration-300 transform translate-x-full ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            toast.innerHTML = `
+                <div class='flex items-center'>
+                    <i class='fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2'></i>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            // Remove after delay
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
         // Debug function untuk memastikan Alpine.js bekerja
         document.addEventListener('alpine:init', () => {
             console.log('Alpine.js initialized successfully!');

@@ -24,6 +24,8 @@ use App\Http\Controllers\EssaySubmissionController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\EssayQuestionController;
+use App\Http\Controllers\JoinPeriodController;
+use App\Http\Controllers\JoinController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,6 +45,12 @@ Route::get('/certificates/download/{code}', [CertificateController::class, 'publ
 Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    // Join Period dengan Token - LEGACY, replaced by unified join system
+    // Route::get('/join-period', [JoinPeriodController::class, 'showJoinForm'])->name('period.join');
+    // Route::post('/join-period', [JoinPeriodController::class, 'join']);
+    // Route::get('/join/{token}', [JoinPeriodController::class, 'joinByToken'])->name('period.join-token');
+    // Route::post('/join/{token}/confirm', [JoinPeriodController::class, 'confirmJoin'])->name('period.confirm-join');
 
     // Kredensial Sertifikat
     Route::get('/certificate/{code}', [CertificateController::class, 'show'])->name('certificate.show');
@@ -83,6 +91,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/courses/{course}/unenroll-mass', [CourseController::class, 'unenrollParticipants'])->name('courses.unenroll_mass');
     Route::post('/courses/{course}/add-instructor', [CourseController::class, 'addInstructor'])->name('courses.addInstructor');
     Route::delete('/courses/{course}/remove-instructor', [CourseController::class, 'removeInstructor'])->name('courses.removeInstructor');
+
+    // Course token routes
+    Route::post('/courses/{course}/generate-token', [CourseController::class, 'generateToken'])->name('courses.generate-token');
+    Route::post('/courses/{course}/regenerate-token', [CourseController::class, 'regenerateToken'])->name('courses.regenerate-token');
+
+    // Unified token joining system
+    Route::get('/join', [JoinController::class, 'showJoinForm'])->name('join.form');
+    Route::post('/join', [JoinController::class, 'join'])->name('join.submit');
+    Route::get('/join-with/{token}', [JoinController::class, 'joinByToken'])->name('join.token');
+    Route::post('/join/course/{token}', [JoinController::class, 'confirmJoinCourse'])->name('join.confirm-course');
+    Route::post('/join/period/{token}', [JoinController::class, 'confirmJoinPeriod'])->name('join.confirm-period');
 
     Route::get('/courses/{course}/progress', [CourseController::class, 'showProgress'])->name('courses.progress');
     Route::get('/courses/{course}/progress/pdf', [CourseController::class, 'downloadProgressPdf'])->name('courses.progress.pdf');
@@ -162,6 +181,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('course-periods.remove-participant');
     Route::delete('/courses/{course}/periods/{period}/participants', [CoursePeriodController::class, 'bulkRemoveParticipants'])
         ->name('course-periods.bulk-remove-participants');
+
+    // Token management routes
+    Route::post('/courses/{course}/periods/{period}/regenerate-token', [CoursePeriodController::class, 'regenerateToken'])
+        ->name('course-periods.regenerate-token');
+    Route::post('/courses/{course}/periods/{period}/generate-token', [CoursePeriodController::class, 'generateToken'])
+        ->name('course-periods.generate-token');
     Route::post('/courses/{course}/periods/{period}/enroll', [CoursePeriodController::class, 'enroll'])
         ->name('course-periods.enroll');
 
@@ -351,6 +376,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [GradebookController::class, 'instructorAnalytics'])->name('index');
         Route::get('/instructor/{user}', [GradebookController::class, 'instructorDetail'])->name('detail');
         Route::get('/compare', [GradebookController::class, 'instructorCompare'])->name('compare');
+    });
+
+    // Audio Learning Routes
+    Route::prefix('audio-learning')->name('audio-learning.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AudioLearningController::class, 'index'])->name('index');
+        Route::get('/lesson/{lesson}', [App\Http\Controllers\AudioLearningController::class, 'lesson'])->name('lesson');
+        Route::get('/lesson/{lesson}/exercise/{exercise}', [App\Http\Controllers\AudioLearningController::class, 'exercise'])->name('exercise');
+
+        // AJAX Routes for audio learning
+        Route::post('/lesson/{lesson}/progress', [App\Http\Controllers\AudioLearningController::class, 'updateProgress'])->name('update-progress');
+        Route::post('/lesson/{lesson}/exercise/{exercise}/answer', [App\Http\Controllers\AudioLearningController::class, 'submitAnswer'])->name('submit-answer');
+        Route::post('/lesson/{lesson}/exercise/{exercise}/speech', [App\Http\Controllers\AudioLearningController::class, 'submitSpeech'])->name('submit-speech');
+        Route::get('/lesson/{lesson}/progress', [App\Http\Controllers\AudioLearningController::class, 'getProgress'])->name('get-progress');
     });
 });
 

@@ -32,6 +32,11 @@ class StoreCourseRequest extends FormRequest
             'create_default_period' => 'nullable|boolean',
             'default_start_date' => 'required_if:create_default_period,true|nullable|date|after_or_equal:today',
             'default_end_date' => 'required_if:create_default_period,true|nullable|date|after:default_start_date',
+
+            // Course token validation
+            'generate_token' => 'nullable|boolean',
+            'join_token' => 'required_if:generate_token,true|nullable|string|size:10|regex:/^[A-Z0-9]+$/|unique:courses,join_token',
+            'token_method' => 'nullable|in:auto,custom',
         ];
     }
 }

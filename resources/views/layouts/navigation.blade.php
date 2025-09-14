@@ -22,14 +22,26 @@
                     </a>
 
                     @can('view courses')
-                        <a href="{{ route('courses.index') }}" 
+                        <a href="{{ route('courses.index') }}"
                            class="inline-flex items-center px-1 pt-1 border-b-2 text-base font-semibold leading-5 transition duration-150 ease-in-out
-                                  {{ request()->routeIs('courses.*') 
-                                      ? 'border-red-900 text-red-900' 
+                                  {{ request()->routeIs('courses.*')
+                                      ? 'border-red-900 text-red-900'
                                       : 'border-transparent text-black hover:text-red-900 hover:border-red-300' }}">
                             {{ __('Kelola Kursus') }}
                         </a>
                     @endcan
+
+                    <!-- Join with Token Link - Available for all authenticated users -->
+                    <a href="{{ route('join.form') }}"
+                       class="inline-flex items-center px-1 pt-1 border-b-2 text-base font-semibold leading-5 transition duration-150 ease-in-out
+                              {{ request()->routeIs('join.*')
+                                  ? 'border-red-900 text-red-900'
+                                  : 'border-transparent text-black hover:text-red-900 hover:border-red-300' }}">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m0 0a2 2 0 01-2 2m2-2a2 2 0 002 2M9 5a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9z"></path>
+                        </svg>
+                        {{ __('Bergabung dengan Token') }}
+                    </a>
 
                     @can('view progress reports')
                         <a href="{{ route('eo.courses.index') }}" 
@@ -159,14 +171,28 @@
             </a>
             
             @can('view courses')
-                <a href="{{ route('courses.index') }}" 
+                <a href="{{ route('courses.index') }}"
                    class="block pl-3 pr-4 py-2 border-l-4 text-base font-semibold transition duration-150 ease-in-out
-                          {{ request()->routeIs('courses.*') 
-                              ? 'border-red-900 text-red-900 bg-red-50' 
+                          {{ request()->routeIs('courses.*')
+                              ? 'border-red-900 text-red-900 bg-red-50'
                               : 'border-transparent text-black hover:text-red-900 hover:bg-red-50 hover:border-red-300' }}">
                     {{ __('Kelola Kursus') }}
                 </a>
             @endcan
+
+            <!-- Mobile Join with Token Link -->
+            <a href="{{ route('join.form') }}"
+               class="block pl-3 pr-4 py-2 border-l-4 text-base font-semibold transition duration-150 ease-in-out
+                      {{ request()->routeIs('join.*')
+                          ? 'border-red-900 text-red-900 bg-red-50'
+                          : 'border-transparent text-black hover:text-red-900 hover:bg-red-50 hover:border-red-300' }}">
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m0 0a2 2 0 01-2 2m2-2a2 2 0 002 2M9 5a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9z"></path>
+                    </svg>
+                    {{ __('Bergabung dengan Token') }}
+                </div>
+            </a>
 
             @can('view progress reports')
                 <a href="{{ route('eo.courses.index') }}" 

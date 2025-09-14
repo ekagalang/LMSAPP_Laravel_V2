@@ -237,27 +237,211 @@
                                     @enderror
                                 </div>
 
-                                <div class="mb-4">
-                                    <label for="certificate_template_id" class="block text-sm font-medium text-gray-700">
-                                        Certificate Template (Optional)
+                                <div class="group">
+                                    <label for="certificate_template_id" class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                        <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Template Sertifikat
                                     </label>
-                                    <select name="certificate_template_id" id="certificate_template_id" 
-                                            class="mt-1 block w-full rounded-md border-gray-300">
-                                        <option value="">No Certificate</option>
+                                    <select name="certificate_template_id" id="certificate_template_id"
+                                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400">
+                                        <option value="">Tanpa Sertifikat</option>
                                         @foreach($templates as $template)
-                                            <option value="{{ $template->id }}" 
+                                            <option value="{{ $template->id }}"
                                                     @if(old('certificate_template_id', $course->certificate_template_id ?? '') == $template->id) selected @endif>
                                                 {{ $template->name }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    @error('certificate_template_id')
+                                        <p class="text-red-500 text-sm mt-2 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
                                 </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- ===================================== -->
-                        <!-- 🆕 SECTION 2: COURSE PERIODS (OPTIONAL) -->
+                        <!-- 🆕 SECTION 2: COURSE TOKEN (OPTIONAL) -->
+                        <!-- ===================================== -->
+                        <div class="border-b border-gray-200 pb-8" x-data="{
+                            generateToken: false,
+                            tokenMethod: 'auto',
+                            customToken: '',
+                            previewToken: '',
+
+                            generateRandomToken() {
+                                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                                let result = '';
+                                for (let i = 0; i < 10; i++) {
+                                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                                }
+                                this.previewToken = result;
+                                this.customToken = result;
+                            },
+
+                            init() {
+                                // Generate token when component initializes
+                                this.generateRandomToken();
+                            },
+
+                            // When generateToken checkbox is checked, reset to auto method and generate token
+                            enableTokenSection() {
+                                if (this.generateToken) {
+                                    this.tokenMethod = 'auto';
+                                    this.generateRandomToken();
+                                }
+                            }
+                        }">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m0 0a2 2 0 01-2 2m2-2a2 2 0 002 2M9 5a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9z"></path>
+                                    </svg>
+                                    Token Bergabung Kursus
+                                    <span class="ml-2 text-sm font-normal text-gray-500">(Opsional)</span>
+                                </h3>
+
+                                <!-- Enable Token Checkbox -->
+                                <div class="flex items-center">
+                                    <input type="hidden" name="generate_token" value="0">
+                                    <input type="checkbox"
+                                           id="generate_token"
+                                           name="generate_token"
+                                           value="1"
+                                           x-model="generateToken"
+                                           @change="enableTokenSection()"
+                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <label for="generate_token" class="ml-2 text-sm font-medium text-gray-700">
+                                        Buat Token untuk Kursus
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                                <div class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div>
+                                        <h4 class="text-sm font-medium text-green-800 mb-1">Tentang Token Kursus</h4>
+                                        <p class="text-sm text-green-700">
+                                            Token bergabung memungkinkan peserta join langsung ke kursus ini dengan memasukkan kode token.
+                                            Token ini berbeda dengan token periode - token ini untuk bergabung ke kursus secara keseluruhan.
+                                        </p>
+                                        <p class="text-xs text-green-600 mt-2">
+                                            💡 Token akan berupa kombinasi huruf dan angka sepanjang 10 karakter.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Token Configuration (conditionally shown) -->
+                            <div x-show="generateToken" x-transition class="space-y-6">
+                                <!-- Auto Generate Options -->
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="space-y-4">
+                                        <!-- Auto Generate Token -->
+                                        <div class="flex items-center">
+                                            <input type="radio"
+                                                   id="auto_generate_token"
+                                                   name="token_method"
+                                                   value="auto"
+                                                   x-model="tokenMethod"
+                                                   @change="if (tokenMethod === 'auto') generateRandomToken()"
+                                                   class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <label for="auto_generate_token" class="ml-2 text-sm font-medium text-gray-700">
+                                                Generate token otomatis
+                                            </label>
+                                        </div>
+
+                                        <!-- Custom Token -->
+                                        <div class="flex items-center">
+                                            <input type="radio"
+                                                   id="custom_token"
+                                                   name="token_method"
+                                                   value="custom"
+                                                   x-model="tokenMethod"
+                                                   class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <label for="custom_token" class="ml-2 text-sm font-medium text-gray-700">
+                                                Buat token custom
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Token Input/Preview -->
+                                    <div class="mt-4">
+                                        <div x-show="tokenMethod === 'auto'">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                Preview Token yang akan dibuat:
+                                            </label>
+                                            <div class="flex items-center space-x-3">
+                                                <div class="flex-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <span x-text="previewToken || 'Klik generate untuk melihat preview'"
+                                                          class="text-lg font-mono font-bold text-blue-600"></span>
+                                                </div>
+                                                <button type="button"
+                                                        @click="generateRandomToken()"
+                                                        class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                                    <i class="fas fa-sync mr-1"></i>
+                                                    Generate
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div x-show="tokenMethod === 'custom'">
+                                            <label for="custom_join_token" class="block text-sm font-medium text-gray-700 mb-2">
+                                                Token Custom (10 karakter):
+                                            </label>
+                                            <input type="text"
+                                                   id="custom_join_token"
+                                                   x-model="customToken"
+                                                   maxlength="10"
+                                                   pattern="[A-Z0-9]{10}"
+                                                   class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-lg"
+                                                   placeholder="Masukkan 10 karakter (A-Z, 0-9)"
+                                                   style="text-transform: uppercase;">
+                                            <p class="text-xs text-gray-500 mt-2">
+                                                Token harus terdiri dari 10 karakter huruf besar (A-Z) dan angka (0-9)
+                                            </p>
+                                        </div>
+
+                                        <!-- Single join_token input that sends the appropriate value -->
+                                        <input type="hidden"
+                                               name="join_token"
+                                               x-bind:value="tokenMethod === 'auto' ? previewToken : customToken">
+                                    </div>
+                                </div>
+
+                                <!-- Token Usage Info -->
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <div class="flex">
+                                        <svg class="w-5 h-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                        </svg>
+                                        <div>
+                                            <h4 class="text-sm font-medium text-yellow-800 mb-1">Cara Kerja Token:</h4>
+                                            <ul class="text-sm text-yellow-700 space-y-1">
+                                                <li>• Peserta bisa langsung bergabung dengan memasukkan token ini</li>
+                                                <li>• Token hanya berlaku untuk kursus dengan status "active"</li>
+                                                <li>• Anda bisa mengubah atau menghapus token setelah kursus dibuat</li>
+                                                <li>• Token bersifat case-sensitive dan harus unik</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ===================================== -->
+                        <!-- 🆕 SECTION 3: COURSE PERIODS (OPTIONAL) -->
                         <!-- ===================================== -->
                         <div class="border-b border-gray-200 pb-8">
                             <div class="flex items-center justify-between mb-6">

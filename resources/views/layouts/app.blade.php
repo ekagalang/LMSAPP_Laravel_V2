@@ -125,6 +125,14 @@
                             </a>
                             @endauth
 
+                            {{-- Audio Learning Menu --}}
+                            @auth
+                                <a href="{{ route('audio-learning.index') }}"
+                                   class="nav-link-custom {{ request()->routeIs('audio-learning.*') ? 'active' : '' }}">
+                                    {{ __('Audio Learning') }}
+                                </a>
+                            @endauth
+
                             {{-- Menu "Kelola Kursus" untuk Instructor (dan Admin) --}}
                             @can('view courses')
                                 <a href="{{ route('courses.index') }}" 
@@ -259,6 +267,14 @@
                        class="responsive-nav-link-custom {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                         {{ __('Dashboard') }}
                     </a>
+                    @endauth
+
+                    {{-- Audio Learning Mobile Menu --}}
+                    @auth
+                        <a href="{{ route('audio-learning.index') }}"
+                           class="responsive-nav-link-custom {{ request()->routeIs('audio-learning.*') ? 'active' : '' }}">
+                            {{ __('Audio Learning') }}
+                        </a>
                     @endauth
 
                     @can('view courses')

@@ -209,6 +209,93 @@
                                         </p>
                                     @enderror
                                 </div>
+
+                                <!-- Token Bergabung -->
+                                <div class="group" x-data="{
+                                    autoToken: true,
+                                    customToken: '',
+                                    generateToken() {
+                                        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                                        this.customToken = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+                                    }
+                                }" x-init="generateToken()">
+                                    <label class="flex items-center text-sm font-semibold text-gray-700 mb-3">
+                                        <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m2-2V5a2 2 0 00-2-2m-2 2h.01M5 15H3a2 2 0 01-2-2V9a2 2 0 012-2h2m0 4h.01m0 4H3a2 2 0 01-2-2v-2a2 2 0 012-2h2m12 0h.01m0 4h.01"></path>
+                                        </svg>
+                                        Token Bergabung
+                                        <span class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Otomatis</span>
+                                    </label>
+
+                                    <!-- Auto Generate Option -->
+                                    <div class="space-y-3">
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" x-model="autoToken" :value="true" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span class="ml-2 text-sm text-gray-700">
+                                                🎲 Generate otomatis (Rekomendasi)
+                                            </span>
+                                        </label>
+
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" x-model="autoToken" :value="false" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span class="ml-2 text-sm text-gray-700">
+                                                ✏️ Token kustom
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Custom Token Input -->
+                                    <div x-show="!autoToken" class="mt-3" x-transition>
+                                        <div class="flex space-x-2">
+                                            <input type="text"
+                                                   x-model="customToken"
+                                                   maxlength="10"
+                                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono uppercase"
+                                                   placeholder="Masukkan token custom"
+                                                   pattern="[A-Z0-9]+"
+                                                   @input="customToken = $event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')">
+
+                                            <button type="button"
+                                                    @click="generateToken()"
+                                                    class="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm">
+                                                🎲 Acak
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Hanya huruf dan angka, maksimal 10 karakter</p>
+                                    </div>
+
+                                    <!-- Hidden Input for Form Submission -->
+                                    <input type="hidden"
+                                           name="join_token"
+                                           :value="autoToken ? '' : customToken">
+
+                                    <!-- Token Preview -->
+                                    <div class="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium text-indigo-900">Token yang akan digunakan:</p>
+                                                <p class="text-lg font-mono font-bold text-indigo-600" x-text="autoToken ? '(Auto-generate saat simpan)' : (customToken || 'Belum diisi')"></p>
+                                            </div>
+                                            <div class="text-indigo-400">
+                                                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9zM13.73 21a2 2 0 01-3.46 0" clip-rule="evenodd"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-indigo-700 mt-2">
+                                            💡 Peserta akan menggunakan token ini untuk bergabung ke periode
+                                        </p>
+                                    </div>
+
+                                    @error('join_token')
+                                        <p class="text-red-500 text-sm mt-2 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
+                                </div>
                             </div>
 
                             <!-- Right Column -->

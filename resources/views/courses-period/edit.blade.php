@@ -243,6 +243,104 @@
                                         </p>
                                     @enderror
                                 </div>
+
+                                <!-- Token Bergabung -->
+                                <div class="group" x-data="{
+                                    currentToken: '{{ old('join_token', $period->join_token) }}',
+                                    editMode: false,
+                                    customToken: '{{ old('join_token', $period->join_token) }}',
+                                    generateToken() {
+                                        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                                        this.customToken = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+                                    },
+                                    showRegenerateModal: false,
+                                    regenerateToken() {
+                                        this.showRegenerateModal = true;
+                                    },
+                                    confirmRegenerate() {
+                                        this.generateToken();
+                                        this.editMode = true;
+                                        this.showRegenerateModal = false;
+                                    }
+                                }" x-init="if(!currentToken) generateToken()">
+                                    <label class="flex items-center text-sm font-semibold text-gray-700 mb-3">
+                                        <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m2-2V5a2 2 0 00-2-2m-2 2h.01M5 15H3a2 2 0 01-2-2V9a2 2 0 012-2h2m0 4h.01m0 4H3a2 2 0 01-2-2v-2a2 2 0 012-2h2m12 0h.01m0 4h.01"></path>
+                                        </svg>
+                                        Token Bergabung
+                                        <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Aktif</span>
+                                    </label>
+
+                                    <!-- Current Token Display -->
+                                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium text-green-900">Token saat ini:</p>
+                                                <p class="text-2xl font-mono font-bold text-green-600" x-text="currentToken || '(Belum ada token)'"></p>
+                                                <p class="text-xs text-green-700 mt-1">
+                                                    💡 Bagikan token ini kepada peserta untuk bergabung
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <button type="button"
+                                                        @click="navigator.clipboard.writeText(currentToken); alert('Token berhasil disalin!')"
+                                                        class="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs">
+                                                    📋 Salin
+                                                </button>
+                                                <button type="button"
+                                                        @click="regenerateToken()"
+                                                        class="px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-xs">
+                                                    🔄 Generate Baru
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Edit Token Section -->
+                                    <div x-show="editMode" class="space-y-3" x-transition>
+                                        <div class="flex items-center space-x-2">
+                                            <label class="text-sm text-gray-600">Token baru:</label>
+                                            <input type="text"
+                                                   x-model="customToken"
+                                                   maxlength="10"
+                                                   class="px-3 py-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono uppercase"
+                                                   @input="customToken = $event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')">
+
+                                            <button type="button"
+                                                    @click="generateToken()"
+                                                    class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-xs">
+                                                🎲
+                                            </button>
+                                        </div>
+
+                                        <div class="flex space-x-2">
+                                            <button type="button"
+                                                    @click="currentToken = customToken; editMode = false"
+                                                    class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs">
+                                                ✓ Gunakan Token Ini
+                                            </button>
+                                            <button type="button"
+                                                    @click="editMode = false; customToken = currentToken"
+                                                    class="px-3 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs">
+                                                ✕ Batal
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Hidden Input for Form Submission -->
+                                    <input type="hidden"
+                                           name="join_token"
+                                           :value="currentToken">
+
+                                    @error('join_token')
+                                        <p class="text-red-500 text-sm mt-2 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
+                                </div>
                             </div>
 
                             <!-- Right Column -->
@@ -414,6 +512,73 @@
                             </div>
                         </div>
                     </form>
+
+                    <!-- Regenerate Token Confirmation Modal -->
+                    <div x-show="showRegenerateModal"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-200"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         class="fixed inset-0 z-50 overflow-y-auto"
+                         style="display: none;">
+                        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                            <div x-show="showRegenerateModal"
+                                 x-transition:enter="transition ease-out duration-300"
+                                 x-transition:enter-start="opacity-0"
+                                 x-transition:enter-end="opacity-100"
+                                 x-transition:leave="transition ease-in duration-200"
+                                 x-transition:leave-start="opacity-100"
+                                 x-transition:leave-end="opacity-0"
+                                 class="fixed inset-0 transition-opacity">
+                                <div class="absolute inset-0 bg-gray-500 opacity-75" @click="showRegenerateModal = false"></div>
+                            </div>
+
+                            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+
+                            <div x-show="showRegenerateModal"
+                                 x-transition:enter="transition ease-out duration-300"
+                                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                                 x-transition:leave="transition ease-in duration-200"
+                                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                 class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+
+                                <div class="sm:flex sm:items-start">
+                                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                                        <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                        </svg>
+                                    </div>
+                                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                            Generate Token Baru
+                                        </h3>
+                                        <div class="mt-2">
+                                            <p class="text-sm text-gray-500">
+                                                Yakin ingin membuat token baru? Token yang lama akan tidak bisa digunakan lagi dan peserta yang menggunakan token lama tidak akan bisa bergabung.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                                    <button type="button"
+                                            @click="confirmRegenerate()"
+                                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                        Ya, Generate Baru
+                                    </button>
+                                    <button type="button"
+                                            @click="showRegenerateModal = false"
+                                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
+                                        Batal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Delete Modal -->
                     <div x-show="showDeleteModal"

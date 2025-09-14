@@ -18,7 +18,8 @@ class CoursePeriod extends Model
         'end_date',
         'status',
         'description',
-        'max_participants'
+        'max_participants',
+        'join_token'
     ];
 
     protected $casts = [
@@ -29,6 +30,12 @@ class CoursePeriod extends Model
     // Auto-update status when saving
     protected static function booted()
     {
+        static::creating(function ($period) {
+            if (empty($period->join_token)) {
+                $period->generateJoinToken();
+            }
+        });
+
         static::saving(function ($period) {
             $period->updateStatusBasedOnDates();
         });
@@ -203,5 +210,51 @@ class CoursePeriod extends Model
         }
 
         return now()->diffInDays($this->end_date, false);
+    }
+
+    // ========================================
+    // TOKEN METHODS
+    // ========================================
+
+    public function generateJoinToken(): string
+    {
+        do {
+            $token = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 8));
+        } while (self::where('join_token', $token)->exists());
+
+        $this->join_token = $token;
+        return $token;
+    }
+
+    public function regenerateJoinToken(): string
+    {
+        $this->generateJoinToken();
+        $this->save();
+        return $this->join_token;
+    }
+
+    public static function findByToken(string $token): ?self
+    {
+        return self::where('join_token', strtoupper($token))->first();
+    }
+
+    public function canJoinWithToken($userId = null): bool
+    {
+        // Check if period is still accepting participants
+        if ($this->isCompleted()) {
+            return false;
+        }
+
+        // Check if there are available slots
+        if (!$this->hasAvailableSlots()) {
+            return false;
+        }
+
+        // If user is provided, check if they are already enrolled
+        if ($userId && $this->isParticipant($userId)) {
+            return false;
+        }
+
+        return true;
     }
 }

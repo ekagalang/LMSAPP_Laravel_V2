@@ -17,6 +17,7 @@ class Course extends Model
         'thumbnail',
         'status',
         'certificate_template_id',
+        'join_token',
     ];
 
     /**
@@ -299,5 +300,46 @@ class Course extends Model
             }
         }
         return $count;
+    }
+
+    // ========================================
+    // 🆕 TOKEN MANAGEMENT METHODS
+    // ========================================
+
+    /**
+     * Generate a unique join token for the course
+     */
+    public function generateJoinToken(): string
+    {
+        do {
+            $token = strtoupper(\Illuminate\Support\Str::random(10));
+        } while (self::where('join_token', $token)->exists());
+
+        $this->join_token = $token;
+        return $token;
+    }
+
+    /**
+     * Regenerate join token (creates new one)
+     */
+    public function regenerateJoinToken(): string
+    {
+        return $this->generateJoinToken();
+    }
+
+    /**
+     * Find course by join token
+     */
+    public static function findByToken(string $token): ?self
+    {
+        return self::where('join_token', $token)->first();
+    }
+
+    /**
+     * Check if user can join this course with token
+     */
+    public function canJoinWithToken(): bool
+    {
+        return !empty($this->join_token) && in_array($this->status, ['active']);
     }
 }

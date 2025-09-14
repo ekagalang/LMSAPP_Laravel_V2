@@ -503,4 +503,52 @@ class CoursePeriodController extends Controller
 
         return back()->with('success', "Berhasil bergabung dengan periode {$period->name}!");
     }
+
+    /**
+     * Regenerate join token for period
+     */
+    public function regenerateToken(Course $course, CoursePeriod $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404, 'Periode tidak ditemukan untuk kursus ini.');
+        }
+
+        $newToken = $period->regenerateJoinToken();
+
+        return response()->json([
+            'success' => true,
+            'token' => $newToken,
+            'message' => 'Token berhasil diperbaharui'
+        ]);
+    }
+
+    /**
+     * Generate token if period doesn't have one
+     */
+    public function generateToken(Course $course, CoursePeriod $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404, 'Periode tidak ditemukan untuk kursus ini.');
+        }
+
+        if ($period->join_token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Periode sudah memiliki token'
+            ]);
+        }
+
+        $newToken = $period->generateJoinToken();
+        $period->save();
+
+        return response()->json([
+            'success' => true,
+            'token' => $newToken,
+            'message' => 'Token berhasil dibuat'
+        ]);
+    }
 }

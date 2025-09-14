@@ -5,6 +5,14 @@
                 {{ __('Dashboard Peserta') }}
             </h2>
             <div class="flex items-center space-x-4">
+                <!-- Join with Token Button -->
+                <a href="{{ route('join.form') }}" class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors duration-200 shadow-sm">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2a2 2 0 00-2 2m0 0a2 2 0 01-2 2m2-2a2 2 0 002 2M9 5a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9z"></path>
+                    </svg>
+                    Bergabung dengan Token
+                </a>
+
                 <!-- ✅ PERBAIKAN: Komponen Notifikasi Fungsional -->
                 <a href="{{ route('announcements.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
