@@ -15,6 +15,10 @@ class Question extends Model
         'question_text',
         'type',
         'marks',
+        'correct_answer',
+        'alternative_answers',
+        'comprehension_type',
+        'expected_answer',
     ];
 
     // Relasi ke Quiz (satu pertanyaan milik satu kuis)

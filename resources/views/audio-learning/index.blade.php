@@ -2,9 +2,21 @@
 
 @section('content')
 <div class="container mx-auto px-4 py-8">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Audio Learning</h1>
-        <p class="text-gray-600">Learn English through interactive listening exercises</p>
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Audio Learning</h1>
+            <p class="text-gray-600">Learn English through interactive listening exercises</p>
+        </div>
+
+        @if(Auth::check() && Auth::user()->hasRole(['super-admin', 'instructor']))
+            <a href="{{ route('audio-learning.create') }}"
+               class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Create New Audio Learning
+            </a>
+        @endif
     </div>
 
     <!-- Difficulty Filter -->

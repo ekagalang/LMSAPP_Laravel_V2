@@ -16,12 +16,14 @@ class AudioLesson extends Model
         'transcript',
         'metadata',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'available_for_courses'
     ];
 
     protected $casts = [
         'metadata' => 'array',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'available_for_courses' => 'boolean'
     ];
 
     public function exercises(): HasMany
@@ -47,6 +49,32 @@ class AudioLesson extends Model
     public function scopeByDifficulty($query, $difficulty)
     {
         return $query->where('difficulty_level', $difficulty);
+    }
+
+    public function scopeAvailableForCourses($query)
+    {
+        return $query->where('available_for_courses', true);
+    }
+
+    /**
+     * Check if user has completed all required exercises for this audio lesson
+     */
+    public function hasUserCompletedExercises($userId): bool
+    {
+        if (!$userId) return false;
+
+        $requiredExercises = $this->exercises()->where('is_active', true)->count();
+
+        if ($requiredExercises === 0) {
+            return true; // No exercises means auto-complete
+        }
+
+        $completedExercises = UserAudioProgress::where('user_id', $userId)
+            ->where('audio_lesson_id', $this->id)
+            ->where('completed', true)
+            ->count();
+
+        return $completedExercises >= $requiredExercises;
     }
 
     public function getAudioUrlAttribute()

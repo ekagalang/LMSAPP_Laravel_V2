@@ -32,6 +32,11 @@ class Content extends Model
         'scoring_enabled',
         'grading_mode',
         'requires_review',
+        'audio_duration_seconds',
+        'audio_difficulty_level',
+        'audio_metadata',
+        'is_audio_learning',
+        'audio_lesson_id',
     ];
 
     protected $casts = [
@@ -40,6 +45,8 @@ class Content extends Model
         'is_scheduled' => 'boolean',
         'scoring_enabled' => 'boolean',
         'requires_review' => 'boolean',
+        'audio_metadata' => 'array',
+        'is_audio_learning' => 'boolean',
     ];
 
     /**
@@ -343,5 +350,66 @@ class Content extends Model
     public function isScoringEnabled(): bool
     {
         return $this->scoring_enabled ?? true;
+    }
+
+    /**
+     * Get audio file URL
+     */
+    public function getAudioUrlAttribute(): ?string
+    {
+        if ($this->type === 'audio' && $this->file_path) {
+            return asset('storage/' . $this->file_path);
+        }
+        return null;
+    }
+
+    /**
+     * Get formatted audio duration
+     */
+    public function getFormattedAudioDurationAttribute(): string
+    {
+        if (!$this->audio_duration_seconds) return '00:00';
+
+        $minutes = floor($this->audio_duration_seconds / 60);
+        $seconds = $this->audio_duration_seconds % 60;
+
+        return sprintf('%02d:%02d', $minutes, $seconds);
+    }
+
+    /**
+     * Check if content is audio learning type
+     */
+    public function isAudioLearning(): bool
+    {
+        return $this->type === 'audio';
+    }
+
+    /**
+     * Get audio difficulty badge color
+     */
+    public function getAudioDifficultyColorAttribute(): string
+    {
+        return match($this->audio_difficulty_level) {
+            'beginner' => 'green',
+            'intermediate' => 'yellow',
+            'advanced' => 'red',
+            default => 'gray'
+        };
+    }
+
+    /**
+     * Relation to AudioLesson for audio learning integration
+     */
+    public function audioLesson()
+    {
+        return $this->belongsTo(AudioLesson::class);
+    }
+
+    /**
+     * Check if this content is linked to audio learning
+     */
+    public function isLinkedToAudioLearning(): bool
+    {
+        return $this->is_audio_learning && $this->audio_lesson_id;
     }
 }

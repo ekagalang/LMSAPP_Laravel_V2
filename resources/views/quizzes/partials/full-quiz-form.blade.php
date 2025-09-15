@@ -64,8 +64,10 @@
                         <div>
                             <label class="block text-sm font-medium">Tipe</label>
                             <select :name="`quiz[questions][${qIndex}][type]`" x-model="question.type" class="mt-1 block w-full rounded-md">
-                                <option value="multiple_choice">Pilihan Ganda</option>
-                                <option value="true_false">Benar/Salah</option>
+                                <option value="multiple_choice">📋 Pilihan Ganda</option>
+                                <option value="true_false">✅ Benar/Salah</option>
+                                <option value="fill_blank">✏️ Fill in the Blank</option>
+                                <option value="listening_comprehension">👂 Listening Comprehension</option>
                             </select>
                         </div>
                         <div>
@@ -105,6 +107,151 @@
                                 <input type="radio" :name="`quiz[questions][${qIndex}][correct_answer_tf]`" value="false" x-model="question.correct_answer_tf">
                                 <span class="ml-2">False</span>
                             </label>
+                        </div>
+                    </div>
+
+                    {{-- ✅ BARU: Fill in the Blank --}}
+                    <div x-show="question.type === 'fill_blank'" class="mt-4 border-t pt-4">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <h5 class="text-sm font-semibold text-blue-800 mb-2">💡 Cara Membuat Fill in the Blank:</h5>
+                            <div class="text-sm text-blue-700 space-y-1">
+                                <p>• Gunakan <code class="bg-blue-100 px-1 rounded">____</code> (underscore 4x) untuk menandai tempat jawaban</p>
+                                <p>• Contoh: "The capital of Indonesia is ____"</p>
+                                <p>• Atau: "Fill the blanks: I ____ to school every day"</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Jawaban Benar</label>
+                                <input type="text"
+                                       :name="`quiz[questions][${qIndex}][correct_answer]`"
+                                       x-model="question.correct_answer"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                       placeholder="Masukkan jawaban yang benar..."
+                                       required>
+                                <p class="text-xs text-gray-500 mt-1">Jawaban akan dicocokkan (case-insensitive)</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Jawaban Alternatif (Opsional)</label>
+                                <input type="text"
+                                       :name="`quiz[questions][${qIndex}][alternative_answers]`"
+                                       x-model="question.alternative_answers"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                       placeholder="jakarta|dki jakarta|ibu kota (pisahkan dengan |)">
+                                <p class="text-xs text-gray-500 mt-1">Pisahkan dengan | untuk multiple jawaban benar</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ✅ BARU: Listening Comprehension --}}
+                    <div x-show="question.type === 'listening_comprehension'" class="mt-4 border-t pt-4">
+                        <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-4">
+                            <h5 class="text-sm font-semibold text-teal-800 mb-2">👂 Listening Comprehension</h5>
+                            <div class="text-sm text-teal-700 space-y-2">
+                                <p>• <strong>Soal pemahaman mendengar</strong> yang membutuhkan analisis audio</p>
+                                <p>• Siswa mendengarkan audio dan menjawab berdasarkan apa yang didengar</p>
+
+                                <div class="mt-3 p-3 bg-teal-100 rounded-md">
+                                    <p class="font-medium text-teal-800 mb-1">Contoh:</p>
+                                    <p class="text-xs">📝 <strong>Teks bebas:</strong> "Apa tema utama yang dibahas dalam audio?"</p>
+                                    <p class="text-xs">📋 <strong>Multiple Choice:</strong> "Siapa yang berbicara di audio?" → A) Guru B) Dokter C) Pilot</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Jawaban</label>
+                                <select :name="`quiz[questions][${qIndex}][comprehension_type]`"
+                                        x-model="question.comprehension_type"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-teal-500 focus:ring-2 focus:ring-teal-200">
+                                    <option value="text">📝 Jawaban Teks Bebas</option>
+                                    <option value="multiple_choice">📋 Multiple Choice</option>
+                                </select>
+                            </div>
+
+                            <div x-show="question.comprehension_type === 'text'">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                                    <p class="text-sm text-blue-800">
+                                        <strong>💡 Teks Bebas:</strong> Siswa akan menulis jawaban sendiri. Instructor menilai secara manual.
+                                    </p>
+                                </div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Jawaban yang Diharapkan (Panduan Penilaian)</label>
+                                <textarea :name="`quiz[questions][${qIndex}][expected_answer]`"
+                                          x-model="question.expected_answer"
+                                          rows="3"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                                          placeholder="Contoh: Siswa harus menyebutkan 3 poin utama yang dibahas pembicara..."></textarea>
+                                <p class="text-xs text-gray-500 mt-1">Ini sebagai referensi untuk instructor saat menilai jawaban siswa</p>
+                            </div>
+
+                            <div x-show="question.comprehension_type === 'multiple_choice'">
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                    <p class="text-sm text-green-800">
+                                        <strong>📋 Multiple Choice:</strong> Siswa memilih satu jawaban benar dari pilihan yang tersedia. Penilaian otomatis.
+                                    </p>
+                                </div>
+                                <h6 class="text-sm font-semibold text-gray-700 mb-3">Buat Pilihan Jawaban</h6>
+
+                                <!-- Initialize options if comprehension_type is multiple_choice -->
+                                <div x-init="
+                                    // Initialize options on load
+                                    if (question.comprehension_type === 'multiple_choice' && (!question.options || question.options.length === 0)) {
+                                        question.options = [
+                                            { id: null, option_text: '', is_correct: false },
+                                            { id: null, option_text: '', is_correct: false },
+                                            { id: null, option_text: '', is_correct: false },
+                                            { id: null, option_text: '', is_correct: false }
+                                        ];
+                                    }
+
+                                    // Watch for changes in comprehension_type
+                                    $watch('question.comprehension_type', (newType) => {
+                                        if (newType === 'multiple_choice' && (!question.options || question.options.length === 0)) {
+                                            question.options = [
+                                                { id: null, option_text: '', is_correct: false },
+                                                { id: null, option_text: '', is_correct: false },
+                                                { id: null, option_text: '', is_correct: false },
+                                                { id: null, option_text: '', is_correct: false }
+                                            ];
+                                        }
+                                    });
+                                " class="space-y-2">
+                                    <template x-for="(option, oIndex) in question.options" :key="oIndex">
+                                        <div class="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
+                                            <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][id]`" x-model="option.id">
+                                            <input type="text"
+                                                   :name="`quiz[questions][${qIndex}][options][${oIndex}][option_text]`"
+                                                   x-model="option.option_text"
+                                                   class="flex-grow rounded-md border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                                                   placeholder="Masukkan pilihan jawaban..."
+                                                   required>
+
+                                            <!-- Checkbox untuk menandai jawaban benar -->
+                                            <input type="hidden" :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`" value="false">
+                                            <input type="checkbox"
+                                                   :name="`quiz[questions][${qIndex}][options][${oIndex}][is_correct]`"
+                                                   value="true"
+                                                   x-model="option.is_correct"
+                                                   class="rounded border-gray-300 text-teal-600 focus:ring-teal-500">
+
+                                            <label class="text-sm text-gray-700 font-medium">Benar</label>
+                                            <button type="button"
+                                                    @click="removeOption(qIndex, oIndex)"
+                                                    class="text-red-500 hover:text-red-700 font-bold text-lg"
+                                                    title="Hapus opsi">×</button>
+                                        </div>
+                                    </template>
+
+                                    <button type="button"
+                                            @click="addOption(qIndex)"
+                                            class="w-full mt-2 px-4 py-2 border-2 border-dashed border-teal-300 text-teal-600 rounded-lg hover:border-teal-400 hover:bg-teal-50 transition-all duration-200">
+                                        + Tambah Pilihan Jawaban
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

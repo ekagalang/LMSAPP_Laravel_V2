@@ -110,12 +110,23 @@
                             <!-- Multiple Choice -->
                             <h4 class="font-medium text-gray-800 mb-4">Choose the correct answer:</h4>
                             <div class="space-y-3">
-                                @foreach($exercise->options as $index => $option)
-                                    <label class="flex items-center p-3 bg-white rounded-lg border hover:border-blue-300 cursor-pointer transition-colors">
-                                        <input type="radio" name="answer" value="{{ $option }}" class="mr-3">
-                                        <span>{{ $option }}</span>
-                                    </label>
-                                @endforeach
+                                @if($exercise->options && is_array($exercise->options))
+                                    @foreach($exercise->options as $index => $option)
+                                        <label class="flex items-center p-3 bg-white rounded-lg border hover:border-blue-300 cursor-pointer transition-colors">
+                                            <input type="radio" name="answer" value="{{ $option }}" class="mr-3">
+                                            <span>{{ $option }}</span>
+                                        </label>
+                                    @endforeach
+                                @else
+                                    <!-- Fallback for exercises without options -->
+                                    <div class="text-gray-600 p-4 bg-gray-50 rounded-lg">
+                                        <p>Multiple choice options are not available for this exercise.</p>
+                                        <p class="text-sm mt-2">Please use text input below to answer:</p>
+                                        <input type="text" name="answer" id="textAnswer"
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 mt-3"
+                                               placeholder="Type your answer here...">
+                                    </div>
+                                @endif
                             </div>
 
                         @elseif($exercise->exercise_type === 'fill_blank')

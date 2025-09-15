@@ -384,6 +384,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/lesson/{lesson}', [App\Http\Controllers\AudioLearningController::class, 'lesson'])->name('lesson');
         Route::get('/lesson/{lesson}/exercise/{exercise}', [App\Http\Controllers\AudioLearningController::class, 'exercise'])->name('exercise');
 
+        // Admin routes (protected) - only for instructors and super-admin
+        Route::middleware(['role:super-admin|instructor'])->group(function () {
+            Route::get('/create', [App\Http\Controllers\AudioLearningController::class, 'create'])->name('create');
+            Route::post('/', [App\Http\Controllers\AudioLearningController::class, 'store'])->name('store');
+            Route::get('/{audioLesson}/edit', [App\Http\Controllers\AudioLearningController::class, 'edit'])->name('edit');
+            Route::put('/{audioLesson}', [App\Http\Controllers\AudioLearningController::class, 'update'])->name('update');
+            Route::delete('/{audioLesson}', [App\Http\Controllers\AudioLearningController::class, 'destroy'])->name('destroy');
+        });
+
         // AJAX Routes for audio learning
         Route::post('/lesson/{lesson}/progress', [App\Http\Controllers\AudioLearningController::class, 'updateProgress'])->name('update-progress');
         Route::post('/lesson/{lesson}/exercise/{exercise}/answer', [App\Http\Controllers\AudioLearningController::class, 'submitAnswer'])->name('submit-answer');

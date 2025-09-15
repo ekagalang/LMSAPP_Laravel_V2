@@ -38,8 +38,8 @@ class ContentController extends Controller
             return redirect()->back()->with('error', 'Anda harus menyelesaikan materi sebelumnya terlebih dahulu.');
         }
 
-        // TAMBAH load untuk essayQuestions
-        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions');
+        // TAMBAH load untuk essayQuestions dan audioLesson
+        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions', 'audioLesson');
 
         if ($user->hasRole(['super-admin', 'instructor'])) {
             $unlockedContents = $orderedContents;
@@ -355,9 +355,9 @@ class ContentController extends Controller
         $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay', 'zoom'])],
+            'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay', 'zoom', 'audio'])],
             'order' => 'nullable|integer',
-            'file_upload' => 'nullable|file|max:102400',
+            'file_upload' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt|max:102400',
         ];
 
         // 🆕 TAMBAHAN: Validasi untuk scoring_enabled pada essay
@@ -396,7 +396,37 @@ class ContentController extends Controller
                 break;
             case 'video':
                 $rules['body_video'] = 'nullable|url';
+                $rules['video_file'] = 'nullable|file|mimes:mp4,mov,avi,mkv,webm,flv,wmv,3gp|max:512000'; // 500MB max
                 $bodySource = 'body_video';
+                break;
+            case 'audio':
+                // Base audio rules - only required for new content
+                if (!$content->exists || $request->has('audio_type')) {
+                    $rules['audio_type'] = 'required|string|in:simple,existing_lesson,new_lesson';
+                } else {
+                    $rules['audio_type'] = 'nullable|string|in:simple,existing_lesson,new_lesson';
+                }
+
+                // Conditional rules based on audio_type
+                if ($request->input('audio_type') === 'existing_lesson') {
+                    $rules['audio_lesson_id'] = 'required|exists:audio_lessons,id';
+                } else {
+                    $rules['audio_file'] = 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200'; // 50MB max
+                    $rules['audio_transcript'] = 'nullable|string';
+                    $rules['audio_difficulty'] = 'nullable|string|in:beginner,intermediate,advanced';
+
+                    if ($request->input('audio_type') === 'simple') {
+                        $rules['audio_has_quiz'] = 'nullable|boolean';
+                        $rules['audio_time_limit'] = 'nullable|integer|min:0';
+                        $rules['audio_quiz_types'] = 'nullable|array';
+                        $rules['audio_quiz_types.*'] = 'nullable|string|in:multiple_choice,fill_blank,true_false,listening_comprehension';
+                    } elseif ($request->input('audio_type') === 'new_lesson') {
+                        $rules['new_lesson_title'] = 'required|string|max:255';
+                        $rules['new_lesson_description'] = 'nullable|string';
+                        $rules['new_lesson_category'] = 'required|string|in:conversation,listening,pronunciation,grammar,vocabulary,business,academic,general';
+                    }
+                }
+                $bodySource = 'audio_transcript';
                 break;
         }
 
@@ -492,6 +522,138 @@ class ContentController extends Controller
             if ($request->hasFile('file_upload')) {
                 if ($content->file_path) Storage::disk('public')->delete($content->file_path);
                 $content->file_path = $request->file('file_upload')->store('content_files', 'public');
+
+                // Save document metadata
+                $fileMetadata = [
+                    'file_size' => $request->file('file_upload')->getSize(),
+                    'mime_type' => $request->file('file_upload')->getMimeType(),
+                    'original_name' => $request->file('file_upload')->getClientOriginalName(),
+                    'uploaded_at' => now()->toISOString()
+                ];
+
+                // Store metadata in audio_metadata field (reusing existing field)
+                $content->audio_metadata = $fileMetadata;
+            }
+
+            // Handle audio file upload
+            if ($request->hasFile('audio_file')) {
+                if ($content->file_path) Storage::disk('public')->delete($content->file_path);
+                $content->file_path = $request->file('audio_file')->store('audio/lessons', 'public');
+
+                // Save audio metadata
+                $content->audio_difficulty_level = $request->input('audio_difficulty', 'beginner');
+                $audioMetadata = [
+                    'file_size' => $request->file('audio_file')->getSize(),
+                    'mime_type' => $request->file('audio_file')->getMimeType(),
+                    'original_name' => $request->file('audio_file')->getClientOriginalName(),
+                    'uploaded_at' => now()->toISOString()
+                ];
+                $content->audio_metadata = $audioMetadata;
+            }
+
+            // Handle video file upload
+            if ($request->hasFile('video_file')) {
+                if ($content->file_path) Storage::disk('public')->delete($content->file_path);
+                $content->file_path = $request->file('video_file')->store('video/lessons', 'public');
+
+                // Clear body_video URL if file is uploaded
+                $content->body = null;
+
+                // Save video metadata
+                $videoMetadata = [
+                    'file_size' => $request->file('video_file')->getSize(),
+                    'mime_type' => $request->file('video_file')->getMimeType(),
+                    'original_name' => $request->file('video_file')->getClientOriginalName(),
+                    'uploaded_at' => now()->toISOString()
+                ];
+
+                // Try to get video duration using getID3 if available
+                try {
+                    if (class_exists('getID3')) {
+                        $getID3 = new \getID3;
+                        $fileInfo = $getID3->analyze($request->file('video_file')->getPathname());
+                        if (isset($fileInfo['playtime_seconds'])) {
+                            $videoMetadata['duration_seconds'] = (int) $fileInfo['playtime_seconds'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Ignore errors in metadata extraction
+                }
+
+                // Store metadata in audio_metadata field (reusing existing field)
+                $content->audio_metadata = $videoMetadata;
+            }
+
+            // Handle audio learning integration
+            if ($validated['type'] === 'audio') {
+                $audioType = $request->input('audio_type', 'simple');
+
+                switch ($audioType) {
+                    case 'existing_lesson':
+                        // Link to existing audio lesson
+                        $content->is_audio_learning = true;
+                        $content->audio_lesson_id = $request->input('audio_lesson_id');
+                        $content->quiz_id = null; // Use audio lesson's exercises instead
+                        break;
+
+                    case 'new_lesson':
+                        // Create new audio lesson and link
+                        $audioLesson = $this->createAudioLesson($request);
+                        $content->is_audio_learning = true;
+                        $content->audio_lesson_id = $audioLesson->id;
+                        $content->quiz_id = null; // Use audio lesson's exercises instead
+                        break;
+
+                    case 'simple':
+                    default:
+                        // Simple audio content with basic quiz
+                        $content->is_audio_learning = false;
+                        $content->audio_lesson_id = null;
+
+                        // Debug: Log audio quiz request data
+                        Log::info('Audio Content Processing', [
+                            'has_audio_quiz' => $request->boolean('audio_has_quiz'),
+                            'audio_quiz_types' => $request->input('audio_quiz_types', []),
+                            'audio_time_limit' => $request->input('audio_time_limit'),
+                            'content_id' => $content->id ?? 'new'
+                        ]);
+
+                        if ($request->boolean('audio_has_quiz')) {
+                            // Create or update quiz for audio content
+                            $quizData = [
+                                'title' => $validated['title'] . ' - Audio Quiz',
+                                'description' => 'Quiz interaktif berdasarkan audio: ' . ($validated['description'] ?? ''),
+                                'time_limit' => $request->input('audio_time_limit') ?: null,
+                                'total_marks' => 0, // Will be calculated after questions are created
+                                'pass_marks' => 0,  // Will be set to 60% of total_marks
+                                'status' => 'draft',
+                                'show_answers_after_attempt' => true,
+                            ];
+
+                            $quiz = $this->saveQuiz($quizData, $lesson, $content->quiz_id);
+                            $content->quiz_id = $quiz->id;
+
+                            // Create placeholder questions based on selected types
+                            $quizTypes = $request->input('audio_quiz_types', ['multiple_choice']);
+                            $this->createAudioQuizPlaceholders($quiz, $quizTypes);
+
+                            // Debug logging
+                            Log::info('Audio Quiz Created', [
+                                'quiz_id' => $quiz->id,
+                                'content_id' => $content->id ?? 'new',
+                                'quiz_types' => $quizTypes,
+                                'questions_count' => $quiz->questions()->count(),
+                                'total_marks' => $quiz->total_marks
+                            ]);
+                        } else {
+                            // Remove quiz if audio_has_quiz is disabled
+                            if ($content->quiz) {
+                                $content->quiz->delete();
+                            }
+                            $content->quiz_id = null;
+                        }
+                        break;
+                }
             }
 
             // Set order dengan lebih hati-hati
@@ -507,7 +669,8 @@ class ContentController extends Controller
                 $quizData['time_limit'] = $validated['time_limit'] ?? null;
                 $quiz = $this->saveQuiz($quizData, $lesson, $content->quiz_id);
                 $content->quiz_id = $quiz->id;
-            } else {
+            } elseif ($validated['type'] !== 'audio') {
+                // Don't reset quiz_id for audio content as it might have been set in the audio case above
                 if ($content->quiz) $content->quiz->delete();
                 $content->quiz_id = null;
             }
@@ -602,14 +765,29 @@ class ContentController extends Controller
             foreach ($quizData['questions'] as $qData) {
                 if (empty($qData['question_text'])) continue;
 
+                $questionAttributes = [
+                    'question_text' => $qData['question_text'],
+                    'type' => $qData['type'],
+                    'marks' => $qData['marks']
+                ];
+
+                // Add additional fields for different question types
+                if ($qData['type'] === 'fill_blank') {
+                    $questionAttributes['correct_answer'] = $qData['correct_answer'] ?? '';
+                    $questionAttributes['alternative_answers'] = $qData['alternative_answers'] ?? '';
+                } elseif ($qData['type'] === 'listening_comprehension') {
+                    $questionAttributes['comprehension_type'] = $qData['comprehension_type'] ?? 'text';
+                    $questionAttributes['expected_answer'] = $qData['expected_answer'] ?? '';
+                }
+
                 $question = Question::updateOrCreate(
                     ['id' => $qData['id'] ?? null, 'quiz_id' => $quiz->id],
-                    ['question_text' => $qData['question_text'], 'type' => $qData['type'], 'marks' => $qData['marks']]
+                    $questionAttributes
                 );
                 $questionIdsToKeep[] = $question->id;
 
                 $optionIdsToKeep = [];
-                if ($qData['type'] === 'multiple_choice' && !empty($qData['options'])) {
+                if (($qData['type'] === 'multiple_choice' || ($qData['type'] === 'listening_comprehension' && $qData['comprehension_type'] === 'multiple_choice')) && !empty($qData['options'])) {
                     foreach ($qData['options'] as $oData) {
                         if (empty($oData['option_text'])) continue;
                         $option = Option::updateOrCreate(
@@ -639,6 +817,96 @@ class ContentController extends Controller
         $quiz->questions()->whereNotIn('id', $questionIdsToKeep)->delete();
 
         return $quiz;
+    }
+
+    private function createAudioQuizPlaceholders(Quiz $quiz, array $quizTypes)
+    {
+        // Remove existing questions to create fresh placeholders
+        $quiz->questions()->delete();
+
+        $questionTemplates = [
+            'multiple_choice' => [
+                'question_text' => 'Based on the audio, which of the following statements is correct?',
+                'type' => 'multiple_choice',
+                'marks' => 10,
+                'options' => [
+                    ['text' => 'Option A (edit this)', 'correct' => false],
+                    ['text' => 'Option B (edit this)', 'correct' => true],
+                    ['text' => 'Option C (edit this)', 'correct' => false],
+                    ['text' => 'Option D (edit this)', 'correct' => false],
+                ]
+            ],
+            'fill_blank' => [
+                'question_text' => 'Fill in the missing word from the audio: "The speaker mentioned that ____ is very important."',
+                'type' => 'fill_blank',
+                'marks' => 10,
+                'correct_answer' => 'education',
+                'alternative_answers' => 'learning|knowledge'
+            ],
+            'true_false' => [
+                'question_text' => 'The speaker in the audio agrees with the main topic discussed.',
+                'type' => 'true_false',
+                'marks' => 5,
+                'options' => [
+                    ['text' => 'True', 'correct' => true],
+                    ['text' => 'False', 'correct' => false]
+                ]
+            ],
+            'listening_comprehension' => [
+                'question_text' => 'What is the main idea discussed in the audio?',
+                'type' => 'listening_comprehension',
+                'marks' => 15,
+                'comprehension_type' => 'text',
+                'expected_answer' => 'Please describe the main concept explained by the speaker (this is for grading reference)'
+            ]
+        ];
+
+        foreach ($quizTypes as $type) {
+            if (!isset($questionTemplates[$type])) continue;
+
+            $template = $questionTemplates[$type];
+
+            $questionData = [
+                'question_text' => $template['question_text'],
+                'type' => $template['type'],
+                'marks' => $template['marks']
+            ];
+
+            // Add type-specific fields
+            if ($template['type'] === 'fill_blank') {
+                $questionData['correct_answer'] = $template['correct_answer'];
+                $questionData['alternative_answers'] = $template['alternative_answers'];
+            } elseif ($template['type'] === 'listening_comprehension') {
+                $questionData['comprehension_type'] = $template['comprehension_type'];
+                $questionData['expected_answer'] = $template['expected_answer'];
+            }
+
+            $question = $quiz->questions()->create($questionData);
+
+            // Create options for multiple choice and true/false
+            if ($template['type'] === 'multiple_choice' && isset($template['options'])) {
+                foreach ($template['options'] as $optionData) {
+                    $question->options()->create([
+                        'option_text' => $optionData['text'],
+                        'is_correct' => $optionData['correct']
+                    ]);
+                }
+            } elseif ($template['type'] === 'true_false' && isset($template['options'])) {
+                foreach ($template['options'] as $optionData) {
+                    $question->options()->create([
+                        'option_text' => $optionData['text'],
+                        'is_correct' => $optionData['correct']
+                    ]);
+                }
+            }
+        }
+
+        // Update quiz total marks based on questions
+        $totalMarks = $quiz->questions()->sum('marks');
+        $quiz->update([
+            'total_marks' => $totalMarks,
+            'pass_marks' => max(1, floor($totalMarks * 0.6)) // 60% to pass
+        ]);
     }
 
     public function destroy(Lesson $lesson, Content $content)
@@ -736,6 +1004,80 @@ class ContentController extends Controller
         } catch (\Exception $e) {
             // Optional: Log the exception
             return redirect()->route('courses.show', $lesson->course)->with('error', 'Failed to duplicate content: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Create new AudioLesson from content creation
+     */
+    private function createAudioLesson(Request $request)
+    {
+        $audioFile = null;
+        $audioMetadata = [];
+
+        // Handle audio file upload
+        if ($request->hasFile('audio_file')) {
+            $audioFile = $request->file('audio_file')->store('audio/lessons', 'public');
+
+            $audioMetadata = [
+                'file_size' => $request->file('audio_file')->getSize(),
+                'mime_type' => $request->file('audio_file')->getMimeType(),
+                'original_name' => $request->file('audio_file')->getClientOriginalName(),
+                'uploaded_at' => now()->toISOString()
+            ];
+        }
+
+        // Create AudioLesson
+        $audioLesson = \App\Models\AudioLesson::create([
+            'title' => $request->input('new_lesson_title'),
+            'description' => $request->input('new_lesson_description'),
+            'audio_file_path' => $audioFile,
+            'difficulty_level' => $request->input('audio_difficulty', 'beginner'),
+            'transcript' => $request->input('audio_transcript'),
+            'metadata' => array_merge($audioMetadata, [
+                'category' => $request->input('new_lesson_category', 'general'),
+                'created_from_course' => true
+            ]),
+            'is_active' => true,
+            'available_for_courses' => true,
+            'sort_order' => \App\Models\AudioLesson::max('sort_order') + 1
+        ]);
+
+        // Create basic audio exercises for the new lesson
+        $this->createBasicAudioExercises($audioLesson);
+
+        return $audioLesson;
+    }
+
+    /**
+     * Create basic exercises for newly created AudioLesson
+     */
+    private function createBasicAudioExercises(\App\Models\AudioLesson $audioLesson)
+    {
+        // Create a basic listening comprehension exercise
+        \App\Models\AudioExercise::create([
+            'audio_lesson_id' => $audioLesson->id,
+            'title' => 'Listening Comprehension',
+            'question' => 'What is the main topic discussed in this audio?',
+            'exercise_type' => 'comprehension',
+            'correct_answers' => ['The main topic will be provided by the instructor'],
+            'points' => 10,
+            'is_active' => true,
+            'sort_order' => 1
+        ]);
+
+        // Create a vocabulary exercise if relevant
+        if (!empty($audioLesson->transcript)) {
+            \App\Models\AudioExercise::create([
+                'audio_lesson_id' => $audioLesson->id,
+                'title' => 'Vocabulary Exercise',
+                'question' => 'Fill in the blank based on the audio: "The speaker mentioned _____"',
+                'exercise_type' => 'fill_blank',
+                'correct_answers' => ['example', 'keyword'],
+                'points' => 5,
+                'is_active' => true,
+                'sort_order' => 2
+            ]);
         }
     }
 }

@@ -1,13 +1,37 @@
 <x-app-layout>
     <div x-data="{
-        sidebarOpen: window.innerWidth >= 768,
-        sidebarOpen: false,
+        sidebarOpen: window.innerWidth >= 1024,
         showProgress: false,
+        isLoading: true,
+
+        init() {
+            // Ensure consistent sidebar state
+            this.sidebarOpen = window.innerWidth >= 1024;
+
+            // Handle resize events without duplicating listeners
+            if (!this.resizeListenerAdded) {
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth >= 1024) {
+                        this.sidebarOpen = true;
+                    } else {
+                        this.sidebarOpen = false;
+                    }
+                }, { passive: true });
+                this.resizeListenerAdded = true;
+            }
+
+            // Hide loading after initialization
+            setTimeout(() => {
+                this.isLoading = false;
+            }, 100);
+        },
         // [LOGIKA BARU] Menentukan apakah konten ini dianggap selesai.
         // Untuk kuis, harus lulus. Untuk esai, sudah submit (bukan harus dinilai).
         @php
             $user = Auth::user();
-            $isTask = in_array($content->type, ['quiz', 'essay']);
+            // Audio with quiz or linked to audio learning should also be considered as task
+            $isTask = in_array($content->type, ['quiz', 'essay']) ||
+                     ($content->type === 'audio' && ($content->quiz_id || $content->is_audio_learning));
             $isContentEffectivelyCompleted = false;
 
             if ($content->type === 'quiz' && $content->quiz_id) {
@@ -16,6 +40,12 @@
             } elseif ($content->type === 'essay') {
                 // ✅ PERUBAHAN: Dianggap selesai jika sudah ada submission (tidak perlu dinilai)
                 $isContentEffectivelyCompleted = $user->essaySubmissions()->where('content_id', $content->id)->exists();
+            } elseif ($content->type === 'audio' && $content->quiz_id) {
+                // Audio with simple quiz - check quiz attempts
+                $isContentEffectivelyCompleted = $user->quizAttempts()->where('quiz_id', $content->quiz_id)->where('passed', true)->exists();
+            } elseif ($content->type === 'audio' && $content->is_audio_learning && $content->audioLesson) {
+                // Audio learning - check if user completed all required exercises
+                $isContentEffectivelyCompleted = $content->audioLesson->hasUserCompletedExercises($user->id ?? 0);
             } else {
                 // Untuk konten biasa, cek di tabel pivot
                 $isContentEffectivelyCompleted = $user->completedContents->contains($content->id);
@@ -34,6 +64,21 @@
         }
     }"
     class="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+
+        <!-- Loading Overlay -->
+        <div x-show="isLoading"
+             x-cloak
+             class="fixed inset-0 bg-white z-[99999] flex items-center justify-center">
+            <div class="text-center">
+                <div class="inline-flex items-center px-4 py-2 text-sm text-gray-600">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading content...
+                </div>
+            </div>
+        </div>
 
         <!-- [BARU] Form tersembunyi untuk menandai selesai (hanya untuk konten non-tugas) -->
         @if(!$isTask)
@@ -67,12 +112,13 @@
         <!-- Sidebar Navigation -->
         <aside
             x-show="sidebarOpen"
-            x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="-translate-x-full"
+            x-cloak
+            x-transition:enter="lg:transition-none transition ease-out duration-300 transform"
+            x-transition:enter-start="lg:translate-x-0 -translate-x-full"
             x-transition:enter-end="translate-x-0"
-            x-transition:leave="transition ease-in duration-300 transform"
+            x-transition:leave="lg:transition-none transition ease-in duration-300 transform"
             x-transition:leave-start="translate-x-0"
-            x-transition:leave-end="-translate-x-full"
+            x-transition:leave-end="lg:translate-x-0 -translate-x-full"
             class="fixed lg:static inset-y-0 left-0 w-full sm:w-96 bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-50 lg:z-20 flex flex-col">
 
             <!-- Sidebar Header -->
@@ -349,23 +395,149 @@
                                     </div>
 
                                 @elseif($content->type == 'document' && $content->file_path)
-                                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 text-center border border-blue-100">
-                                        <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                            <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                                            </svg>
+                                    @php
+                                        $fileExtension = strtolower(pathinfo($content->file_path, PATHINFO_EXTENSION));
+                                        $mimeType = $content->audio_metadata['mime_type'] ?? '';
+                                        $isPdf = $fileExtension === 'pdf' || $mimeType === 'application/pdf';
+                                    @endphp
+
+                                    @if($isPdf)
+                                        <!-- PDF Viewer -->
+                                        <div class="space-y-6">
+                                            <!-- PDF Embed Viewer -->
+                                            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+                                                <div class="bg-gradient-to-r from-red-600 to-pink-600 px-6 py-4">
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="flex items-center space-x-3">
+                                                            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                                                                📄
+                                                            </div>
+                                                            <div>
+                                                                <h3 class="text-lg font-semibold text-white">{{ $content->title }}</h3>
+                                                                <p class="text-red-100 text-sm">{{ basename($content->file_path) }}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center space-x-2">
+                                                            <a href="{{ Storage::url($content->file_path) }}"
+                                                               target="_blank"
+                                                               class="inline-flex items-center px-3 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white text-sm font-medium rounded-lg transition-all duration-200">
+                                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                                                </svg>
+                                                                Buka di Tab Baru
+                                                            </a>
+                                                            <a href="{{ Storage::url($content->file_path) }}"
+                                                               download
+                                                               class="inline-flex items-center px-3 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white text-sm font-medium rounded-lg transition-all duration-200">
+                                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                                </svg>
+                                                                Download
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- PDF Embed -->
+                                                <div class="pdf-container" style="height: 600px; min-height: 600px;">
+                                                    <iframe
+                                                        src="{{ Storage::url($content->file_path) }}#toolbar=1&navpanes=1&scrollbar=1"
+                                                        class="w-full h-full border-0"
+                                                        type="application/pdf"
+                                                        onload="this.style.opacity=1"
+                                                        style="opacity:0; transition: opacity 0.3s ease;"
+                                                        onerror="this.style.display='none'; document.getElementById('pdf-fallback-{{ $content->id }}').style.display='block';">
+                                                    </iframe>
+                                                </div>
+                                            </div>
+
+                                            <!-- PDF Fallback -->
+                                            <div id="pdf-fallback-{{ $content->id }}" style="display:none;" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 text-center border border-blue-100">
+                                                <div class="w-20 h-20 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                    📄
+                                                </div>
+                                                <h3 class="text-xl font-semibold text-gray-900 mb-2">PDF tidak dapat ditampilkan</h3>
+                                                <p class="text-gray-600 mb-6">Browser Anda tidak mendukung tampilan PDF inline. Silakan download file untuk membukanya.</p>
+                                                <a href="{{ Storage::url($content->file_path) }}"
+                                                   download
+                                                   class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white font-semibold rounded-xl hover:from-red-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                    Download PDF
+                                                </a>
+                                            </div>
+
+                                            <!-- Document Information -->
+                                            @if($content->audio_metadata)
+                                                <div class="bg-gray-50 rounded-xl p-6">
+                                                    <h4 class="font-semibold text-gray-900 mb-3">Informasi Dokumen</h4>
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                                                        @if(isset($content->audio_metadata['file_size']))
+                                                            <div class="flex items-center space-x-2">
+                                                                <span>📁</span>
+                                                                <span>{{ number_format($content->audio_metadata['file_size'] / 1024 / 1024, 2) }} MB</span>
+                                                            </div>
+                                                        @endif
+                                                        @if(isset($content->audio_metadata['mime_type']))
+                                                            <div class="flex items-center space-x-2">
+                                                                <span>📄</span>
+                                                                <span>{{ strtoupper(str_replace(['application/', 'text/'], '', $content->audio_metadata['mime_type'])) }}</span>
+                                                            </div>
+                                                        @endif
+                                                        @if(isset($content->audio_metadata['uploaded_at']))
+                                                            <div class="flex items-center space-x-2">
+                                                                <span>📅</span>
+                                                                <span>{{ \Carbon\Carbon::parse($content->audio_metadata['uploaded_at'])->format('d M Y') }}</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
-                                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Dokumen Pembelajaran</h3>
-                                        <p class="text-gray-600 mb-6">{{ basename($content->file_path) }}</p>
-                                        <a href="{{ Storage::url($content->file_path) }}"
-                                           target="_blank"
-                                           class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                            </svg>
-                                            Download Dokumen
-                                        </a>
-                                    </div>
+
+                                    @else
+                                        <!-- Other Document Types -->
+                                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 text-center border border-blue-100">
+                                            <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                @switch($fileExtension)
+                                                    @case('doc')
+                                                    @case('docx')
+                                                        📝
+                                                        @break
+                                                    @case('ppt')
+                                                    @case('pptx')
+                                                        📊
+                                                        @break
+                                                    @case('xls')
+                                                    @case('xlsx')
+                                                        📈
+                                                        @break
+                                                    @default
+                                                        📄
+                                                @endswitch
+                                            </div>
+                                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Dokumen {{ strtoupper($fileExtension) }}</h3>
+                                            <p class="text-gray-600 mb-6">{{ basename($content->file_path) }}</p>
+
+                                            @if($content->audio_metadata)
+                                                <div class="mb-6 text-sm text-gray-500 space-y-1">
+                                                    @if(isset($content->audio_metadata['file_size']))
+                                                        <p>Ukuran: {{ number_format($content->audio_metadata['file_size'] / 1024 / 1024, 2) }} MB</p>
+                                                    @endif
+                                                </div>
+                                            @endif
+
+                                            <a href="{{ Storage::url($content->file_path) }}"
+                                               download
+                                               class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                </svg>
+                                                Download Dokumen
+                                            </a>
+                                        </div>
+                                    @endif
 
                                 @elseif($content->type == 'text')
                                     <div class="prose prose-lg max-w-none">
@@ -851,6 +1023,326 @@
                                             @endif
                                         </div>
                                     </div>
+
+                                @elseif($content->type == 'audio')
+                                    <div class="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-8 border border-teal-100">
+                                        <div class="text-center mb-6">
+                                            <div class="w-20 h-20 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                                                </svg>
+                                            </div>
+                                            <h3 class="text-2xl font-bold text-gray-900 mb-2">Audio Learning</h3>
+
+                                            @if($content->audio_difficulty_level)
+                                                <span class="inline-block px-3 py-1 text-sm font-medium rounded-full mb-4
+                                                           {{ $content->audio_difficulty_color === 'green' ? 'bg-green-100 text-green-800' :
+                                                              ($content->audio_difficulty_color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                                                               'bg-red-100 text-red-800') }}">
+                                                    {{ ucfirst($content->audio_difficulty_level) }}
+                                                </span>
+                                            @endif
+
+                                            @if($content->formatted_audio_duration)
+                                                <p class="text-gray-600 mb-6">Duration: {{ $content->formatted_audio_duration }}</p>
+                                            @endif
+                                        </div>
+
+                                        <!-- Audio Player -->
+                                        @if($content->file_path && $content->type === 'audio')
+                                            <div class="bg-white rounded-xl p-6 mb-6 shadow-lg">
+                                                <audio id="audioPlayer" class="w-full mb-4" controls preload="metadata">
+                                                    @php
+                                                        $audioUrl = Storage::url($content->file_path);
+                                                        $extension = strtolower(pathinfo($content->file_path, PATHINFO_EXTENSION));
+                                                        $mimeType = match($extension) {
+                                                            'mp3' => 'audio/mpeg',
+                                                            'wav' => 'audio/wav',
+                                                            'm4a' => 'audio/mp4',
+                                                            'aac' => 'audio/aac',
+                                                            'ogg' => 'audio/ogg',
+                                                            default => 'audio/mpeg'
+                                                        };
+                                                    @endphp
+                                                    <source src="{{ $audioUrl }}" type="{{ $mimeType }}">
+                                                    Your browser does not support the audio element.
+                                                </audio>
+
+                                                <!-- Audio Controls -->
+                                                <div class="flex items-center justify-between mb-4">
+                                                    <div class="flex items-center space-x-4">
+                                                        <button id="playPauseBtn" class="bg-teal-500 hover:bg-teal-600 text-white rounded-full p-3 transition-colors">
+                                                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M8 5v14l11-7z"></path>
+                                                            </svg>
+                                                        </button>
+
+                                                        <div class="flex items-center space-x-2">
+                                                            <label for="speedControl" class="text-sm text-gray-600">Speed:</label>
+                                                            <select id="speedControl" class="text-sm border border-gray-300 rounded px-2 py-1">
+                                                                <option value="0.5">0.5x</option>
+                                                                <option value="0.75">0.75x</option>
+                                                                <option value="1" selected>1x</option>
+                                                                <option value="1.25">1.25x</option>
+                                                                <option value="1.5">1.5x</option>
+                                                                <option value="2">2x</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="text-sm text-gray-600">
+                                                        <span id="currentTime">00:00</span> / <span id="totalTime">{{ $content->formatted_audio_duration ?? '00:00' }}</span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Progress Bar -->
+                                                <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                                                    <div id="progressBar" class="bg-teal-500 h-2 rounded-full" style="width: 0%"></div>
+                                                </div>
+
+                                                <!-- Transcript Toggle -->
+                                                @if($content->body)
+                                                    <div class="text-center">
+                                                        <button id="transcriptBtn" class="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                                            Show Transcript
+                                                        </button>
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            <!-- Transcript Section -->
+                                            @if($content->body)
+                                                <div id="transcriptSection" class="bg-teal-50 rounded-xl p-6 border border-teal-200" style="display: none;">
+                                                    <h4 class="text-lg font-semibold text-teal-900 mb-3">Audio Transcript</h4>
+                                                    <div class="text-gray-700 leading-relaxed">
+                                                        {!! nl2br(e($content->body)) !!}
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @else
+                                            <div class="text-center text-gray-500 py-8">
+                                                <p>Audio file not available</p>
+                                            </div>
+                                        @endif
+
+                                        <!-- Audio Quiz or Audio Learning Exercises Section -->
+                                        @if($content->is_audio_learning && $content->audioLesson)
+                                            <!-- Audio Learning Exercises -->
+                                            <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 mt-6 border border-purple-200">
+                                                <div class="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h4 class="text-lg font-semibold text-purple-900 mb-2">
+                                                            🎓 Interactive Audio Learning
+                                                        </h4>
+                                                        <p class="text-sm text-purple-800 mb-1">
+                                                            {{ $content->audioLesson->title }}
+                                                        </p>
+                                                        <p class="text-xs text-purple-600">
+                                                            {{ $content->audioLesson->exercises->count() }} exercises available
+                                                        </p>
+                                                    </div>
+                                                    <div class="flex items-center space-x-2">
+                                                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                                                            {{ ucfirst($content->audioLesson->difficulty_level) }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="bg-white rounded-lg p-4 border border-purple-200">
+                                                    <p class="text-gray-700 mb-4">
+                                                        {{ $content->audioLesson->description }}
+                                                    </p>
+
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="text-sm text-gray-600">
+                                                            <span>🎯 Level: {{ ucfirst($content->audioLesson->difficulty_level) }}</span>
+                                                            <span class="ml-4">📝 {{ $content->audioLesson->exercises->count() }} Exercises</span>
+                                                        </div>
+                                                        <a href="{{ route('audio-learning.lesson', $content->audioLesson->id) }}"
+                                                           class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m6-6L18 6a2 2 0 00-2-2H8a2 2 0 00-2 2l1 1m10 10l-1 1a2 2 0 01-2 2H8a2 2 0 01-2-2l1-1"></path>
+                                                            </svg>
+                                                            Start Audio Learning
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        @elseif($content->quiz_id && $content->quiz)
+                                            <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 mt-6 border border-orange-200">
+                                                <div class="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h4 class="text-lg font-semibold text-orange-900 mb-2">
+                                                            🧠 Interactive Audio Quiz
+                                                        </h4>
+                                                        <p class="text-sm text-orange-800 mb-1">
+                                                            {{ $content->quiz->title }}
+                                                        </p>
+                                                        @if($content->quiz->time_limit)
+                                                            <p class="text-xs text-orange-700">
+                                                                ⏱️ Time limit: {{ $content->quiz->time_limit }} minutes
+                                                            </p>
+                                                        @endif
+                                                        <p class="text-xs text-orange-700 mt-1">
+                                                            📊 {{ $content->quiz->questions->count() }} questions • {{ $content->quiz->total_marks }} points
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="text-center">
+                                                        @php
+                                                            $userAttempts = Auth::user()->quizAttempts()->where('quiz_id', $content->quiz->id);
+                                                            $lastAttempt = $userAttempts->latest()->first();
+                                                            $hasPassed = $userAttempts->where('passed', true)->exists();
+                                                        @endphp
+
+                                                        @if($hasPassed)
+                                                            <div class="bg-green-100 text-green-800 px-4 py-2 rounded-lg mb-3 text-sm font-medium">
+                                                                ✅ Passed
+                                                                <div class="text-xs text-green-600 mt-1">
+                                                                    Score: {{ $lastAttempt->score ?? 0 }}/{{ $content->quiz->total_marks }}
+                                                                </div>
+                                                            </div>
+                                                        @elseif($lastAttempt)
+                                                            <div class="bg-red-100 text-red-800 px-4 py-2 rounded-lg mb-3 text-sm font-medium">
+                                                                ❌ Not Passed
+                                                                <div class="text-xs text-red-600 mt-1">
+                                                                    Score: {{ $lastAttempt->score ?? 0 }}/{{ $content->quiz->total_marks }}
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        <button onclick="toggleAudioQuiz()"
+                                                                class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 inline-flex items-center">
+                                                            @if($lastAttempt)
+                                                                🔄 Retake Quiz
+                                                            @else
+                                                                🎯 Start Quiz
+                                                            @endif
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Inline Audio Quiz -->
+                                                <div id="audioQuizSection" style="display: none;" class="border-t border-orange-200 pt-6">
+                                                    @if($content->quiz->questions->count() > 0)
+                                                        <form id="audioQuizForm" action="{{ route('quiz.submit', $content->quiz->id) }}" method="POST">
+                                                            @csrf
+                                                            <div class="space-y-6">
+                                                                @foreach($content->quiz->questions as $index => $question)
+                                                                    <div class="bg-white rounded-lg p-4 border border-orange-200">
+                                                                        <h5 class="font-medium text-gray-900 mb-3">
+                                                                            {{ $index + 1 }}. {{ $question->question_text }}
+                                                                            <span class="text-sm text-gray-500">({{ $question->marks }} pts)</span>
+                                                                        </h5>
+
+                                                                        @if($question->type === 'multiple_choice')
+                                                                            <div class="space-y-2">
+                                                                                @foreach($question->options as $option)
+                                                                                    <label class="flex items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                                                        <input type="radio"
+                                                                                               name="answers[{{ $question->id }}]"
+                                                                                               value="{{ $option->id }}"
+                                                                                               class="mr-3 text-orange-600">
+                                                                                        <span>{{ $option->option_text }}</span>
+                                                                                    </label>
+                                                                                @endforeach
+                                                                            </div>
+                                                                        @elseif($question->type === 'true_false')
+                                                                            <div class="space-y-2">
+                                                                                @foreach($question->options as $option)
+                                                                                    <label class="flex items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                                                        <input type="radio"
+                                                                                               name="answers[{{ $question->id }}]"
+                                                                                               value="{{ $option->id }}"
+                                                                                               class="mr-3 text-orange-600">
+                                                                                        <span>{{ $option->option_text }}</span>
+                                                                                    </label>
+                                                                                @endforeach
+                                                                            </div>
+                                                                        @elseif($question->type === 'fill_blank')
+                                                                            <input type="text"
+                                                                                   name="answers[{{ $question->id }}]"
+                                                                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                                                                                   placeholder="Type your answer here...">
+                                                                        @elseif($question->type === 'listening_comprehension')
+                                                                            @if($question->comprehension_type === 'multiple_choice' && $question->options->count() > 0)
+                                                                                <div class="space-y-2">
+                                                                                    @foreach($question->options as $option)
+                                                                                        <label class="flex items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                                                            <input type="radio"
+                                                                                                   name="answers[{{ $question->id }}]"
+                                                                                                   value="{{ $option->id }}"
+                                                                                                   class="mr-3 text-orange-600">
+                                                                                            <span>{{ $option->option_text }}</span>
+                                                                                        </label>
+                                                                                    @endforeach
+                                                                                </div>
+                                                                            @else
+                                                                                <textarea name="answers[{{ $question->id }}]"
+                                                                                          rows="3"
+                                                                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                                                                                          placeholder="Write your detailed answer based on what you heard..."></textarea>
+                                                                            @endif
+                                                                        @endif
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+
+                                                            <div class="flex items-center justify-between mt-6 pt-4 border-t border-orange-200">
+                                                                <button type="button"
+                                                                        onclick="toggleAudioQuiz()"
+                                                                        class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition-colors">
+                                                                    Cancel
+                                                                </button>
+                                                                <button type="submit"
+                                                                        class="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-colors">
+                                                                    Submit Quiz
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    @else
+                                                        <div class="text-center py-8 text-gray-500">
+                                                            <p>No questions available for this audio quiz yet.</p>
+                                                            <p class="text-sm mt-2">Questions will be added by the instructor.</p>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @else
+                                            <!-- Show message if audio has no quiz -->
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                                                <div class="flex items-center">
+                                                    <svg class="w-5 h-5 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                                    </svg>
+                                                    <span class="text-blue-800 text-sm">This audio content doesn't have an interactive quiz yet.</span>
+                                                </div>
+                                                <div class="mt-3 text-xs text-gray-600">
+                                                    <strong>For admins:</strong> Audio quiz can be enabled when creating/editing content by checking the "🧠 Tambahkan Quiz Interaktif" option.
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <!-- Learning Tips -->
+                                        <div class="bg-teal-100 rounded-lg p-4 mt-6">
+                                            <h5 class="font-medium text-teal-900 mb-2">Learning Tips:</h5>
+                                            <ul class="text-sm text-teal-800 space-y-1">
+                                                <li>• Listen to the audio multiple times</li>
+                                                <li>• Adjust playback speed as needed</li>
+                                                <li>• Try to understand without transcript first</li>
+                                                <li>• Take notes of key vocabulary</li>
+                                                @if($content->quiz_id)
+                                                    <li>• Complete the interactive quiz to test your comprehension</li>
+                                                @endif
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                @else
+                                    <div class="text-center text-gray-500 py-8">
+                                        <p>Tipe konten tidak didukung: {{ $content->type }}</p>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -1154,6 +1646,22 @@
         </div>
 
     <style>
+        /* Alpine.js cloaking */
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Prevent layout shift during initialization */
+        .sidebar-container {
+            min-width: 384px;
+        }
+
+        @media (max-width: 1023px) {
+            .sidebar-container {
+                min-width: 0;
+            }
+        }
+
         .prose {
             color: #374151;
         }
@@ -1295,19 +1803,25 @@
 
         // ✅ PERBAIKAN: Auto-hide mobile sidebar when scrolling
         let lastScrollTop = 0;
-
-        window.addEventListener('scroll', function() {
+        let scrollHandler = function() {
             if (window.innerWidth < 1024) {
                 let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 if (scrollTop > lastScrollTop && scrollTop > 100) {
-                    // Check if Alpine.js is available before using it
-                    if (window.Alpine && window.Alpine.store) {
-                        window.Alpine.store('sidebarOpen', false);
+                    // Find Alpine component and close sidebar
+                    const alpineComponent = document.querySelector('[x-data]');
+                    if (alpineComponent && alpineComponent._x_dataStack) {
+                        alpineComponent._x_dataStack[0].sidebarOpen = false;
                     }
                 }
                 lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
             }
-        }, false);
+        };
+
+        // Only add scroll listener once
+        if (!window.scrollListenerAdded) {
+            window.addEventListener('scroll', scrollHandler, { passive: true });
+            window.scrollListenerAdded = true;
+        }
 
         // ✅ PERBAIKAN: Enhanced keyboard shortcuts
         document.addEventListener('keydown', function(e) {
@@ -1358,22 +1872,182 @@
         });
 
         // ✅ PERBAIKAN: Handle window resize for bottom bar
-        window.addEventListener('resize', function() {
+        let resizeHandler = function() {
             // Force re-calculation of bottom bar position
-            if (window.innerWidth >= 1024) {
-                // Desktop view - adjust bottom bar based on sidebar state
-                const bottomBar = document.querySelector('.fixed.bottom-0');
-                if (bottomBar) {
-                    const sidebarOpen = document.querySelector('[x-data]').__x_component?.sidebarOpen;
+            const bottomBar = document.querySelector('.fixed.bottom-0');
+            if (bottomBar) {
+                if (window.innerWidth >= 1024) {
+                    // Desktop view - adjust bottom bar based on sidebar state
+                    const alpineComponent = document.querySelector('[x-data]');
+                    const sidebarOpen = alpineComponent && alpineComponent._x_dataStack ?
+                        alpineComponent._x_dataStack[0].sidebarOpen : true;
                     bottomBar.style.left = sidebarOpen ? '384px' : '0px';
-                }
-            } else {
-                // Mobile view - reset bottom bar
-                const bottomBar = document.querySelector('.fixed.bottom-0');
-                if (bottomBar) {
+                } else {
+                    // Mobile view - reset bottom bar
                     bottomBar.style.left = '0px';
                 }
             }
+        };
+
+        // Only add resize listener once
+        if (!window.resizeListenerAdded) {
+            window.addEventListener('resize', resizeHandler, { passive: true });
+            window.resizeListenerAdded = true;
+        }
+
+        // Toggle Audio Quiz Function
+        function toggleAudioQuiz() {
+            const quizSection = document.getElementById('audioQuizSection');
+            if (quizSection) {
+                if (quizSection.style.display === 'none') {
+                    quizSection.style.display = 'block';
+                    // Scroll to quiz section
+                    quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    quizSection.style.display = 'none';
+                }
+            }
+        }
+
+        // Audio Player Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const audioPlayer = document.getElementById('audioPlayer');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const speedControl = document.getElementById('speedControl');
+            const currentTimeSpan = document.getElementById('currentTime');
+            const progressBar = document.getElementById('progressBar');
+            const transcriptBtn = document.getElementById('transcriptBtn');
+            const transcriptSection = document.getElementById('transcriptSection');
+
+            if (!audioPlayer) return; // Exit if no audio player found
+
+            // Add error handling for audio loading
+            audioPlayer.addEventListener('error', function(e) {
+                console.error('Audio loading error:', e);
+                // Show user-friendly error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-red-50 border border-red-200 rounded-lg p-4 mt-4';
+                errorDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-red-700 text-sm">Audio file cannot be loaded. Please check the file format or contact support.</span>
+                    </div>
+                `;
+                audioPlayer.parentElement.insertBefore(errorDiv, audioPlayer.nextSibling);
+            });
+
+            // Add loading event
+            audioPlayer.addEventListener('loadstart', function() {
+                console.log('Audio loading started');
+            });
+
+            audioPlayer.addEventListener('canplaythrough', function() {
+                console.log('Audio can play through');
+            });
+
+            // Update play/pause button icon
+            function updatePlayPauseIcon(isPlaying) {
+                const svg = playPauseBtn.querySelector('svg path');
+                if (svg) {
+                    if (isPlaying) {
+                        // Pause icon - two vertical bars
+                        svg.setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z');
+                    } else {
+                        // Play icon - triangle pointing right
+                        svg.setAttribute('d', 'M8 5v14l11-7z');
+                    }
+                }
+            }
+
+            // Format time to MM:SS
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = Math.floor(seconds % 60);
+                return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }
+
+            // Play/Pause functionality
+            if (playPauseBtn) {
+                playPauseBtn.addEventListener('click', function() {
+                    if (audioPlayer.paused) {
+                        audioPlayer.play().catch(error => {
+                            console.error('Error playing audio:', error);
+                            alert('Cannot play audio. Please check your browser settings.');
+                        });
+                    } else {
+                        audioPlayer.pause();
+                    }
+                });
+
+                // Update button when audio state changes
+                audioPlayer.addEventListener('play', () => updatePlayPauseIcon(true));
+                audioPlayer.addEventListener('pause', () => updatePlayPauseIcon(false));
+                audioPlayer.addEventListener('ended', () => updatePlayPauseIcon(false));
+            }
+
+            // Speed control
+            if (speedControl) {
+                speedControl.addEventListener('change', function() {
+                    audioPlayer.playbackRate = parseFloat(this.value);
+                });
+            }
+
+            // Time and progress updates
+            if (currentTimeSpan && progressBar) {
+                audioPlayer.addEventListener('timeupdate', function() {
+                    const currentTime = audioPlayer.currentTime;
+                    const duration = audioPlayer.duration;
+
+                    // Update current time display
+                    currentTimeSpan.textContent = formatTime(currentTime);
+
+                    // Update progress bar
+                    if (duration > 0) {
+                        const progress = (currentTime / duration) * 100;
+                        progressBar.style.width = progress + '%';
+                    }
+                });
+
+                // Make progress bar clickable
+                progressBar.parentElement.addEventListener('click', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const width = rect.width;
+                    const clickTime = (clickX / width) * audioPlayer.duration;
+
+                    if (audioPlayer.duration > 0) {
+                        audioPlayer.currentTime = clickTime;
+                    }
+                });
+
+                progressBar.parentElement.style.cursor = 'pointer';
+            }
+
+            // Transcript toggle functionality
+            if (transcriptBtn && transcriptSection) {
+                let transcriptVisible = false;
+
+                transcriptBtn.addEventListener('click', function() {
+                    transcriptVisible = !transcriptVisible;
+
+                    if (transcriptVisible) {
+                        transcriptSection.style.display = 'block';
+                        transcriptBtn.textContent = 'Hide Transcript';
+                        transcriptBtn.classList.remove('bg-teal-500', 'hover:bg-teal-600');
+                        transcriptBtn.classList.add('bg-gray-500', 'hover:bg-gray-600');
+                    } else {
+                        transcriptSection.style.display = 'none';
+                        transcriptBtn.textContent = 'Show Transcript';
+                        transcriptBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+                        transcriptBtn.classList.add('bg-teal-500', 'hover:bg-teal-600');
+                    }
+                });
+            }
+
+            // Initialize play button icon
+            updatePlayPauseIcon(false);
         });
     </script>
 </x-app-layout>

@@ -181,36 +181,103 @@
         @endpush
 
     @else
-        <!-- Regular YouTube Player (Fallback) -->
-        <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
-            <iframe
-                class="w-full h-full"
-                src="{{ $content->youtube_embed_url }}"
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                onerror="this.style.display='none'; document.getElementById('youtube-fallback-{{ $content->id }}').style.display='block';">
-            </iframe>
-        </div>
-        
-        <!-- Fallback untuk iframe error -->
-        <div id="youtube-fallback-{{ $content->id }}" style="display:none;" class="mt-4">
-            <p class="text-center text-yellow-600 bg-yellow-100 p-4 rounded-lg">
-                Video tidak dapat diputar di sini.
-            </p>
-            <a href="{{ $content->body }}" target="_blank" rel="noopener noreferrer" class="block group mt-2">
-                <div class="relative rounded-2xl overflow-hidden shadow-lg">
-                    <img src="{{ $content->youtube_thumbnail_url }}" alt="Video thumbnail" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center group-hover:bg-opacity-60 transition-all duration-300">
-                        <div class="text-center text-white">
-                            <svg class="w-20 h-20 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"></path>
-                            </svg>
-                            <p class="font-bold text-xl mt-2">Tonton di YouTube</p>
+        @if($content->file_path && $content->type === 'video')
+            <!-- Uploaded Video Player -->
+            <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+                <video
+                    class="w-full h-full object-contain"
+                    controls
+                    preload="metadata"
+                    poster="{{ $content->youtube_thumbnail_url ?? '' }}"
+                    onloadstart="this.volume=0.8">
+
+                    <source src="{{ Storage::url($content->file_path) }}"
+                            type="{{ $content->audio_metadata['mime_type'] ?? 'video/mp4' }}">
+
+                    <!-- Fallback for different formats -->
+                    @if(!isset($content->audio_metadata['mime_type']) || $content->audio_metadata['mime_type'] === 'video/mp4')
+                        <source src="{{ Storage::url($content->file_path) }}" type="video/mp4">
+                    @endif
+                    @if(!isset($content->audio_metadata['mime_type']) || $content->audio_metadata['mime_type'] === 'video/quicktime')
+                        <source src="{{ Storage::url($content->file_path) }}" type="video/quicktime">
+                    @endif
+                    @if(!isset($content->audio_metadata['mime_type']) || $content->audio_metadata['mime_type'] === 'video/webm')
+                        <source src="{{ Storage::url($content->file_path) }}" type="video/webm">
+                    @endif
+
+                    <p class="text-white p-4">
+                        Your browser doesn't support HTML5 video.
+                        <a href="{{ Storage::url($content->file_path) }}" class="text-blue-300 underline">Download the video</a> instead.
+                    </p>
+                </video>
+            </div>
+
+            <!-- Video Information -->
+            @if($content->audio_metadata)
+                <div class="mt-4 bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between text-sm text-gray-600">
+                        <div class="flex items-center space-x-4">
+                            @if(isset($content->audio_metadata['duration_seconds']))
+                                <span>⏱️ {{ gmdate('H:i:s', $content->audio_metadata['duration_seconds']) }}</span>
+                            @endif
+                            @if(isset($content->audio_metadata['file_size']))
+                                <span>📁 {{ number_format($content->audio_metadata['file_size'] / 1024 / 1024, 1) }} MB</span>
+                            @endif
+                            @if(isset($content->audio_metadata['mime_type']))
+                                <span>🎬 {{ strtoupper(str_replace('video/', '', $content->audio_metadata['mime_type'])) }}</span>
+                            @endif
                         </div>
+                        <a href="{{ Storage::url($content->file_path) }}" download class="text-indigo-600 hover:text-indigo-800 font-medium">
+                            Download
+                        </a>
                     </div>
                 </div>
+            @endif
+
+        @elseif($content->youtube_embed_url)
+            <!-- Regular YouTube Player -->
+            <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+                <iframe
+                    class="w-full h-full"
+                    src="{{ $content->youtube_embed_url }}"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                    onerror="this.style.display='none'; document.getElementById('youtube-fallback-{{ $content->id }}').style.display='block';">
+                </iframe>
+            </div>
+
+            <!-- Fallback untuk iframe error -->
+            <div id="youtube-fallback-{{ $content->id }}" style="display:none;" class="mt-4">
+                <p class="text-center text-yellow-600 bg-yellow-100 p-4 rounded-lg">
+                    Video tidak dapat diputar di sini.
+                </p>
+                <a href="{{ $content->body }}" target="_blank" rel="noopener noreferrer" class="block group mt-2">
+                    <div class="relative rounded-2xl overflow-hidden shadow-lg">
+                        <img src="{{ $content->youtube_thumbnail_url }}" alt="Video thumbnail" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center group-hover:bg-opacity-60 transition-all duration-300">
+                            <div class="text-center text-white">
+                                <svg class="w-20 h-20 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"></path>
+                                </svg>
+                                <p class="font-bold text-xl mt-2">Tonton di YouTube</p>
+                            </div>
+                        </div>
+                    </div>
             </a>
         </div>
+
+        @else
+            <!-- No Video Content Available -->
+            <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-gray-100 flex items-center justify-center">
+                <div class="text-center text-gray-500 p-8">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <p class="text-lg font-medium">No video content available</p>
+                    <p class="text-sm mt-1">Please upload a video file or provide a YouTube URL</p>
+                </div>
+            </div>
+        @endif
     @endif
 </div>

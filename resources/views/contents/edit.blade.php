@@ -166,6 +166,7 @@
                                          :class="content.type === 'video' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'">
                                         <div class="text-2xl mb-2">🎥</div>
                                         <div class="text-xs font-medium">Video</div>
+                                        <div class="text-xs text-gray-500 mt-1">Upload file atau URL</div>
                                     </div>
                                 </label>
 
@@ -175,6 +176,7 @@
                                          :class="content.type === 'document' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'">
                                         <div class="text-2xl mb-2">📄</div>
                                         <div class="text-xs font-medium">Dokumen</div>
+                                        <div class="text-xs text-gray-500 mt-1">PDF, DOC, XLS, PPT</div>
                                     </div>
                                 </label>
 
@@ -211,6 +213,15 @@
                                          :class="content.type === 'zoom' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'">
                                         <div class="text-2xl mb-2">💻</div>
                                         <div class="text-xs font-medium">Zoom</div>
+                                    </div>
+                                </label>
+
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="type" value="audio" x-model="content.type" class="sr-only">
+                                    <div class="p-4 border-2 rounded-xl text-center transition-all duration-300 hover:shadow-md"
+                                         :class="content.type === 'audio' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'">
+                                        <div class="text-2xl mb-2">🎵</div>
+                                        <div class="text-xs font-medium">Audio</div>
                                     </div>
                                 </label>
                             </div>
@@ -553,25 +564,95 @@
 
                         <div x-show="isType('video')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
-                                <label for="video_url" class="block text-sm font-semibold text-gray-700 mb-3">
-                                    🎥 URL Video YouTube/Vimeo
-                                </label>
-                                <input type="url"
-                                       name="body_video"
-                                       x-model="content.body"
-                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all duration-300"
-                                       placeholder="https://www.youtube.com/watch?v=...">
-                                <p class="text-sm text-gray-500 mt-2">Masukkan URL lengkap video dari YouTube atau Vimeo</p>
-                                @error('body_video')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                <div class="mb-6">
+                                    <div class="flex items-center space-x-4 mb-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="video_source" value="url" class="mr-2" x-model="videoSource" @change="clearVideoInputs()" :checked="videoSource === 'url'">
+                                            <span class="font-medium">🔗 URL Video</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="video_source" value="file" class="mr-2" x-model="videoSource" @change="clearVideoInputs()" :checked="videoSource === 'file'">
+                                            <span class="font-medium">📁 Upload File</span>
+                                        </label>
+                                    </div>
+                                </div>
 
-                                <div x-show="content.body && content.body.includes('youtube')" class="mt-4">
-                                    <div class="bg-white rounded-lg p-4 border">
-                                        <h4 class="font-medium text-gray-900 mb-2">Preview Video:</h4>
-                                        <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                                            <span class="text-gray-500">Video akan ditampilkan di sini</span>
+                                <div x-show="videoSource === 'url'">
+                                    <label for="video_url" class="block text-sm font-semibold text-gray-700 mb-3">
+                                        🎥 URL Video YouTube/Vimeo
+                                    </label>
+                                    <input type="url"
+                                           name="body_video"
+                                           x-model="content.body"
+                                           class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all duration-300"
+                                           placeholder="https://www.youtube.com/watch?v=...">
+                                    <p class="text-sm text-gray-500 mt-2">Masukkan URL lengkap video dari YouTube atau Vimeo</p>
+                                    @error('body_video')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+
+                                    <div x-show="content.body && content.body.includes('youtube')" class="mt-4">
+                                        <div class="bg-white rounded-lg p-4 border">
+                                            <h4 class="font-medium text-gray-900 mb-2">Preview Video:</h4>
+                                            <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                                                <span class="text-gray-500">Video akan ditampilkan di sini</span>
+                                            </div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div x-show="videoSource === 'file'">
+                                    <label for="video_file" class="block text-sm font-semibold text-gray-700 mb-3">
+                                        🎬 Upload File Video
+                                    </label>
+
+                                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-400 transition-colors duration-300"
+                                         @dragover="handleDragOver($event)"
+                                         @dragenter="handleDragEnter($event, 'video')"
+                                         @dragleave="handleDragLeave($event, 'video')"
+                                         @drop="handleDrop($event, 'video_file_edit')">
+                                        <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                        </svg>
+                                        <input type="file"
+                                               name="video_file"
+                                               id="video_file_edit"
+                                               class="hidden"
+                                               accept=".mp4,.mov,.avi,.mkv,.webm,.flv,.wmv,.3gp"
+                                               @change="handleVideoFileSelect($event)">
+                                        <label for="video_file_edit" class="cursor-pointer">
+                                            <span class="text-red-600 font-medium hover:text-red-500">Klik untuk memilih video</span>
+                                            <span class="text-gray-500"> atau drag & drop file di sini</span>
+                                        </label>
+                                        <p class="text-sm text-gray-500 mt-2">Format: MP4, MOV, AVI, MKV, WebM, FLV, WMV, 3GP</p>
+                                        <p class="text-xs text-gray-400 mt-1">Maksimal 500MB</p>
+                                    </div>
+
+                                    @if($content->file_path && $content->type === 'video')
+                                        <div class="mt-4 p-4 bg-white rounded-lg border">
+                                            <h4 class="font-medium text-gray-900 mb-2">File Video Saat Ini:</h4>
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                                    🎬
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-medium text-gray-900">{{ basename($content->file_path) }}</p>
+                                                    @if($content->audio_metadata && isset($content->audio_metadata['file_size']))
+                                                        <p class="text-xs text-gray-500">{{ number_format($content->audio_metadata['file_size'] / 1024 / 1024, 2) }} MB</p>
+                                                    @endif
+                                                </div>
+                                                <a href="{{ Storage::url($content->file_path) }}" target="_blank" class="text-red-600 hover:text-red-800 text-sm">
+                                                    Lihat File
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <div x-show="videoUploadProgress" class="mt-4">
+                                        <div class="bg-gray-200 rounded-full h-2">
+                                            <div class="bg-red-500 h-2 rounded-full transition-all duration-300" :style="`width: ${videoUploadProgress}%`"></div>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-2" x-text="videoUploadText"></p>
                                     </div>
                                 </div>
                             </div>
@@ -622,20 +703,27 @@
                                     </div>
                                 </div>
 
-                                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 transition-colors duration-300">
+                                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 transition-colors duration-300"
+                                     @dragover="handleDragOver($event)"
+                                     @dragenter="handleDragEnter($event, 'document')"
+                                     @dragleave="handleDragLeave($event, 'document')"
+                                     @drop="handleDrop($event, 'file_upload')">
                                     <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                     </svg>
                                     <input type="file" name="file_upload" id="file_upload" class="hidden"
                                         @change="handleFileUpload($event)"
-                                        :accept="isType('image') ? 'image/*' : ''">
+                                        :accept="isType('image') ? 'image/*' : (isType('document') ? '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt' : '')">
                                     <label for="file_upload" class="cursor-pointer">
                                         <span class="text-green-600 font-medium hover:text-green-500">
                                             <span x-text="content.file_path ? 'Ganti file' : 'Pilih file'"></span>
                                         </span>
-                                        <span class="text-gray-500"> atau drag & drop</span>
+                                        <span class="text-gray-500"> atau drag & drop file di sini</span>
                                     </label>
-                                    <p class="text-sm text-gray-500 mt-2">Maksimal 100MB</p>
+                                    <p class="text-sm text-gray-500 mt-2">
+                                        <span x-show="isType('document')">PDF (preview inline), DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT - Max 100MB</span>
+                                        <span x-show="isType('image')">JPG, PNG, GIF - Max 100MB</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -789,6 +877,360 @@
                         </div>
                     </div>
 
+                    <div x-show="isType('audio')" x-cloak class="animate-fadeIn">
+                        <div class="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-6 border border-teal-100">
+                            <div class="flex items-start mb-6">
+                                <div class="flex-shrink-0">
+                                    <div class="w-10 h-10 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center">
+                                        🎵
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h3 class="text-lg font-semibold text-gray-900">Audio Learning</h3>
+                                    <p class="text-sm text-gray-600 mt-1">Upload audio file dan buat soal interaktif untuk pembelajaran bahasa</p>
+                                </div>
+                            </div>
+
+                            <!-- Audio Type Selection -->
+                            <div class="mb-6">
+                                <h4 class="text-md font-semibold text-gray-800 mb-4">🎯 Tipe Audio Learning</h4>
+
+                                <div class="space-y-3">
+                                    <label class="flex items-start p-4 border-2 rounded-xl transition-colors cursor-pointer"
+                                           :class="audioType === 'simple' ? 'border-teal-400 bg-teal-50' : 'border-gray-200 hover:border-teal-300'">
+                                        <input type="radio" name="audio_type" value="simple" class="mt-1 mr-3 text-teal-600"
+                                               x-model="audioType" @change="updateAudioType()">
+                                        <div>
+                                            <div class="font-medium text-gray-800">📚 Audio Content Sederhana</div>
+                                            <div class="text-sm text-gray-600 mt-1">Audio dengan quiz sederhana sebagai bagian course</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start p-4 border-2 rounded-xl transition-colors cursor-pointer"
+                                           :class="audioType === 'existing_lesson' ? 'border-teal-400 bg-teal-50' : 'border-gray-200 hover:border-teal-300'">
+                                        <input type="radio" name="audio_type" value="existing_lesson" class="mt-1 mr-3 text-teal-600"
+                                               x-model="audioType" @change="updateAudioType()">
+                                        <div>
+                                            <div class="font-medium text-gray-800">🔗 Link ke Audio Learning</div>
+                                            <div class="text-sm text-gray-600 mt-1">Hubungkan dengan audio learning yang sudah ada</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start p-4 border-2 rounded-xl transition-colors cursor-pointer"
+                                           :class="audioType === 'new_lesson' ? 'border-teal-400 bg-teal-50' : 'border-gray-200 hover:border-teal-300'">
+                                        <input type="radio" name="audio_type" value="new_lesson" class="mt-1 mr-3 text-teal-600"
+                                               x-model="audioType" @change="updateAudioType()">
+                                        <div>
+                                            <div class="font-medium text-gray-800">✨ Buat Audio Learning Baru</div>
+                                            <div class="text-sm text-gray-600 mt-1">Buat audio learning lengkap yang juga muncul di halaman Audio Learning</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Existing Audio Lesson Selection -->
+                            <div x-show="audioType === 'existing_lesson'" class="mb-6">
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                    🎵 Pilih Audio Learning
+                                </label>
+                                <select name="audio_lesson_id" x-model="content.audio_lesson_id"
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all duration-300">
+                                    <option value="">Pilih audio learning yang sudah ada...</option>
+                                    @foreach(App\Models\AudioLesson::active()->availableForCourses()->get() as $audioLesson)
+                                        <option value="{{ $audioLesson->id }}" {{ old('audio_lesson_id', $content->audio_lesson_id) == $audioLesson->id ? 'selected' : '' }}>
+                                            {{ $audioLesson->title }} ({{ ucfirst($audioLesson->difficulty_level) }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- New Audio Learning Creation -->
+                            <div x-show="audioType === 'new_lesson'" class="mb-6">
+                                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
+                                    <h4 class="font-semibold text-gray-800 mb-4">✨ Buat Audio Learning Baru</h4>
+                                    <p class="text-sm text-gray-600 mb-4">Audio learning ini akan muncul di halaman Audio Learning dan dapat digunakan di course lain</p>
+
+                                    <!-- Audio Learning Title -->
+                                    <div class="mb-4">
+                                        <label for="new_lesson_title" class="block text-sm font-medium text-gray-700 mb-2">
+                                            📝 Judul Audio Learning
+                                        </label>
+                                        <input type="text" name="new_lesson_title" id="new_lesson_title"
+                                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-300"
+                                               placeholder="Contoh: Basic English Conversation - Greetings"
+                                               :value="content.title">
+                                    </div>
+
+                                    <!-- Audio Learning Description -->
+                                    <div class="mb-4">
+                                        <label for="new_lesson_description" class="block text-sm font-medium text-gray-700 mb-2">
+                                            📄 Deskripsi Audio Learning
+                                        </label>
+                                        <textarea name="new_lesson_description" id="new_lesson_description" rows="3"
+                                                  class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-300"
+                                                  placeholder="Deskripsi singkat tentang apa yang akan dipelajari..."
+                                                  x-text="content.description"></textarea>
+                                    </div>
+
+                                    <!-- Audio Learning Category -->
+                                    <div class="mb-4">
+                                        <label for="new_lesson_category" class="block text-sm font-medium text-gray-700 mb-2">
+                                            🏷️ Kategori
+                                        </label>
+                                        <select name="new_lesson_category" id="new_lesson_category"
+                                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-300">
+                                            <option value="conversation">💬 Conversation</option>
+                                            <option value="listening">👂 Listening</option>
+                                            <option value="pronunciation">🗣️ Pronunciation</option>
+                                            <option value="grammar">📚 Grammar</option>
+                                            <option value="vocabulary">📝 Vocabulary</option>
+                                            <option value="business">💼 Business English</option>
+                                            <option value="academic">🎓 Academic</option>
+                                            <option value="general" selected>🌟 General</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="bg-purple-100 rounded-lg p-3 border border-purple-200">
+                                        <p class="text-sm text-purple-800">
+                                            💡 <strong>Tips:</strong> Audio learning yang dibuat akan memiliki sistem exercise yang lebih lengkap dan muncul di halaman Audio Learning untuk bisa digunakan di course lain.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Current Audio File Display -->
+                            <div x-show="(audioType === 'simple' || audioType === 'new_lesson') && content.audio_file_path && !uploadedAudioFileName" class="mb-6 p-4 bg-white rounded-lg border border-teal-200">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 bg-teal-100 text-teal-600 rounded-lg flex items-center justify-center mr-3">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">File audio saat ini:</p>
+                                            <a :href="`/storage/${content.audio_file_path}`"
+                                               target="_blank"
+                                               class="text-teal-600 hover:text-teal-800 text-sm underline"
+                                               x-text="content.audio_file_path ? content.audio_file_path.split('/').pop() : ''"></a>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-1 bg-teal-100 text-teal-700 rounded-full text-xs">Aktif</span>
+                                </div>
+                                <div class="mt-3">
+                                    <audio controls class="w-full">
+                                        <source :src="`/storage/${content.audio_file_path}`" type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+
+                            <!-- New Audio File Upload -->
+                            <div x-show="audioType === 'simple' || audioType === 'new_lesson'" class="mb-6">
+                                <label for="audio_file" class="block text-sm font-semibold text-gray-700 mb-3">
+                                    🎧 File Audio
+                                </label>
+                                <div class="border-2 border-dashed border-teal-300 rounded-xl p-8 text-center hover:border-teal-400 transition-colors duration-300"
+                                     @dragover="handleDragOver($event)"
+                                     @dragenter="handleDragEnter($event, 'audio')"
+                                     @dragleave="handleDragLeave($event, 'audio')"
+                                     @drop="handleDrop($event, 'audio_file')">
+                                    <div class="mb-4">
+                                        <svg class="mx-auto h-12 w-12 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" />
+                                        </svg>
+                                    </div>
+                                    <div class="text-sm">
+                                        <label for="audio_file" class="relative cursor-pointer bg-white rounded-md font-medium text-teal-600 hover:text-teal-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-teal-500">
+                                            <span x-text="content.audio_file_path ? 'Ganti file audio' : 'Upload audio file'"></span>
+                                            <input id="audio_file" name="audio_file" type="file" class="sr-only"
+                                                   accept="audio/*" @change="handleAudioUpload($event)">
+                                        </label>
+                                        <p class="pl-1">atau drag and drop file di sini</p>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">MP3, WAV, atau M4A up to 50MB</p>
+                                </div>
+
+                                <div x-show="uploadedAudioFileName" class="mt-4 p-4 bg-teal-50 rounded-lg border border-teal-200">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0">
+                                                <svg class="h-8 w-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                                                </svg>
+                                            </div>
+                                            <div class="ml-3 flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900" x-text="uploadedAudioFileName"></p>
+                                                <p class="text-sm text-gray-500">File baru dipilih</p>
+                                            </div>
+                                        </div>
+                                        <audio x-show="uploadedAudioPreviewUrl" id="audio_player_new" controls class="ml-4">
+                                            Your browser does not support the audio element.
+                                        </audio>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Audio Transcript -->
+                            <div x-show="audioType === 'simple' || audioType === 'new_lesson'" class="mb-6">
+                                <label for="audio_transcript" class="block text-sm font-semibold text-gray-700 mb-3">
+                                    📝 Transkrip Audio (Opsional)
+                                </label>
+                                <textarea name="audio_transcript" id="audio_transcript" rows="4"
+                                          x-model="content.audio_transcript"
+                                          class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all duration-300 placeholder-gray-400"
+                                          placeholder="Masukkan transkrip audio untuk membantu pembelajaran..."></textarea>
+                                <p class="text-sm text-gray-500 mt-2">Transkrip akan membantu learner memahami audio dengan lebih baik</p>
+                            </div>
+
+                            <!-- Difficulty Level -->
+                            <div x-show="audioType === 'simple' || audioType === 'new_lesson'" class="mb-6">
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                    📊 Tingkat Kesulitan
+                                </label>
+                                <div class="flex space-x-4">
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="audio_difficulty" value="beginner"
+                                               x-model="content.audio_difficulty"
+                                               class="form-radio h-4 w-4 text-teal-600">
+                                        <span class="ml-2 text-sm text-gray-700">🟢 Beginner</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="audio_difficulty" value="intermediate"
+                                               x-model="content.audio_difficulty"
+                                               class="form-radio h-4 w-4 text-teal-600">
+                                        <span class="ml-2 text-sm text-gray-700">🟡 Intermediate</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="audio_difficulty" value="advanced"
+                                               x-model="content.audio_difficulty"
+                                               class="form-radio h-4 w-4 text-teal-600">
+                                        <span class="ml-2 text-sm text-gray-700">🔴 Advanced</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Quiz Integration -->
+                            <div class="mb-6">
+                                <div class="flex items-center mb-3">
+                                    <input type="checkbox" id="audio_has_quiz" name="audio_has_quiz" value="1"
+                                           x-model="content.audio_has_quiz"
+                                           class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded">
+                                    <label for="audio_has_quiz" class="ml-2 text-sm font-medium text-gray-700">
+                                        🧠 Tambahkan Quiz Interaktif
+                                    </label>
+                                </div>
+                                <p class="text-sm text-gray-500">Aktifkan untuk membuat soal interaktif berdasarkan audio</p>
+                            </div>
+
+                            <!-- Quiz Settings -->
+                            <div x-show="content.audio_has_quiz" class="mb-6">
+                                <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
+                                    <h4 class="font-medium text-gray-900 mb-4">⚙️ Pengaturan Quiz Audio</h4>
+
+                                    <!-- Time Limit -->
+                                    <div class="mb-4">
+                                        <label for="audio_time_limit" class="block text-sm font-medium text-gray-700 mb-2">
+                                            ⏱️ Durasi Pengerjaan (Menit)
+                                        </label>
+                                        <input type="text"
+                                               inputmode="numeric"
+                                               name="time_limit"
+                                               id="audio_time_limit"
+                                               x-model="content.quiz.time_limit"
+                                               @input="$event.target.value = $event.target.value.replace(/[^0-9]/g, '')"
+                                               class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200"
+                                               placeholder="60">
+                                        <p class="text-xs text-gray-500 mt-1">Biarkan kosong untuk tanpa batas waktu</p>
+                                    </div>
+
+                                    <!-- Quiz Details and Questions Editor -->
+                                    <div x-show="content.quiz && content.quiz.questions && content.quiz.questions.length > 0" class="mt-6">
+                                        <div class="bg-white rounded-lg border border-teal-200 p-4">
+                                            <h4 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                                🎧 Quiz Audio Interactive
+                                                <span class="ml-2 px-2 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
+                                                    <span x-text="content.quiz.questions ? content.quiz.questions.length : 0"></span> Soal
+                                                </span>
+                                            </h4>
+
+                                            @include('quizzes.partials.full-quiz-form')
+                                        </div>
+                                    </div>
+
+                                    <!-- Initial Setup for New Audio Quiz -->
+                                    <div x-show="!content.quiz || !content.quiz.questions || content.quiz.questions.length === 0" class="mt-4">
+                                        <div class="bg-teal-50 rounded-lg p-4 border border-teal-200">
+                                            <div class="flex items-start">
+                                                <svg class="w-5 h-5 text-teal-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <div>
+                                                    <p class="text-sm text-teal-800 font-medium mb-2">Setup Awal Quiz Audio</p>
+                                                    <div class="text-sm text-teal-700 space-y-1">
+                                                        <p>• Centang tipe soal yang ingin dibuat</p>
+                                                        <p>• Setelah save, soal template akan otomatis dibuat</p>
+                                                        <p>• Anda bisa mengedit detail soal di form di bawah</p>
+                                                    </div>
+
+                                                    <div class="mt-4">
+                                                        <label class="block text-sm font-medium text-teal-700 mb-2">
+                                                            📝 Pilih Tipe Soal untuk Template
+                                                        </label>
+                                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                            <label class="inline-flex items-center">
+                                                                <input type="checkbox" name="audio_quiz_types[]" value="multiple_choice"
+                                                                       class="form-checkbox h-4 w-4 text-teal-600" checked>
+                                                                <span class="ml-2 text-sm text-gray-700">📋 Multiple Choice</span>
+                                                            </label>
+                                                            <label class="inline-flex items-center">
+                                                                <input type="checkbox" name="audio_quiz_types[]" value="fill_blank"
+                                                                       class="form-checkbox h-4 w-4 text-teal-600">
+                                                                <span class="ml-2 text-sm text-gray-700">✏️ Fill in the Blanks</span>
+                                                            </label>
+                                                            <label class="inline-flex items-center">
+                                                                <input type="checkbox" name="audio_quiz_types[]" value="true_false"
+                                                                       class="form-checkbox h-4 w-4 text-teal-600">
+                                                                <span class="ml-2 text-sm text-gray-700">✅ True/False</span>
+                                                            </label>
+                                                            <label class="inline-flex items-center">
+                                                                <input type="checkbox" name="audio_quiz_types[]" value="listening_comprehension"
+                                                                       class="form-checkbox h-4 w-4 text-teal-600">
+                                                                <span class="ml-2 text-sm text-gray-700">👂 Listening Comprehension</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-teal-100 rounded-lg p-4">
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0">
+                                        <svg class="w-5 h-5 text-teal-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-teal-800">
+                                            <strong>Fitur Audio Learning:</strong>
+                                        </p>
+                                        <ul class="text-sm text-teal-700 mt-2 space-y-1">
+                                            <li>• Player audio dengan kontrol kecepatan</li>
+                                            <li>• Transcript yang dapat ditampilkan/disembunyikan</li>
+                                            <li>• Progress tracking untuk pembelajaran</li>
+                                            <li>• Quiz interaktif berbasis audio (opsional)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-gray-200 space-y-4 sm:space-y-0">
                         <div class="flex items-center space-x-4">
                             <a href="{{ route('courses.show', $lesson->course) }}"
@@ -847,6 +1289,12 @@
                 formHasErrors: false,
                 uploadedFileName: '',
                 uploadedImagePreviewUrl: null,
+                uploadedAudioFileName: '',
+                uploadedAudioPreviewUrl: null,
+                videoSource: 'url',
+                videoUploadProgress: 0,
+                videoUploadText: '',
+                audioType: '{{ old('audio_type', $content->is_audio_learning ? ($content->audio_lesson_id ? 'existing_lesson' : 'new_lesson') : 'simple') }}',
 
                 initForm() {
                     if (!this.content.hasOwnProperty('grading_mode')) {
@@ -902,11 +1350,34 @@
                         this.content.timezone = 'Asia/Jakarta';
                     }
 
+                    // Initialize audio fields
+                    if (!this.content.hasOwnProperty('audio_file_path')) {
+                        this.content.audio_file_path = @json($content->audio_file_path ?? '');
+                    }
+                    if (!this.content.hasOwnProperty('audio_transcript')) {
+                        this.content.audio_transcript = @json($content->audio_transcript ?? '');
+                    }
+                    if (!this.content.hasOwnProperty('audio_difficulty')) {
+                        this.content.audio_difficulty = @json($content->audio_difficulty ?? 'beginner');
+                    }
+                    if (!this.content.hasOwnProperty('audio_has_quiz')) {
+                        this.content.audio_has_quiz = @json(!!($content->audio_has_quiz ?? false));
+                    }
+                    if (!this.content.hasOwnProperty('audio_time_limit')) {
+                        this.content.audio_time_limit = @json($content->audio_time_limit ?? '');
+                    }
+
                     // Fix quiz data conversion
                     if (this.content.quiz) {
                         this.content.quiz.show_answers_after_attempt = !!parseInt(this.content.quiz.show_answers_after_attempt);
                         if (this.content.quiz.questions) {
                             this.content.quiz.questions.forEach(q => {
+                                // Ensure new fields are initialized
+                                if (!q.hasOwnProperty('correct_answer')) q.correct_answer = '';
+                                if (!q.hasOwnProperty('alternative_answers')) q.alternative_answers = '';
+                                if (!q.hasOwnProperty('comprehension_type')) q.comprehension_type = 'text';
+                                if (!q.hasOwnProperty('expected_answer')) q.expected_answer = '';
+
                                 if (q.options) {
                                     q.options.forEach(opt => {
                                         opt.is_correct = !!parseInt(opt.is_correct);
@@ -941,7 +1412,8 @@
                         'image': 'Gambar',
                         'quiz': 'Kuis',
                         'essay': 'Esai',
-                        'zoom': 'Zoom Meeting'
+                        'zoom': 'Zoom Meeting',
+                        'audio': 'Audio Learning'
                     };
                     return labels[type] || type;
                 },
@@ -1053,6 +1525,113 @@
                     }
                 },
 
+                handleAudioUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        this.uploadedAudioFileName = '';
+                        this.uploadedAudioPreviewUrl = null;
+                        return;
+                    }
+
+                    // Validate file type
+                    if (!file.type.startsWith('audio/')) {
+                        alert('Please select a valid audio file.');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    // Validate file size (50MB max)
+                    if (file.size > 50 * 1024 * 1024) {
+                        alert('File size should not exceed 50MB.');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    this.uploadedAudioFileName = file.name;
+
+                    // Create URL for audio preview
+                    const url = URL.createObjectURL(file);
+                    this.uploadedAudioPreviewUrl = url;
+
+                    // Set source for audio player
+                    const audioPlayer = document.getElementById('audio_player_new');
+                    if (audioPlayer) {
+                        audioPlayer.src = url;
+                    }
+                },
+
+                // Video handling methods
+                clearVideoInputs() {
+                    const videoUrlInput = document.querySelector('input[name="body_video"]');
+                    const videoFileInput = document.querySelector('input[name="video_file"]');
+
+                    if (this.videoSource === 'file') {
+                        // Clear URL when switching to file
+                        if (videoUrlInput) {
+                            videoUrlInput.value = '';
+                            this.content.body = '';
+                        }
+                    } else {
+                        // Clear file when switching to URL
+                        if (videoFileInput) {
+                            videoFileInput.value = '';
+                        }
+                        this.videoUploadProgress = 0;
+                        this.videoUploadText = '';
+                    }
+                },
+
+                handleVideoFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        this.videoUploadProgress = 0;
+                        this.videoUploadText = '';
+                        return;
+                    }
+
+                    // Validate file type
+                    const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm', 'video/x-flv', 'video/x-ms-wmv', 'video/3gpp'];
+                    if (!validTypes.includes(file.type)) {
+                        alert('Please select a valid video file (MP4, MOV, AVI, MKV, WebM, FLV, WMV, 3GP).');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    // Validate file size (500MB max)
+                    if (file.size > 500 * 1024 * 1024) {
+                        alert('File size should not exceed 500MB.');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    // Clear URL when file is selected
+                    this.content.body = '';
+
+                    // Show upload progress (simulated)
+                    this.videoUploadProgress = 0;
+                    this.videoUploadText = `Uploading ${file.name}...`;
+
+                    // Simulate upload progress
+                    const interval = setInterval(() => {
+                        this.videoUploadProgress += Math.random() * 10;
+                        if (this.videoUploadProgress >= 100) {
+                            this.videoUploadProgress = 100;
+                            clearInterval(interval);
+                            this.videoUploadText = 'Upload completed!';
+                            setTimeout(() => {
+                                this.videoUploadProgress = 0;
+                                this.videoUploadText = '';
+                            }, 2000);
+                        }
+                    }, 200);
+                },
+
+                // Audio type management
+                updateAudioType() {
+                    // Logic to show/hide appropriate sections based on audio type
+                    console.log('Audio type changed to:', this.audioType);
+                },
+
                 // Quiz management methods
                 defaultQuizObject() {
                     return {
@@ -1076,6 +1655,10 @@
                         open: true,
                         options: [{ id: null, option_text: '', is_correct: false }],
                         correct_answer_tf: 'false',
+                        correct_answer: '',
+                        alternative_answers: '',
+                        comprehension_type: 'text',
+                        expected_answer: ''
                     });
                 },
 
@@ -1115,6 +1698,131 @@
                 console.log('Debug helper loaded. Call debugZoomScheduling() to inspect zoom scheduling data.');
             }
         });
+
+        // Drag and Drop Functionality
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+        }
+
+        function handleDragEnter(event, type) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+
+            // Add visual feedback based on type
+            switch(type) {
+                case 'document':
+                    dropZone.classList.add('border-green-500', 'bg-green-50');
+                    dropZone.classList.remove('border-gray-300');
+                    break;
+                case 'video':
+                    dropZone.classList.add('border-red-500', 'bg-red-50');
+                    dropZone.classList.remove('border-gray-300');
+                    break;
+                case 'audio':
+                    dropZone.classList.add('border-teal-500', 'bg-teal-50');
+                    dropZone.classList.remove('border-teal-300');
+                    break;
+            }
+        }
+
+        function handleDragLeave(event, type) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+
+            // Remove visual feedback and restore original state
+            switch(type) {
+                case 'document':
+                    dropZone.classList.remove('border-green-500', 'bg-green-50');
+                    dropZone.classList.add('border-gray-300');
+                    break;
+                case 'video':
+                    dropZone.classList.remove('border-red-500', 'bg-red-50');
+                    dropZone.classList.add('border-gray-300');
+                    break;
+                case 'audio':
+                    dropZone.classList.remove('border-teal-500', 'bg-teal-50');
+                    dropZone.classList.add('border-teal-300');
+                    break;
+            }
+        }
+
+        function handleDrop(event, inputId) {
+            event.preventDefault();
+
+            const dropZone = event.currentTarget;
+            const files = event.dataTransfer.files;
+
+            // Remove drag visual feedback
+            dropZone.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50', 'border-teal-500', 'bg-teal-50');
+            dropZone.classList.add('border-gray-300');
+            if (inputId === 'audio_file') {
+                dropZone.classList.remove('border-gray-300');
+                dropZone.classList.add('border-teal-300');
+            }
+
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const input = document.getElementById(inputId);
+
+            // Validate file based on input type
+            const accept = input.getAttribute('accept');
+            const isValid = validateFileType(file, accept);
+
+            if (!isValid) {
+                alert('Tipe file tidak didukung. Silakan pilih file yang sesuai.');
+                return;
+            }
+
+            // Create a new FileList object with the dropped file
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+
+            // Trigger the Alpine.js event handlers based on input type
+            const component = Alpine.$data(document.querySelector('[x-data*="contentFormManager"]'));
+            if (component) {
+                const mockEvent = { target: input };
+                switch(inputId) {
+                    case 'file_upload':
+                        if (component.handleFileUpload) {
+                            component.handleFileUpload(mockEvent);
+                        }
+                        break;
+                    case 'video_file_edit':
+                        if (component.handleVideoFileSelect) {
+                            component.handleVideoFileSelect(mockEvent);
+                        }
+                        break;
+                    case 'audio_file':
+                        if (component.handleAudioUpload) {
+                            component.handleAudioUpload(mockEvent);
+                        }
+                        break;
+                }
+            }
+        }
+
+        function validateFileType(file, acceptString) {
+            if (!acceptString) return true;
+
+            const acceptedTypes = acceptString.split(',').map(type => type.trim().toLowerCase());
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            const fileMimeType = file.type.toLowerCase();
+
+            // Check against file extensions and MIME types
+            return acceptedTypes.some(type => {
+                if (type.startsWith('.')) {
+                    return fileExtension === type;
+                } else if (type.includes('/*')) {
+                    const mainType = type.split('/')[0];
+                    return fileMimeType.startsWith(mainType + '/');
+                } else {
+                    return fileMimeType === type;
+                }
+            });
+        }
 
         // 🆕 TAMBAHAN: Essay Questions Manager dengan scoring awareness
         function essayQuestionsManager() {

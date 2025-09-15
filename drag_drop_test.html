@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #007cba;
+            background: #f0f8ff;
+        }
+
+        .drop-zone.document {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .drop-zone.video {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .drop-zone.audio {
+            border-color: #14b8a6;
+            background: #f0fdfa;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .test-section {
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            color: #374151;
+            margin-bottom: 15px;
+        }
+
+        .result {
+            background: #10b981;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Drag and Drop Functionality Test</h1>
+        <p>This page tests the drag and drop functionality implemented in the LMS forms.</p>
+
+        <div class="test-section">
+            <h2>🖼️ Image/Document Upload</h2>
+            <div class="drop-zone" id="document_zone"
+                 ondragover="handleDragOver(event)"
+                 ondragenter="handleDragEnter(event, 'document')"
+                 ondragleave="handleDragLeave(event, 'document')"
+                 ondrop="handleDrop(event, 'document_input')">
+                <div class="icon">📁</div>
+                <input type="file" id="document_input" accept=".pdf,.doc,.docx,.jpg,.png,.gif" onchange="handleFileSelect(this)">
+                <label for="document_input">
+                    <strong>Click to select file</strong> or drag and drop file here
+                </label>
+                <p>Supports: PDF, DOC, DOCX, JPG, PNG, GIF</p>
+            </div>
+            <div class="file-info" id="document_info"></div>
+            <div class="result" id="document_result">✅ Document drag and drop working!</div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎥 Video Upload</h2>
+            <div class="drop-zone" id="video_zone"
+                 ondragover="handleDragOver(event)"
+                 ondragenter="handleDragEnter(event, 'video')"
+                 ondragleave="handleDragLeave(event, 'video')"
+                 ondrop="handleDrop(event, 'video_input')">
+                <div class="icon">🎬</div>
+                <input type="file" id="video_input" accept=".mp4,.mov,.avi,.mkv,.webm" onchange="handleFileSelect(this)">
+                <label for="video_input">
+                    <strong>Click to select video</strong> or drag and drop video here
+                </label>
+                <p>Supports: MP4, MOV, AVI, MKV, WebM</p>
+            </div>
+            <div class="file-info" id="video_info"></div>
+            <div class="result" id="video_result">✅ Video drag and drop working!</div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎵 Audio Upload</h2>
+            <div class="drop-zone" id="audio_zone"
+                 ondragover="handleDragOver(event)"
+                 ondragenter="handleDragEnter(event, 'audio')"
+                 ondragleave="handleDragLeave(event, 'audio')"
+                 ondrop="handleDrop(event, 'audio_input')">
+                <div class="icon">🎧</div>
+                <input type="file" id="audio_input" accept="audio/*" onchange="handleFileSelect(this)">
+                <label for="audio_input">
+                    <strong>Click to select audio</strong> or drag and drop audio here
+                </label>
+                <p>Supports: MP3, WAV, M4A, etc.</p>
+            </div>
+            <div class="file-info" id="audio_info"></div>
+            <div class="result" id="audio_result">✅ Audio drag and drop working!</div>
+        </div>
+    </div>
+
+    <script>
+        // Drag and Drop Functionality (same as implemented in LMS)
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+        }
+
+        function handleDragEnter(event, type) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+            dropZone.classList.add('dragover', type);
+        }
+
+        function handleDragLeave(event, type) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+            dropZone.classList.remove('dragover', type);
+        }
+
+        function handleDrop(event, inputId) {
+            event.preventDefault();
+            const dropZone = event.currentTarget;
+            const files = event.dataTransfer.files;
+
+            // Remove drag feedback
+            dropZone.classList.remove('dragover', 'document', 'video', 'audio');
+
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const input = document.getElementById(inputId);
+
+            // Validate file type
+            const accept = input.getAttribute('accept');
+            const isValid = validateFileType(file, accept);
+
+            if (!isValid) {
+                alert('File type not supported. Please select a valid file.');
+                return;
+            }
+
+            // Create FileList and assign to input
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+
+            // Handle file selection
+            handleFileSelect(input);
+
+            // Show success message
+            const type = inputId.split('_')[0];
+            document.getElementById(type + '_result').style.display = 'block';
+        }
+
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const type = input.id.split('_')[0];
+            const infoDiv = document.getElementById(type + '_info');
+
+            infoDiv.innerHTML = `
+                <strong>Selected:</strong> ${file.name}<br>
+                <strong>Size:</strong> ${formatFileSize(file.size)}<br>
+                <strong>Type:</strong> ${file.type || 'Unknown'}
+            `;
+            infoDiv.style.display = 'block';
+        }
+
+        function validateFileType(file, acceptString) {
+            if (!acceptString) return true;
+
+            const acceptedTypes = acceptString.split(',').map(type => type.trim().toLowerCase());
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            const fileMimeType = file.type.toLowerCase();
+
+            return acceptedTypes.some(type => {
+                if (type.startsWith('.')) {
+                    return fileExtension === type;
+                } else if (type.includes('/*')) {
+                    const mainType = type.split('/')[0];
+                    return fileMimeType.startsWith(mainType + '/');
+                } else {
+                    return fileMimeType === type;
+                }
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Click handlers for labels
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('click', function() {
+                const input = this.querySelector('input[type="file"]');
+                if (input) input.click();
+            });
+        });
+    </script>
+</body>
+</html>

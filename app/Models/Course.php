@@ -340,6 +340,6 @@ class Course extends Model
      */
     public function canJoinWithToken(): bool
     {
-        return !empty($this->join_token) && in_array($this->status, ['active']);
+        return !empty($this->join_token) && in_array($this->status, ['active', 'published']);
     }
 }

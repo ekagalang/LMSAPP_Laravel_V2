@@ -65,7 +65,7 @@ class JoinController extends Controller
         $token = strtoupper(trim($token));
 
         // Try to find course first
-        $course = Course::findByToken($token);
+        $course = Course::with(['participants', 'instructors', 'lessons'])->where('join_token', $token)->first();
         if ($course) {
             return view('join.confirm-course', compact('course', 'token'));
         }
