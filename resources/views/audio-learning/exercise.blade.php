@@ -7,7 +7,7 @@
         <nav class="flex" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
                 <li class="inline-flex items-center">
-                    <a href="{{ route('audio-learning.index') }}" class="text-blue-600 hover:text-blue-700">Audio Learning</a>
+                    <a href="{{ route('audio-learning.index') }}" class="text-blue-600 hover:text-blue-700">Microlearning</a>
                 </li>
                 <li>
                     <div class="flex items-center">
@@ -52,15 +52,38 @@
                     @endif
                 </div>
 
-                <!-- Audio Player for Exercise -->
+                <!-- Media Player for Exercise -->
                 <div class="bg-gray-50 rounded-lg p-6 mb-6">
-                    <div class="audio-exercise-player" data-src="{{ $lesson->audio_url }}"
+                    <div class="flex items-center mb-4">
+                        <span class="text-2xl mr-2">{{ $lesson->getContentTypeIcon() }}</span>
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            {{ $lesson->isVideoType() ? 'Video Exercise' : 'Audio Exercise' }}
+                        </h3>
+                    </div>
+
+                    <div class="media-exercise-player"
+                         data-audio-src="{{ $lesson->audio_url }}"
+                         data-video-src="{{ $lesson->video_url }}"
+                         data-content-type="{{ $lesson->content_type }}"
                          data-start="{{ $exercise->play_from_seconds }}"
                          data-end="{{ $exercise->play_to_seconds }}">
-                        <audio id="exerciseAudio" class="w-full mb-4" controls>
-                            <source src="{{ $lesson->audio_url }}" type="audio/mpeg">
-                            <source src="{{ $lesson->audio_url }}" type="audio/wav">
-                        </audio>
+
+                        @if($lesson->hasVideo())
+                            <video id="exerciseVideo" class="w-full mb-4 rounded-lg" controls
+                                   @if($lesson->isVideoType()) style="display: block;" @else style="display: none;" @endif>
+                                <source src="{{ $lesson->video_url }}" type="video/mp4">
+                                <source src="{{ $lesson->video_url }}" type="video/webm">
+                                Your browser does not support the video element.
+                            </video>
+                        @endif
+
+                        @if($lesson->hasAudio())
+                            <audio id="exerciseAudio" class="w-full mb-4" controls
+                                   @if($lesson->content_type === 'audio') style="display: block;" @else style="display: none;" @endif>
+                                <source src="{{ $lesson->audio_url }}" type="audio/mpeg">
+                                <source src="{{ $lesson->audio_url }}" type="audio/wav">
+                            </audio>
+                        @endif
 
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
@@ -95,6 +118,57 @@
                     </div>
                 </div>
 
+                <!-- Support Files -->
+                @if($exercise->hasImage() || $exercise->hasAudioFile() || $exercise->hasDocument())
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Support Materials:</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @if($exercise->hasImage())
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="flex items-center mb-2">
+                                        <span class="text-lg mr-2">🖼️</span>
+                                        <span class="font-medium text-gray-700">Reference Image</span>
+                                    </div>
+                                    <img src="{{ $exercise->getImageUrl() }}" alt="Exercise Image"
+                                         class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                         onclick="openImageModal('{{ $exercise->getImageUrl() }}')">
+                                    <p class="text-xs text-gray-500 mt-2">Click to enlarge</p>
+                                </div>
+                            @endif
+
+                            @if($exercise->hasAudioFile())
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="flex items-center mb-2">
+                                        <span class="text-lg mr-2">🎵</span>
+                                        <span class="font-medium text-gray-700">Exercise Audio</span>
+                                    </div>
+                                    <audio controls class="w-full">
+                                        <source src="{{ $exercise->getAudioFileUrl() }}" type="audio/mpeg">
+                                        <source src="{{ $exercise->getAudioFileUrl() }}" type="audio/wav">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            @endif
+
+                            @if($exercise->hasDocument())
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="flex items-center mb-2">
+                                        <span class="text-lg mr-2">📄</span>
+                                        <span class="font-medium text-gray-700">Reference Document</span>
+                                    </div>
+                                    <a href="{{ $exercise->getDocumentUrl() }}" target="_blank"
+                                       class="inline-flex items-center px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        View Document
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Question -->
                 <div class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-3">Question:</h3>
@@ -110,21 +184,29 @@
                             <!-- Multiple Choice -->
                             <h4 class="font-medium text-gray-800 mb-4">Choose the correct answer:</h4>
                             <div class="space-y-3">
-                                @if($exercise->options && is_array($exercise->options))
+                                @if($exercise->options && is_array($exercise->options) && count($exercise->options) > 0)
                                     @foreach($exercise->options as $index => $option)
-                                        <label class="flex items-center p-3 bg-white rounded-lg border hover:border-blue-300 cursor-pointer transition-colors">
-                                            <input type="radio" name="answer" value="{{ $option }}" class="mr-3">
-                                            <span>{{ $option }}</span>
-                                        </label>
+                                        @if(!empty($option))
+                                            <label class="flex items-center p-3 bg-white rounded-lg border hover:border-blue-300 cursor-pointer transition-colors">
+                                                <input type="radio" name="answer" value="{{ $option }}" class="mr-3">
+                                                <span class="text-gray-800">{{ $option }}</span>
+                                            </label>
+                                        @endif
                                     @endforeach
                                 @else
-                                    <!-- Fallback for exercises without options -->
-                                    <div class="text-gray-600 p-4 bg-gray-50 rounded-lg">
-                                        <p>Multiple choice options are not available for this exercise.</p>
-                                        <p class="text-sm mt-2">Please use text input below to answer:</p>
-                                        <input type="text" name="answer" id="textAnswer"
-                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 mt-3"
-                                               placeholder="Type your answer here...">
+                                    <!-- Fallback for missing options -->
+                                    <div class="text-amber-600 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                                        <p><strong>⚠️ Configuration Issue:</strong></p>
+                                        <p class="text-sm mt-1">Multiple choice options are not configured for this exercise.</p>
+                                        <p class="text-sm mt-2">Please contact the instructor to fix this issue.</p>
+
+                                        <!-- Temporary text input as fallback -->
+                                        <div class="mt-4">
+                                            <label class="block text-sm font-medium text-amber-800 mb-2">Enter your answer:</label>
+                                            <input type="text" name="answer" id="textAnswer"
+                                                   class="w-full px-4 py-3 border border-amber-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                                                   placeholder="Type your answer here...">
+                                        </div>
                                     </div>
                                 @endif
                             </div>
@@ -534,7 +616,37 @@ document.addEventListener('DOMContentLoaded', function() {
             resultMessage.appendChild(confidenceInfo);
         }
     }
+
+    // Image modal functionality
+    function openImageModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+
+        if (modal && modalImage) {
+            modalImage.src = imageSrc;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
 });
 </script>
+
+<!-- Image Modal -->
+<div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-full p-4">
+        <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <img id="modalImage" src="" alt="Exercise Image" class="max-w-full max-h-full object-contain rounded-lg" onclick="event.stopPropagation()">
+    </div>
+</div>
 @endpush
 @endsection

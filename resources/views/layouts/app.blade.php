@@ -125,11 +125,19 @@
                             </a>
                             @endauth
 
-                            {{-- Audio Learning Menu --}}
+                            {{-- Microlearning Menu --}}
                             @auth
                                 <a href="{{ route('audio-learning.index') }}"
                                    class="nav-link-custom {{ request()->routeIs('audio-learning.*') ? 'active' : '' }}">
-                                    {{ __('Audio Learning') }}
+                                    {{ __('Microlearning') }}
+                                </a>
+                            @endauth
+
+                            {{-- Refleksi Diri Menu --}}
+                            @auth
+                                <a href="{{ route('reflections.index') }}"
+                                   class="nav-link-custom {{ request()->routeIs('reflections.*') ? 'active' : '' }}">
+                                    ✨ {{ __('Refleksi Diri') }}
                                 </a>
                             @endauth
 
@@ -269,11 +277,19 @@
                     </a>
                     @endauth
 
-                    {{-- Audio Learning Mobile Menu --}}
+                    {{-- Microlearning Mobile Menu --}}
                     @auth
                         <a href="{{ route('audio-learning.index') }}"
                            class="responsive-nav-link-custom {{ request()->routeIs('audio-learning.*') ? 'active' : '' }}">
-                            {{ __('Audio Learning') }}
+                            {{ __('Microlearning') }}
+                        </a>
+                    @endauth
+
+                    {{-- Refleksi Diri Mobile Menu --}}
+                    @auth
+                        <a href="{{ route('reflections.index') }}"
+                           class="responsive-nav-link-custom {{ request()->routeIs('reflections.*') ? 'active' : '' }}">
+                            ✨ {{ __('Refleksi Diri') }}
                         </a>
                     @endauth
 

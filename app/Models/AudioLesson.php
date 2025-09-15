@@ -11,10 +11,13 @@ class AudioLesson extends Model
         'title',
         'description',
         'audio_file_path',
+        'video_file_path',
+        'content_type',
         'duration_seconds',
         'difficulty_level',
         'transcript',
         'metadata',
+        'video_metadata',
         'is_active',
         'sort_order',
         'available_for_courses'
@@ -22,6 +25,7 @@ class AudioLesson extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'video_metadata' => 'array',
         'is_active' => 'boolean',
         'available_for_courses' => 'boolean'
     ];
@@ -79,7 +83,52 @@ class AudioLesson extends Model
 
     public function getAudioUrlAttribute()
     {
-        return asset('storage/' . $this->audio_file_path);
+        return $this->audio_file_path ? asset('storage/' . $this->audio_file_path) : null;
+    }
+
+    public function getVideoUrlAttribute()
+    {
+        return $this->video_file_path ? asset('storage/' . $this->video_file_path) : null;
+    }
+
+    public function hasVideo(): bool
+    {
+        return !empty($this->video_file_path);
+    }
+
+    public function hasAudio(): bool
+    {
+        return !empty($this->audio_file_path);
+    }
+
+    public function isVideoType(): bool
+    {
+        return $this->content_type === 'video' || $this->content_type === 'mixed';
+    }
+
+    public function isAudioType(): bool
+    {
+        return $this->content_type === 'audio' || $this->content_type === 'mixed';
+    }
+
+    public function getMainMediaUrl(): string
+    {
+        if ($this->hasVideo()) {
+            return $this->video_url;
+        }
+        return $this->audio_url;
+    }
+
+    public function getContentTypeIcon(): string
+    {
+        switch ($this->content_type) {
+            case 'video':
+                return '🎥';
+            case 'mixed':
+                return '🎬';
+            default:
+                return '🎵';
+        }
     }
 
     public function getFormattedDurationAttribute()

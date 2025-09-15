@@ -399,6 +399,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/lesson/{lesson}/exercise/{exercise}/speech', [App\Http\Controllers\AudioLearningController::class, 'submitSpeech'])->name('submit-speech');
         Route::get('/lesson/{lesson}/progress', [App\Http\Controllers\AudioLearningController::class, 'getProgress'])->name('get-progress');
     });
+
+    // Reflection Routes
+    Route::prefix('reflections')->name('reflections.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ReflectionController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\ReflectionController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\ReflectionController::class, 'store'])->name('store');
+        Route::get('/{reflection}', [App\Http\Controllers\ReflectionController::class, 'show'])->name('show');
+        Route::get('/{reflection}/edit', [App\Http\Controllers\ReflectionController::class, 'edit'])->name('edit');
+        Route::put('/{reflection}', [App\Http\Controllers\ReflectionController::class, 'update'])->name('update');
+        Route::delete('/{reflection}', [App\Http\Controllers\ReflectionController::class, 'destroy'])->name('destroy');
+
+        // Instructor response routes
+        Route::middleware(['role:super-admin|instructor'])->group(function () {
+            Route::post('/{reflection}/respond', [App\Http\Controllers\ReflectionController::class, 'respond'])->name('respond');
+            Route::delete('/{reflection}/response', [App\Http\Controllers\ReflectionController::class, 'removeResponse'])->name('remove-response');
+            Route::get('/analytics', [App\Http\Controllers\ReflectionController::class, 'analytics'])->name('analytics');
+        });
+    });
 });
 
 // ============================================================================

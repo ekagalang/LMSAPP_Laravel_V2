@@ -16,6 +16,11 @@ class AudioExercise extends Model
         'options',
         'correct_answers',
         'points',
+        'explanation',
+        'image_file_path',
+        'audio_file_path',
+        'document_file_path',
+        'file_metadata',
         'audio_cue',
         'play_from_seconds',
         'play_to_seconds',
@@ -28,6 +33,7 @@ class AudioExercise extends Model
         'options' => 'array',
         'correct_answers' => 'array',
         'speech_recognition_keywords' => 'array',
+        'file_metadata' => 'array',
         'is_active' => 'boolean'
     ];
 
@@ -97,5 +103,43 @@ class AudioExercise extends Model
         }
 
         return $this->audioLesson->duration_seconds ?? 0;
+    }
+
+    public function hasImage(): bool
+    {
+        return !empty($this->image_file_path);
+    }
+
+    public function hasAudioFile(): bool
+    {
+        return !empty($this->audio_file_path);
+    }
+
+    public function hasDocument(): bool
+    {
+        return !empty($this->document_file_path);
+    }
+
+    public function getImageUrl(): ?string
+    {
+        return $this->image_file_path ? asset('storage/' . $this->image_file_path) : null;
+    }
+
+    public function getAudioFileUrl(): ?string
+    {
+        return $this->audio_file_path ? asset('storage/' . $this->audio_file_path) : null;
+    }
+
+    public function getDocumentUrl(): ?string
+    {
+        return $this->document_file_path ? asset('storage/' . $this->document_file_path) : null;
+    }
+
+    public function getFileTypeIcon(): string
+    {
+        if ($this->hasImage()) return '🖼️';
+        if ($this->hasAudioFile()) return '🎵';
+        if ($this->hasDocument()) return '📄';
+        return '';
     }
 }

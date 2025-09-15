@@ -7,15 +7,15 @@
         <div class="mb-8">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Create New Audio Learning</h1>
-                    <p class="text-gray-600">Create interactive audio lessons for your students</p>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Create New Microlearning</h1>
+                    <p class="text-gray-600">Create interactive microlearning content with audio, video, and exercises</p>
                 </div>
                 <a href="{{ route('audio-learning.index') }}"
                    class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Back to Audio Learning
+                    Back to Microlearning
                 </a>
             </div>
         </div>
@@ -89,18 +89,69 @@
                 </div>
             </div>
 
-            <!-- Audio Upload -->
+            <!-- Content Type Selection -->
             <div class="bg-white rounded-xl shadow-lg p-8">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h4a1 1 0 011 1v2h5a1 1 0 110 2h-1v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6H2a1 1 0 110-2h5z"></path>
+                    </svg>
+                    Content Type *
+                </h3>
+
+                <div class="mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" x-data="{ contentType: '{{ old('content_type', 'audio') }}' }">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="content_type" value="audio" class="sr-only"
+                                   x-model="contentType" @change="updateContentType('audio')">
+                            <div class="border-2 border-gray-300 rounded-lg p-4 text-center transition-all hover:border-blue-400"
+                                 :class="contentType === 'audio' ? 'border-blue-500 bg-blue-50' : ''">
+                                <div class="text-3xl mb-2">🎵</div>
+                                <div class="font-semibold text-gray-800">Audio Only</div>
+                                <div class="text-sm text-gray-600">MP3, WAV, M4A, AAC</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="content_type" value="video" class="sr-only"
+                                   x-model="contentType" @change="updateContentType('video')">
+                            <div class="border-2 border-gray-300 rounded-lg p-4 text-center transition-all hover:border-blue-400"
+                                 :class="contentType === 'video' ? 'border-blue-500 bg-blue-50' : ''">
+                                <div class="text-3xl mb-2">🎥</div>
+                                <div class="font-semibold text-gray-800">Video Only</div>
+                                <div class="text-sm text-gray-600">MP4, MOV, AVI, MKV, WebM</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="content_type" value="mixed" class="sr-only"
+                                   x-model="contentType" @change="updateContentType('mixed')">
+                            <div class="border-2 border-gray-300 rounded-lg p-4 text-center transition-all hover:border-blue-400"
+                                 :class="contentType === 'mixed' ? 'border-blue-500 bg-blue-50' : ''">
+                                <div class="text-3xl mb-2">🎬</div>
+                                <div class="font-semibold text-gray-800">Mixed Media</div>
+                                <div class="text-sm text-gray-600">Both Audio & Video</div>
+                            </div>
+                        </label>
+                    </div>
+                    @error('content_type')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <!-- Media Upload -->
+            <div class="bg-white rounded-xl shadow-lg p-8" x-data="{ contentType: '{{ old('content_type', 'audio') }}' }">
                 <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
                     <svg class="w-6 h-6 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
                     </svg>
-                    Audio File
+                    <span x-text="contentType === 'audio' ? 'Audio File' : contentType === 'video' ? 'Video File' : 'Media Files'"></span>
                 </h3>
 
                 <div class="space-y-4">
                     <!-- Audio Upload Area -->
-                    <div class="border-2 border-dashed border-teal-300 rounded-xl p-8 text-center hover:border-teal-400 transition-colors duration-300"
+                    <div x-show="contentType === 'audio' || contentType === 'mixed'"
+                         class="border-2 border-dashed border-teal-300 rounded-xl p-8 text-center hover:border-teal-400 transition-colors duration-300"
                          id="audio_drop_zone"
                          ondragover="handleDragOver(event)"
                          ondragenter="handleDragEnter(event, 'audio')"
@@ -108,19 +159,44 @@
                          ondrop="handleDrop(event, 'audio_file')">
                         <div class="mb-4">
                             <svg class="mx-auto h-12 w-12 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
                             </svg>
                         </div>
                         <div class="text-sm">
                             <label for="audio_file" class="relative cursor-pointer bg-white rounded-md font-medium text-teal-600 hover:text-teal-500">
-                                <span>Upload audio file *</span>
-                                <input id="audio_file" name="audio_file" type="file" class="sr-only" required
-                                       accept="audio/*" onchange="handleAudioSelect(this)">
+                                <span x-text="contentType === 'mixed' ? 'Upload audio file (optional)' : 'Upload audio file'"></span>
+                                <input id="audio_file" name="audio_file" type="file" class="sr-only"
+                                       :required="contentType === 'audio'"
+                                       accept="audio/*" onchange="handleMediaSelect('audio', this)">
                             </label>
                             <p class="pl-1">atau drag and drop file di sini</p>
                         </div>
                         <p class="text-xs text-gray-500 mt-2">MP3, WAV, M4A, AAC up to 50MB</p>
+                    </div>
+
+                    <!-- Video Upload Area -->
+                    <div x-show="contentType === 'video' || contentType === 'mixed'"
+                         class="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors duration-300"
+                         id="video_drop_zone"
+                         ondragover="handleDragOver(event)"
+                         ondragenter="handleDragEnter(event, 'video')"
+                         ondragleave="handleDragLeave(event, 'video')"
+                         ondrop="handleDrop(event, 'video_file')">
+                        <div class="mb-4">
+                            <svg class="mx-auto h-12 w-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-sm">
+                            <label for="video_file" class="relative cursor-pointer bg-white rounded-md font-medium text-purple-600 hover:text-purple-500">
+                                <span x-text="contentType === 'mixed' ? 'Upload video file (optional)' : 'Upload video file'"></span>
+                                <input id="video_file" name="video_file" type="file" class="sr-only"
+                                       :required="contentType === 'video'"
+                                       accept="video/*" onchange="handleMediaSelect('video', this)">
+                            </label>
+                            <p class="pl-1">atau drag and drop file di sini</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">MP4, MOV, AVI, MKV, WebM up to 200MB</p>
                     </div>
 
                     <!-- Audio Preview -->
@@ -143,7 +219,30 @@
                         </audio>
                     </div>
 
+                    <!-- Video Preview -->
+                    <div id="video_preview" style="display: none;" class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center mr-3">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Selected Video:</p>
+                                    <span id="video_file_name" class="text-purple-600 text-sm"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <video id="video_player" controls class="w-full max-h-64">
+                            Your browser does not support the video element.
+                        </video>
+                    </div>
+
                     @error('audio_file')
+                        <p class="text-red-600 text-sm">{{ $message }}</p>
+                    @enderror
+                    @error('video_file')
                         <p class="text-red-600 text-sm">{{ $message }}</p>
                     @enderror
                 </div>
@@ -206,7 +305,7 @@
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
-                        Create Audio Learning
+                        Create Microlearning
                     </span>
                 </button>
             </div>
@@ -224,15 +323,27 @@
     function handleDragEnter(event, type) {
         event.preventDefault();
         const dropZone = event.currentTarget;
-        dropZone.classList.add('border-teal-500', 'bg-teal-50');
-        dropZone.classList.remove('border-teal-300');
+
+        if (type === 'video') {
+            dropZone.classList.add('border-purple-500', 'bg-purple-50');
+            dropZone.classList.remove('border-purple-300');
+        } else {
+            dropZone.classList.add('border-teal-500', 'bg-teal-50');
+            dropZone.classList.remove('border-teal-300');
+        }
     }
 
     function handleDragLeave(event, type) {
         event.preventDefault();
         const dropZone = event.currentTarget;
-        dropZone.classList.remove('border-teal-500', 'bg-teal-50');
-        dropZone.classList.add('border-teal-300');
+
+        if (type === 'video') {
+            dropZone.classList.remove('border-purple-500', 'bg-purple-50');
+            dropZone.classList.add('border-purple-300');
+        } else {
+            dropZone.classList.remove('border-teal-500', 'bg-teal-50');
+            dropZone.classList.add('border-teal-300');
+        }
     }
 
     function handleDrop(event, inputId) {
@@ -263,8 +374,12 @@
         dt.items.add(file);
         input.files = dt.files;
 
-        // Handle file selection
-        handleAudioSelect(input);
+        // Handle file selection based on input type
+        if (inputId === 'audio_file') {
+            handleMediaSelect('audio', input);
+        } else if (inputId === 'video_file') {
+            handleMediaSelect('video', input);
+        }
     }
 
     function validateFileType(file, acceptString) {
@@ -286,21 +401,100 @@
         });
     }
 
-    function handleAudioSelect(input) {
+    function handleMediaSelect(type, input) {
         const file = input.files[0];
         if (!file) return;
 
-        const preview = document.getElementById('audio_preview');
-        const fileName = document.getElementById('audio_file_name');
-        const player = document.getElementById('audio_player');
+        if (type === 'audio') {
+            const preview = document.getElementById('audio_preview');
+            const fileName = document.getElementById('audio_file_name');
+            const player = document.getElementById('audio_player');
 
-        fileName.textContent = file.name;
+            fileName.textContent = file.name;
+            const url = URL.createObjectURL(file);
+            player.src = url;
+            preview.style.display = 'block';
+        } else if (type === 'video') {
+            const preview = document.getElementById('video_preview');
+            const fileName = document.getElementById('video_file_name');
+            const player = document.getElementById('video_player');
 
-        // Create URL for audio preview
-        const url = URL.createObjectURL(file);
-        player.src = url;
+            fileName.textContent = file.name;
+            const url = URL.createObjectURL(file);
+            player.src = url;
+            preview.style.display = 'block';
+        }
+    }
 
-        preview.style.display = 'block';
+    function updateContentType(type) {
+        // This function will be called when content type changes
+        // Hide/show appropriate upload sections handled by Alpine.js
+        console.log('Content type changed to:', type);
+    }
+
+    // Handle exercise file selection
+    function handleExerciseFileSelect(exerciseIndex, fileType, input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const previewId = `${fileType}_preview_${exerciseIndex}`;
+        const previewElement = document.getElementById(previewId);
+
+        if (!previewElement) return;
+
+        let previewHTML = '';
+
+        if (fileType === 'image') {
+            const url = URL.createObjectURL(file);
+            previewHTML = `
+                <div class="bg-green-50 p-2 rounded text-xs">
+                    <img src="${url}" alt="Preview" class="w-full h-16 object-cover rounded mb-1">
+                    <p class="text-green-700 truncate">${file.name}</p>
+                    <button type="button" onclick="clearExerciseFile(${exerciseIndex}, '${fileType}')"
+                            class="text-red-500 text-xs hover:text-red-700">Remove</button>
+                </div>
+            `;
+        } else if (fileType === 'audio') {
+            const url = URL.createObjectURL(file);
+            previewHTML = `
+                <div class="bg-green-50 p-2 rounded text-xs">
+                    <audio controls class="w-full h-8 mb-1">
+                        <source src="${url}" type="${file.type}">
+                    </audio>
+                    <p class="text-green-700 truncate">${file.name}</p>
+                    <button type="button" onclick="clearExerciseFile(${exerciseIndex}, '${fileType}')"
+                            class="text-red-500 text-xs hover:text-red-700">Remove</button>
+                </div>
+            `;
+        } else if (fileType === 'document') {
+            previewHTML = `
+                <div class="bg-green-50 p-2 rounded text-xs">
+                    <div class="flex items-center mb-1">
+                        <svg class="w-4 h-4 text-gray-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 18h12V6h-4V2H4v16zm8-14v4h4l-4-4z"/>
+                        </svg>
+                        <span class="text-green-700 truncate">${file.name}</span>
+                    </div>
+                    <button type="button" onclick="clearExerciseFile(${exerciseIndex}, '${fileType}')"
+                            class="text-red-500 text-xs hover:text-red-700">Remove</button>
+                </div>
+            `;
+        }
+
+        previewElement.innerHTML = previewHTML;
+        previewElement.style.display = 'block';
+    }
+
+    // Clear exercise file
+    function clearExerciseFile(exerciseIndex, fileType) {
+        const input = document.querySelector(`input[name="exercises[${exerciseIndex}][${fileType}_file]"]`);
+        const previewElement = document.getElementById(`${fileType}_preview_${exerciseIndex}`);
+
+        if (input) input.value = '';
+        if (previewElement) {
+            previewElement.innerHTML = '';
+            previewElement.style.display = 'none';
+        }
     }
 
     // Alpine.js component for exercises
@@ -352,28 +546,39 @@
 
                 let answersSection = '';
                 if (exercise.type === 'multiple_choice') {
+                    // Ensure options exist
+                    if (!exercise.options || exercise.options.length === 0) {
+                        exercise.options = ['', '', '', ''];
+                    }
+
                     answersSection = `
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Multiple Choice Options *</label>
                             <div class="space-y-2" id="options_${index}">
                                 ${this.generateOptionsHtml(exercise, index)}
                             </div>
-                            <button type="button" onclick="Alpine.store('audioForm').addOption(${index})"
+                            <button type="button" onclick="audioFormInstance.addOption(${index})"
                                     class="mt-2 text-sm text-orange-600 hover:text-orange-700">
                                 + Add Option
                             </button>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Correct Answer *</label>
-                            <select name="exercises[${index}][correct_answer_index]" required
+                            <select name="exercises[${index}][correct_answers][]" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500">
                                 <option value="">Select correct option...</option>
-                                ${exercise.options ? exercise.options.map((opt, i) =>
-                                    `<option value="${i}" ${i == exercise.correct_answer_index ? 'selected' : ''}>${String.fromCharCode(65 + i)}. ${opt}</option>`
-                                ).join('') : ''}
+                                ${exercise.options.map((opt, i) => {
+                                    const isSelected = exercise.correct_answers && exercise.correct_answers[0] == opt ? 'selected' : '';
+                                    return `<option value="${opt}" ${isSelected}>${String.fromCharCode(65 + i)}. ${opt}</option>`;
+                                }).join('')}
                             </select>
                         </div>`;
                 } else {
+                    // Ensure correct_answers is array
+                    if (!Array.isArray(exercise.correct_answers)) {
+                        exercise.correct_answers = [exercise.correct_answers || ''];
+                    }
+
                     answersSection = `
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -398,7 +603,7 @@
                     <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
                         <div class="flex justify-between items-start mb-4">
                             <h4 class="text-lg font-medium text-gray-800">Exercise ${index + 1}</h4>
-                            <button type="button" onclick="Alpine.store('audioForm').removeExercise(${index})"
+                            <button type="button" onclick="audioFormInstance.removeExercise(${index})"
                                     class="text-red-600 hover:text-red-800">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -416,7 +621,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                                <select name="exercises[${index}][type]" onchange="Alpine.store('audioForm').changeExerciseType(${index}, this.value)"
+                                <select name="exercises[${index}][type]" onchange="audioFormInstance.changeExerciseType(${index}, this.value)"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500">
                                     <option value="multiple_choice" ${exercise.type === 'multiple_choice' ? 'selected' : ''}>📋 Multiple Choice</option>
                                     <option value="fill_blank" ${exercise.type === 'fill_blank' ? 'selected' : ''}>✏️ Fill in Blanks</option>
@@ -439,6 +644,63 @@
                             </div>
 
                             ${answersSection}
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Support Files (Optional)</label>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <!-- Image Upload -->
+                                    <div class="border border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-orange-400 transition-colors">
+                                        <div class="mb-2">
+                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20v12a2 2 0 002 2h12a2 2 0 002-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v12z" />
+                                            </svg>
+                                        </div>
+                                        <label class="cursor-pointer text-sm text-gray-600 hover:text-orange-600">
+                                            🖼️ Add Image
+                                            <input type="file" name="exercises[${index}][image_file]"
+                                                   accept="image/*" class="sr-only"
+                                                   onchange="handleExerciseFileSelect(${index}, 'image', this)">
+                                        </label>
+                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF (max 10MB)</p>
+                                        <div id="image_preview_${index}" class="mt-2" style="display: none;"></div>
+                                    </div>
+
+                                    <!-- Audio Upload -->
+                                    <div class="border border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-orange-400 transition-colors">
+                                        <div class="mb-2">
+                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                                            </svg>
+                                        </div>
+                                        <label class="cursor-pointer text-sm text-gray-600 hover:text-orange-600">
+                                            🎵 Add Audio
+                                            <input type="file" name="exercises[${index}][audio_file]"
+                                                   accept="audio/*" class="sr-only"
+                                                   onchange="handleExerciseFileSelect(${index}, 'audio', this)">
+                                        </label>
+                                        <p class="text-xs text-gray-500 mt-1">MP3, WAV, M4A (max 20MB)</p>
+                                        <div id="audio_preview_${index}" class="mt-2" style="display: none;"></div>
+                                    </div>
+
+                                    <!-- Document Upload -->
+                                    <div class="border border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-orange-400 transition-colors">
+                                        <div class="mb-2">
+                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <label class="cursor-pointer text-sm text-gray-600 hover:text-orange-600">
+                                            📄 Add Document
+                                            <input type="file" name="exercises[${index}][document_file]"
+                                                   accept=".pdf,.doc,.docx,.txt" class="sr-only"
+                                                   onchange="handleExerciseFileSelect(${index}, 'document', this)">
+                                        </label>
+                                        <p class="text-xs text-gray-500 mt-1">PDF, DOC, TXT (max 10MB)</p>
+                                        <div id="document_preview_${index}" class="mt-2" style="display: none;"></div>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">💡 Add supporting files to make exercises more engaging and clear</p>
+                            </div>
 
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Explanation (Optional)</label>
@@ -465,9 +727,9 @@
                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500"
                                placeholder="Enter option ${String.fromCharCode(65 + optionIndex)}..."
                                value="${option}"
-                               onchange="Alpine.store('audioForm').updateOption(${exerciseIndex}, ${optionIndex}, this.value)">
+                               onchange="audioFormInstance.updateOption(${exerciseIndex}, ${optionIndex}, this.value)">
                         ${optionIndex > 1 ? `
-                        <button type="button" onclick="Alpine.store('audioForm').removeOption(${exerciseIndex}, ${optionIndex})"
+                        <button type="button" onclick="audioFormInstance.removeOption(${exerciseIndex}, ${optionIndex})"
                                 class="text-red-600 hover:text-red-700">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -547,8 +809,8 @@
             },
 
             init() {
-                // Set up Alpine store
-                Alpine.store('audioForm', this);
+                // Set up global reference for non-Alpine event handlers
+                window.audioFormInstance = this;
             }
         };
     }

@@ -8,7 +8,7 @@
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
                 <li class="inline-flex items-center">
                     <a href="{{ route('audio-learning.index') }}" class="text-blue-600 hover:text-blue-700">
-                        Audio Learning
+                        Microlearning
                     </a>
                 </li>
                 <li>
@@ -43,14 +43,50 @@
                     @endif
                 </div>
 
-                <!-- Audio Player -->
+                <!-- Media Player -->
                 <div class="bg-gray-50 rounded-lg p-6 mb-6">
-                    <div class="audio-player" data-src="{{ $lesson->audio_url }}" data-lesson-id="{{ $lesson->id }}">
-                        <audio id="audioPlayer" class="w-full mb-4" controls>
-                            <source src="{{ $lesson->audio_url }}" type="audio/mpeg">
-                            <source src="{{ $lesson->audio_url }}" type="audio/wav">
-                            Your browser does not support the audio element.
-                        </audio>
+                    <div class="flex items-center mb-4">
+                        <span class="text-2xl mr-2">{{ $lesson->getContentTypeIcon() }}</span>
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            {{ $lesson->isVideoType() ? 'Video Player' : 'Audio Player' }}
+                        </h3>
+                    </div>
+
+                    <div class="media-player"
+                         data-audio-src="{{ $lesson->audio_url }}"
+                         data-video-src="{{ $lesson->video_url }}"
+                         data-content-type="{{ $lesson->content_type }}"
+                         data-lesson-id="{{ $lesson->id }}">
+
+                        @if($lesson->hasVideo())
+                            <video id="videoPlayer" class="w-full mb-4 rounded-lg" controls
+                                   @if($lesson->isVideoType()) style="display: block;" @else style="display: none;" @endif>
+                                <source src="{{ $lesson->video_url }}" type="video/mp4">
+                                <source src="{{ $lesson->video_url }}" type="video/webm">
+                                Your browser does not support the video element.
+                            </video>
+                        @endif
+
+                        @if($lesson->hasAudio())
+                            <audio id="audioPlayer" class="w-full mb-4" controls
+                                   @if($lesson->content_type === 'audio') style="display: block;" @else style="display: none;" @endif>
+                                <source src="{{ $lesson->audio_url }}" type="audio/mpeg">
+                                <source src="{{ $lesson->audio_url }}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                        @endif
+
+                        @if($lesson->hasVideo() && $lesson->hasAudio())
+                            <!-- Media Type Switcher for Mixed Content -->
+                            <div class="flex items-center justify-center mb-4 space-x-4">
+                                <button id="switchToVideo" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors">
+                                    🎥 Switch to Video
+                                </button>
+                                <button id="switchToAudio" class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
+                                    🎵 Switch to Audio
+                                </button>
+                            </div>
+                        @endif
 
                         <!-- Custom Audio Controls -->
                         <div class="flex items-center justify-between mb-4">
@@ -388,6 +424,81 @@ document.addEventListener('DOMContentLoaded', function() {
         loopEndInput.value = Math.floor(audio.duration);
         loopEnd = audio.duration;
     });
+
+    // Media switching functionality for mixed content
+    const videoPlayer = document.getElementById('videoPlayer');
+    const switchToVideoBtn = document.getElementById('switchToVideo');
+    const switchToAudioBtn = document.getElementById('switchToAudio');
+
+    if (switchToVideoBtn && switchToAudioBtn && videoPlayer) {
+        switchToVideoBtn.addEventListener('click', function() {
+            // Sync current time
+            if (audio.currentTime > 0) {
+                videoPlayer.currentTime = audio.currentTime;
+            }
+
+            // Switch visibility
+            audio.style.display = 'none';
+            videoPlayer.style.display = 'block';
+
+            // Pause audio, play video
+            audio.pause();
+            if (audio.currentTime > 0) {
+                videoPlayer.play();
+            }
+
+            // Update button states
+            this.classList.add('bg-purple-700');
+            switchToAudioBtn.classList.remove('bg-teal-700');
+        });
+
+        switchToAudioBtn.addEventListener('click', function() {
+            // Sync current time
+            if (videoPlayer.currentTime > 0) {
+                audio.currentTime = videoPlayer.currentTime;
+            }
+
+            // Switch visibility
+            videoPlayer.style.display = 'none';
+            audio.style.display = 'block';
+
+            // Pause video, play audio
+            videoPlayer.pause();
+            if (videoPlayer.currentTime > 0) {
+                audio.play();
+            }
+
+            // Update button states
+            this.classList.add('bg-teal-700');
+            switchToVideoBtn.classList.remove('bg-purple-700');
+        });
+
+        // Sync progress between video and audio for mixed content
+        if (videoPlayer) {
+            videoPlayer.addEventListener('timeupdate', function() {
+                const current = videoPlayer.currentTime;
+                const duration = videoPlayer.duration;
+
+                if (duration) {
+                    // Update progress bar
+                    const progress = (current / duration) * 100;
+                    progressBar.style.width = progress + '%';
+
+                    // Update current time display
+                    const minutes = Math.floor(current / 60);
+                    const seconds = Math.floor(current % 60);
+                    currentTimeSpan.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                    // Save progress to server
+                    @auth
+                    if (Math.floor(current) % 5 === 0) {
+                        saveProgress(Math.floor(current));
+                    }
+                    @endauth
+                }
+            });
+        }
+    }
 });
 </script>
 @endpush

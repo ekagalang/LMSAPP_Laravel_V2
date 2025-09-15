@@ -251,7 +251,9 @@ class AudioLearningController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'audio_file' => 'required|file|mimes:mp3,wav,m4a,aac|max:51200', // 50MB max
+            'content_type' => 'required|in:audio,video,mixed',
+            'audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200', // 50MB max
+            'video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:204800', // 200MB max
             'transcript' => 'nullable|string',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'metadata' => 'nullable|array',
@@ -261,26 +263,33 @@ class AudioLearningController extends Controller
             'exercises' => 'nullable|array',
             'exercises.*.question_text' => 'required_with:exercises|string',
             'exercises.*.type' => 'required_with:exercises|in:multiple_choice,fill_blank,speech_response,comprehension',
+            'exercises.*.options' => 'nullable|array', // Add options validation
             'exercises.*.correct_answers' => 'required_with:exercises|array',
             'exercises.*.points' => 'required_with:exercises|integer|min:1|max:100',
             'exercises.*.explanation' => 'nullable|string',
+            'exercises.*.image_file' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:10240', // 10MB max
+            'exercises.*.audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:20480', // 20MB max
+            'exercises.*.document_file' => 'nullable|file|mimes:pdf,doc,docx,txt|max:10240', // 10MB max
         ]);
 
         DB::beginTransaction();
         try {
-            // Handle audio file upload
+            // Handle file uploads
             $audioPath = null;
+            $videoPath = null;
+            $duration = null;
+            $videoMetadata = [];
+
+            // Handle audio file upload
             if ($request->hasFile('audio_file')) {
                 $audioFile = $request->file('audio_file');
-                $fileName = time() . '_' . $audioFile->getClientOriginalName();
-                $audioPath = $audioFile->storeAs('audio/lessons', $fileName, 'public');
+                $fileName = time() . '_aud_' . $audioFile->getClientOriginalName();
+                $audioPath = $audioFile->storeAs('microlearning/audio', $fileName, 'public');
 
                 // Get audio duration if possible
-                $duration = null;
                 try {
                     $fullPath = storage_path('app/public/' . $audioPath);
                     if (function_exists('getid3_lib') || class_exists('getID3')) {
-                        // If getID3 library is available
                         $getID3 = new \getID3;
                         $fileInfo = $getID3->analyze($fullPath);
                         $duration = $fileInfo['playtime_seconds'] ?? null;
@@ -290,15 +299,51 @@ class AudioLearningController extends Controller
                 }
             }
 
-            // Create audio lesson
+            // Handle video file upload
+            if ($request->hasFile('video_file')) {
+                $videoFile = $request->file('video_file');
+                $fileName = time() . '_vid_' . $videoFile->getClientOriginalName();
+                $videoPath = $videoFile->storeAs('microlearning/videos', $fileName, 'public');
+
+                // Store video metadata
+                $videoMetadata = [
+                    'original_name' => $videoFile->getClientOriginalName(),
+                    'size' => $videoFile->getSize(),
+                    'mime_type' => $videoFile->getMimeType()
+                ];
+
+                // Try to get video duration
+                try {
+                    $fullPath = storage_path('app/public/' . $videoPath);
+                    if (function_exists('getid3_lib') || class_exists('getID3')) {
+                        $getID3 = new \getID3;
+                        $fileInfo = $getID3->analyze($fullPath);
+                        $duration = $fileInfo['playtime_seconds'] ?? null;
+
+                        if (isset($fileInfo['video']['resolution_x']) && isset($fileInfo['video']['resolution_y'])) {
+                            $videoMetadata['resolution'] = [
+                                'width' => $fileInfo['video']['resolution_x'],
+                                'height' => $fileInfo['video']['resolution_y']
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Could not get video metadata: ' . $e->getMessage());
+                }
+            }
+
+            // Create microlearning lesson
             $audioLesson = AudioLesson::create([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
+                'content_type' => $validated['content_type'],
                 'audio_file_path' => $audioPath,
+                'video_file_path' => $videoPath,
                 'duration_seconds' => $duration,
                 'difficulty_level' => $validated['difficulty_level'],
                 'transcript' => $validated['transcript'],
                 'metadata' => $validated['metadata'] ?? [],
+                'video_metadata' => $videoMetadata,
                 'is_active' => true,
                 'sort_order' => AudioLesson::max('sort_order') + 1,
                 'available_for_courses' => $validated['available_for_courses'] ?? false,
@@ -307,13 +352,63 @@ class AudioLearningController extends Controller
             // Create exercises if provided
             if (!empty($validated['exercises'])) {
                 foreach ($validated['exercises'] as $index => $exerciseData) {
+                    // Handle file uploads for exercise
+                    $exerciseFiles = [
+                        'image_file_path' => null,
+                        'audio_file_path' => null,
+                        'document_file_path' => null,
+                        'file_metadata' => []
+                    ];
+
+                    // Handle image file upload
+                    if (isset($exerciseData['image_file']) && $exerciseData['image_file']) {
+                        $imageFile = $exerciseData['image_file'];
+                        $fileName = time() . '_ex' . ($index + 1) . '_img_' . $imageFile->getClientOriginalName();
+                        $exerciseFiles['image_file_path'] = $imageFile->storeAs('microlearning/exercises/images', $fileName, 'public');
+                        $exerciseFiles['file_metadata']['image'] = [
+                            'original_name' => $imageFile->getClientOriginalName(),
+                            'size' => $imageFile->getSize(),
+                            'mime_type' => $imageFile->getMimeType()
+                        ];
+                    }
+
+                    // Handle audio file upload
+                    if (isset($exerciseData['audio_file']) && $exerciseData['audio_file']) {
+                        $audioFile = $exerciseData['audio_file'];
+                        $fileName = time() . '_ex' . ($index + 1) . '_aud_' . $audioFile->getClientOriginalName();
+                        $exerciseFiles['audio_file_path'] = $audioFile->storeAs('microlearning/exercises/audio', $fileName, 'public');
+                        $exerciseFiles['file_metadata']['audio'] = [
+                            'original_name' => $audioFile->getClientOriginalName(),
+                            'size' => $audioFile->getSize(),
+                            'mime_type' => $audioFile->getMimeType()
+                        ];
+                    }
+
+                    // Handle document file upload
+                    if (isset($exerciseData['document_file']) && $exerciseData['document_file']) {
+                        $docFile = $exerciseData['document_file'];
+                        $fileName = time() . '_ex' . ($index + 1) . '_doc_' . $docFile->getClientOriginalName();
+                        $exerciseFiles['document_file_path'] = $docFile->storeAs('microlearning/exercises/documents', $fileName, 'public');
+                        $exerciseFiles['file_metadata']['document'] = [
+                            'original_name' => $docFile->getClientOriginalName(),
+                            'size' => $docFile->getSize(),
+                            'mime_type' => $docFile->getMimeType()
+                        ];
+                    }
+
                     AudioExercise::create([
                         'audio_lesson_id' => $audioLesson->id,
                         'title' => 'Exercise ' . ($index + 1),
                         'question' => $exerciseData['question_text'], // Map to correct field name
                         'exercise_type' => $exerciseData['type'], // Map to correct field name
+                        'options' => $exerciseData['options'] ?? null, // Add options field
                         'correct_answers' => $exerciseData['correct_answers'],
                         'points' => $exerciseData['points'],
+                        'explanation' => $exerciseData['explanation'] ?? null,
+                        'image_file_path' => $exerciseFiles['image_file_path'],
+                        'audio_file_path' => $exerciseFiles['audio_file_path'],
+                        'document_file_path' => $exerciseFiles['document_file_path'],
+                        'file_metadata' => $exerciseFiles['file_metadata'],
                         'sort_order' => $index + 1,
                         'is_active' => true,
                     ]);
@@ -322,7 +417,7 @@ class AudioLearningController extends Controller
 
             DB::commit();
 
-            Log::info('Audio Learning Created', [
+            Log::info('Microlearning Created', [
                 'audio_lesson_id' => $audioLesson->id,
                 'title' => $audioLesson->title,
                 'exercises_count' => count($validated['exercises'] ?? []),
@@ -330,17 +425,17 @@ class AudioLearningController extends Controller
             ]);
 
             return redirect()->route('audio-learning.index')
-                ->with('success', 'Audio learning berhasil dibuat! 🎉');
+                ->with('success', 'Microlearning berhasil dibuat! 🎉');
 
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error('Audio Learning Creation Failed', [
+            Log::error('Microlearning Creation Failed', [
                 'error' => $e->getMessage(),
                 'user_id' => Auth::id()
             ]);
 
             return back()->withInput()
-                ->with('error', 'Gagal membuat audio learning: ' . $e->getMessage());
+                ->with('error', 'Gagal membuat microlearning: ' . $e->getMessage());
         }
     }
 
@@ -359,7 +454,7 @@ class AudioLearningController extends Controller
     }
 
     /**
-     * Update an audio lesson (Admin only)
+     * Update a microlearning lesson (Admin only)
      */
     public function update(Request $request, $id)
     {
@@ -368,38 +463,274 @@ class AudioLearningController extends Controller
             abort(403, 'Unauthorized access');
         }
 
-        $audioLesson = AudioLesson::findOrFail($id);
+        $audioLesson = AudioLesson::with('exercises')->findOrFail($id);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200',
+            'content_type' => 'required|in:audio,video,mixed',
+            'audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200', // 50MB max
+            'video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:204800', // 200MB max
             'transcript' => 'nullable|string',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'metadata' => 'nullable|array',
             'available_for_courses' => 'boolean',
+
+            // Exercise data
+            'exercises' => 'nullable|array',
+            'exercises.*.id' => 'nullable|integer|exists:audio_exercises,id',
+            'exercises.*.question_text' => 'required_with:exercises|string',
+            'exercises.*.type' => 'required_with:exercises|in:multiple_choice,fill_blank,speech_response,comprehension',
+            'exercises.*.options' => 'nullable|array',
+            'exercises.*.correct_answers' => 'required_with:exercises|array',
+            'exercises.*.points' => 'required_with:exercises|integer|min:1|max:100',
+            'exercises.*.explanation' => 'nullable|string',
+            'exercises.*.image_file' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:10240', // 10MB max
+            'exercises.*.audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:20480', // 20MB max
+            'exercises.*.document_file' => 'nullable|file|mimes:pdf,doc,docx,txt|max:10240', // 10MB max
         ]);
 
-        // Handle audio file upload
-        if ($request->hasFile('audio_file')) {
-            // Delete old file
-            if ($audioLesson->audio_file_path) {
-                Storage::disk('public')->delete($audioLesson->audio_file_path);
+        DB::beginTransaction();
+        try {
+            $duration = $audioLesson->duration_seconds;
+            $videoMetadata = $audioLesson->video_metadata ?? [];
+
+            // Handle audio file upload
+            if ($request->hasFile('audio_file')) {
+                // Delete old audio file
+                if ($audioLesson->audio_file_path) {
+                    Storage::disk('public')->delete($audioLesson->audio_file_path);
+                }
+
+                $audioFile = $request->file('audio_file');
+                $fileName = time() . '_aud_' . $audioFile->getClientOriginalName();
+                $validated['audio_file_path'] = $audioFile->storeAs('microlearning/audio', $fileName, 'public');
+
+                // Get audio duration if possible
+                try {
+                    $fullPath = storage_path('app/public/' . $validated['audio_file_path']);
+                    if (function_exists('getid3_lib') || class_exists('getID3')) {
+                        $getID3 = new \getID3;
+                        $fileInfo = $getID3->analyze($fullPath);
+                        $duration = $fileInfo['playtime_seconds'] ?? $duration;
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Could not get audio duration: ' . $e->getMessage());
+                }
             }
 
-            $audioFile = $request->file('audio_file');
-            $fileName = time() . '_' . $audioFile->getClientOriginalName();
-            $validated['audio_file_path'] = $audioFile->storeAs('audio/lessons', $fileName, 'public');
+            // Handle video file upload
+            if ($request->hasFile('video_file')) {
+                // Delete old video file
+                if ($audioLesson->video_file_path) {
+                    Storage::disk('public')->delete($audioLesson->video_file_path);
+                }
+
+                $videoFile = $request->file('video_file');
+                $fileName = time() . '_vid_' . $videoFile->getClientOriginalName();
+                $validated['video_file_path'] = $videoFile->storeAs('microlearning/videos', $fileName, 'public');
+
+                // Store video metadata
+                $videoMetadata = [
+                    'original_name' => $videoFile->getClientOriginalName(),
+                    'size' => $videoFile->getSize(),
+                    'mime_type' => $videoFile->getMimeType()
+                ];
+
+                // Try to get video duration and resolution
+                try {
+                    $fullPath = storage_path('app/public/' . $validated['video_file_path']);
+                    if (function_exists('getid3_lib') || class_exists('getID3')) {
+                        $getID3 = new \getID3;
+                        $fileInfo = $getID3->analyze($fullPath);
+                        $duration = $fileInfo['playtime_seconds'] ?? $duration;
+
+                        if (isset($fileInfo['video']['resolution_x']) && isset($fileInfo['video']['resolution_y'])) {
+                            $videoMetadata['resolution'] = [
+                                'width' => $fileInfo['video']['resolution_x'],
+                                'height' => $fileInfo['video']['resolution_y']
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Could not get video metadata: ' . $e->getMessage());
+                }
+            }
+
+            // Update lesson data
+            $updateData = array_filter([
+                'title' => $validated['title'],
+                'description' => $validated['description'],
+                'content_type' => $validated['content_type'],
+                'transcript' => $validated['transcript'],
+                'difficulty_level' => $validated['difficulty_level'],
+                'metadata' => $validated['metadata'] ?? [],
+                'available_for_courses' => $validated['available_for_courses'] ?? false,
+                'duration_seconds' => $duration,
+                'video_metadata' => $videoMetadata,
+            ]);
+
+            // Add file paths if they were uploaded
+            if (isset($validated['audio_file_path'])) {
+                $updateData['audio_file_path'] = $validated['audio_file_path'];
+            }
+            if (isset($validated['video_file_path'])) {
+                $updateData['video_file_path'] = $validated['video_file_path'];
+            }
+
+            $audioLesson->update($updateData);
+
+            // Handle exercises update
+            if (!empty($validated['exercises'])) {
+                $existingExerciseIds = [];
+
+                foreach ($validated['exercises'] as $index => $exerciseData) {
+                    $exerciseFiles = [
+                        'image_file_path' => null,
+                        'audio_file_path' => null,
+                        'document_file_path' => null,
+                        'file_metadata' => []
+                    ];
+
+                    $exercise = null;
+
+                    // Check if this is an existing exercise
+                    if (!empty($exerciseData['id'])) {
+                        $exercise = AudioExercise::where('id', $exerciseData['id'])
+                            ->where('audio_lesson_id', $audioLesson->id)
+                            ->first();
+
+                        if ($exercise) {
+                            $existingExerciseIds[] = $exercise->id;
+                            // Keep existing file paths unless new files are uploaded
+                            $exerciseFiles['image_file_path'] = $exercise->image_file_path;
+                            $exerciseFiles['audio_file_path'] = $exercise->audio_file_path;
+                            $exerciseFiles['document_file_path'] = $exercise->document_file_path;
+                            $exerciseFiles['file_metadata'] = $exercise->file_metadata ?? [];
+                        }
+                    }
+
+                    // Handle file uploads for exercise
+                    if (isset($exerciseData['image_file']) && $exerciseData['image_file']) {
+                        // Delete old image if exists
+                        if ($exercise && $exercise->image_file_path) {
+                            Storage::disk('public')->delete($exercise->image_file_path);
+                        }
+
+                        $imageFile = $exerciseData['image_file'];
+                        $fileName = time() . '_ex' . ($index + 1) . '_img_' . $imageFile->getClientOriginalName();
+                        $exerciseFiles['image_file_path'] = $imageFile->storeAs('microlearning/exercises/images', $fileName, 'public');
+                        $exerciseFiles['file_metadata']['image'] = [
+                            'original_name' => $imageFile->getClientOriginalName(),
+                            'size' => $imageFile->getSize(),
+                            'mime_type' => $imageFile->getMimeType()
+                        ];
+                    }
+
+                    if (isset($exerciseData['audio_file']) && $exerciseData['audio_file']) {
+                        // Delete old audio if exists
+                        if ($exercise && $exercise->audio_file_path) {
+                            Storage::disk('public')->delete($exercise->audio_file_path);
+                        }
+
+                        $audioFile = $exerciseData['audio_file'];
+                        $fileName = time() . '_ex' . ($index + 1) . '_aud_' . $audioFile->getClientOriginalName();
+                        $exerciseFiles['audio_file_path'] = $audioFile->storeAs('microlearning/exercises/audio', $fileName, 'public');
+                        $exerciseFiles['file_metadata']['audio'] = [
+                            'original_name' => $audioFile->getClientOriginalName(),
+                            'size' => $audioFile->getSize(),
+                            'mime_type' => $audioFile->getMimeType()
+                        ];
+                    }
+
+                    if (isset($exerciseData['document_file']) && $exerciseData['document_file']) {
+                        // Delete old document if exists
+                        if ($exercise && $exercise->document_file_path) {
+                            Storage::disk('public')->delete($exercise->document_file_path);
+                        }
+
+                        $docFile = $exerciseData['document_file'];
+                        $fileName = time() . '_ex' . ($index + 1) . '_doc_' . $docFile->getClientOriginalName();
+                        $exerciseFiles['document_file_path'] = $docFile->storeAs('microlearning/exercises/documents', $fileName, 'public');
+                        $exerciseFiles['file_metadata']['document'] = [
+                            'original_name' => $docFile->getClientOriginalName(),
+                            'size' => $docFile->getSize(),
+                            'mime_type' => $docFile->getMimeType()
+                        ];
+                    }
+
+                    $exerciseUpdateData = [
+                        'title' => 'Exercise ' . ($index + 1),
+                        'question' => $exerciseData['question_text'],
+                        'exercise_type' => $exerciseData['type'],
+                        'options' => $exerciseData['options'] ?? null,
+                        'correct_answers' => $exerciseData['correct_answers'],
+                        'points' => $exerciseData['points'],
+                        'explanation' => $exerciseData['explanation'] ?? null,
+                        'image_file_path' => $exerciseFiles['image_file_path'],
+                        'audio_file_path' => $exerciseFiles['audio_file_path'],
+                        'document_file_path' => $exerciseFiles['document_file_path'],
+                        'file_metadata' => $exerciseFiles['file_metadata'],
+                        'sort_order' => $index + 1,
+                        'is_active' => true,
+                    ];
+
+                    if ($exercise) {
+                        // Update existing exercise
+                        $exercise->update($exerciseUpdateData);
+                    } else {
+                        // Create new exercise
+                        $exerciseUpdateData['audio_lesson_id'] = $audioLesson->id;
+                        AudioExercise::create($exerciseUpdateData);
+                    }
+                }
+
+                // Delete exercises that were removed
+                AudioExercise::where('audio_lesson_id', $audioLesson->id)
+                    ->whereNotIn('id', $existingExerciseIds)
+                    ->get()
+                    ->each(function($exercise) {
+                        // Delete associated files
+                        if ($exercise->image_file_path) {
+                            Storage::disk('public')->delete($exercise->image_file_path);
+                        }
+                        if ($exercise->audio_file_path) {
+                            Storage::disk('public')->delete($exercise->audio_file_path);
+                        }
+                        if ($exercise->document_file_path) {
+                            Storage::disk('public')->delete($exercise->document_file_path);
+                        }
+                        $exercise->delete();
+                    });
+            }
+
+            DB::commit();
+
+            Log::info('Microlearning Updated', [
+                'audio_lesson_id' => $audioLesson->id,
+                'title' => $audioLesson->title,
+                'exercises_count' => count($validated['exercises'] ?? []),
+                'updated_by' => Auth::id()
+            ]);
+
+            return redirect()->route('audio-learning.index')
+                ->with('success', 'Microlearning berhasil diperbarui! ✅');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Microlearning Update Failed', [
+                'audio_lesson_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+
+            return back()->withInput()
+                ->with('error', 'Gagal memperbarui microlearning: ' . $e->getMessage());
         }
-
-        $audioLesson->update($validated);
-
-        return redirect()->route('audio-learning.index')
-            ->with('success', 'Audio learning berhasil diperbarui! ✅');
     }
 
     /**
-     * Delete an audio lesson (Admin only)
+     * Delete a microlearning lesson (Admin only)
      */
     public function destroy($id)
     {
@@ -408,16 +739,54 @@ class AudioLearningController extends Controller
             abort(403, 'Unauthorized access');
         }
 
-        $audioLesson = AudioLesson::findOrFail($id);
+        $audioLesson = AudioLesson::with('exercises')->findOrFail($id);
 
-        // Delete audio file
-        if ($audioLesson->audio_file_path) {
-            Storage::disk('public')->delete($audioLesson->audio_file_path);
+        DB::beginTransaction();
+        try {
+            // Delete exercise files first
+            foreach ($audioLesson->exercises as $exercise) {
+                if ($exercise->image_file_path) {
+                    Storage::disk('public')->delete($exercise->image_file_path);
+                }
+                if ($exercise->audio_file_path) {
+                    Storage::disk('public')->delete($exercise->audio_file_path);
+                }
+                if ($exercise->document_file_path) {
+                    Storage::disk('public')->delete($exercise->document_file_path);
+                }
+            }
+
+            // Delete lesson media files
+            if ($audioLesson->audio_file_path) {
+                Storage::disk('public')->delete($audioLesson->audio_file_path);
+            }
+            if ($audioLesson->video_file_path) {
+                Storage::disk('public')->delete($audioLesson->video_file_path);
+            }
+
+            // Delete the lesson (exercises will be deleted via foreign key constraint)
+            $audioLesson->delete();
+
+            DB::commit();
+
+            Log::info('Microlearning Deleted', [
+                'audio_lesson_id' => $id,
+                'title' => $audioLesson->title,
+                'deleted_by' => Auth::id()
+            ]);
+
+            return redirect()->route('audio-learning.index')
+                ->with('success', 'Microlearning berhasil dihapus! 🗑️');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Microlearning Delete Failed', [
+                'audio_lesson_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+
+            return back()->with('error', 'Gagal menghapus microlearning: ' . $e->getMessage());
         }
-
-        $audioLesson->delete();
-
-        return redirect()->route('audio-learning.index')
-            ->with('success', 'Audio learning berhasil dihapus! 🗑️');
     }
 }
