@@ -21,7 +21,7 @@
         </div>
 
         <form action="{{ route('audio-learning.store') }}" method="POST" enctype="multipart/form-data"
-              x-data="audioLearningForm()" class="space-y-8">
+              x-data="{ contentType: '{{ old('content_type', 'audio') }}', ...audioLearningForm() }" class="space-y-8">
             @csrf
 
             <!-- Basic Information -->
@@ -99,7 +99,7 @@
                 </h3>
 
                 <div class="mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" x-data="{ contentType: '{{ old('content_type', 'audio') }}' }">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label class="cursor-pointer">
                             <input type="radio" name="content_type" value="audio" class="sr-only"
                                    x-model="contentType" @change="updateContentType('audio')">
@@ -140,7 +140,7 @@
             </div>
 
             <!-- Media Upload -->
-            <div class="bg-white rounded-xl shadow-lg p-8" x-data="{ contentType: '{{ old('content_type', 'audio') }}' }">
+            <div class="bg-white rounded-xl shadow-lg p-8">
                 <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
                     <svg class="w-6 h-6 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
@@ -365,9 +365,21 @@
         const isValid = validateFileType(file, accept);
 
         if (!isValid) {
-            alert('Tipe file tidak didukung. Silakan pilih file audio yang valid.');
+            alert('Tipe file tidak didukung. Silakan pilih file yang valid.');
             return;
         }
+
+        // File size validation for drag & drop
+        const fileType = inputId.includes('audio') ? 'audio' : 'video';
+        const maxSize = fileType === 'audio' ? 50 * 1024 * 1024 : 200 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const maxSizeMB = fileType === 'audio' ? '50MB' : '200MB';
+            alert(`File terlalu besar! Maksimal ${maxSizeMB} untuk ${fileType}.`);
+            return;
+        }
+
+        // Debug logging for drag & drop
+        console.log(`Drag & Drop - File: ${file.name}, Type: ${fileType}, Size: ${file.size} bytes`);
 
         // Create FileList and assign to input
         const dt = new DataTransfer();
@@ -405,6 +417,18 @@
         const file = input.files[0];
         if (!file) return;
 
+        // File size validation
+        const maxSize = type === 'audio' ? 50 * 1024 * 1024 : 200 * 1024 * 1024; // 50MB for audio, 200MB for video
+        if (file.size > maxSize) {
+            const maxSizeMB = type === 'audio' ? '50MB' : '200MB';
+            alert(`File terlalu besar! Maksimal ${maxSizeMB} untuk ${type === 'audio' ? 'audio' : 'video'}.`);
+            input.value = ''; // Clear the input
+            return;
+        }
+
+        // Debug logging
+        console.log(`File selected: ${file.name}, Type: ${type}, Size: ${file.size} bytes`);
+
         if (type === 'audio') {
             const preview = document.getElementById('audio_preview');
             const fileName = document.getElementById('audio_file_name');
@@ -436,6 +460,26 @@
     function handleExerciseFileSelect(exerciseIndex, fileType, input) {
         const file = input.files[0];
         if (!file) return;
+
+        // File size validation for exercise files
+        let maxSize;
+        let maxSizeMB;
+        if (fileType === 'image') {
+            maxSize = 10 * 1024 * 1024; // 10MB
+            maxSizeMB = '10MB';
+        } else if (fileType === 'audio') {
+            maxSize = 20 * 1024 * 1024; // 20MB
+            maxSizeMB = '20MB';
+        } else if (fileType === 'document') {
+            maxSize = 10 * 1024 * 1024; // 10MB
+            maxSizeMB = '10MB';
+        }
+
+        if (file.size > maxSize) {
+            alert(`File ${fileType} terlalu besar! Maksimal ${maxSizeMB}.`);
+            input.value = ''; // Clear the input
+            return;
+        }
 
         const previewId = `${fileType}_preview_${exerciseIndex}`;
         const previewElement = document.getElementById(previewId);

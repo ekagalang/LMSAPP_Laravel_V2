@@ -26,6 +26,8 @@ use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\EssayQuestionController;
 use App\Http\Controllers\JoinPeriodController;
 use App\Http\Controllers\JoinController;
+use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\AssignmentSubmissionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -251,8 +253,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Grup Route untuk Admin, Instruktur, dan EO
     Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::resource('roles', RoleController::class);
-        Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
         Route::resource('roles', RoleController::class)->except(['show']);
 
         // Sertifikat
@@ -265,20 +265,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('announcements/{announcement}/toggle-status', [AnnouncementController::class, 'toggleStatus'])
             ->name('announcements.toggle-status');
 
-        // [PERBAIKAN] Mendefinisikan rute pengguna secara eksplisit
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::get('/users/{user}/reset-password', [UserController::class, 'resetPasswordForm'])->name('users.reset-password-form');
-        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        // User management routes
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::get('users/{user}/reset-password', [UserController::class, 'resetPasswordForm'])->name('users.reset-password-form');
+        Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
         // Bulk Import User
-        Route::get('/users/import', [UserImportController::class, 'show'])->name('users.import.show');
-        Route::post('/users/import', [UserImportController::class, 'store'])->name('users.import.store');
-        Route::get('/users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
+        Route::get('users/import', [UserImportController::class, 'show'])->name('users.import.show');
+        Route::post('users/import', [UserImportController::class, 'store'])->name('users.import.store');
+        Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
         // Pengumuman
         Route::resource('announcements', AdminAnnouncementController::class);
@@ -398,6 +398,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/lesson/{lesson}/exercise/{exercise}/answer', [App\Http\Controllers\AudioLearningController::class, 'submitAnswer'])->name('submit-answer');
         Route::post('/lesson/{lesson}/exercise/{exercise}/speech', [App\Http\Controllers\AudioLearningController::class, 'submitSpeech'])->name('submit-speech');
         Route::get('/lesson/{lesson}/progress', [App\Http\Controllers\AudioLearningController::class, 'getProgress'])->name('get-progress');
+    });
+
+    // Assignment Routes
+    Route::prefix('assignments')->name('assignments.')->group(function () {
+        // Student routes
+        Route::get('/student', [AssignmentController::class, 'studentIndex'])->name('student.index');
+        Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
+
+        // Submission routes for students
+        Route::get('/{assignment}/submit', [AssignmentSubmissionController::class, 'create'])->name('submissions.create');
+        Route::post('/{assignment}/submit', [AssignmentSubmissionController::class, 'store'])->name('submissions.store');
+        Route::get('/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'show'])->name('submissions.show');
+        Route::get('/{assignment}/submissions/{submission}/files/{fileIndex}', [AssignmentSubmissionController::class, 'downloadFile'])->name('submissions.download');
+
+        // Instructor/Admin routes
+        Route::middleware(['role:super-admin|instructor'])->group(function () {
+            Route::get('/', [AssignmentController::class, 'index'])->name('index');
+            Route::get('/create', [AssignmentController::class, 'create'])->name('create');
+            Route::post('/', [AssignmentController::class, 'store'])->name('store');
+            Route::get('/{assignment}/edit', [AssignmentController::class, 'edit'])->name('edit');
+            Route::put('/{assignment}', [AssignmentController::class, 'update'])->name('update');
+            Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('destroy');
+
+            // Grading routes
+            Route::post('/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade'])->name('submissions.grade');
+        });
     });
 
     // Reflection Routes

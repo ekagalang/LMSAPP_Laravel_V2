@@ -243,17 +243,22 @@ class AudioLearningController extends Controller
      */
     public function store(Request $request)
     {
+        // Increase memory and upload limits for large file uploads
+        ini_set('memory_limit', '512M');
+        ini_set('post_max_size', '300M');
+        ini_set('upload_max_filesize', '200M');
+        ini_set('max_execution_time', 300);
+
         // Check if user is admin/instructor
         if (!Auth::user() || !Auth::user()->hasRole(['super-admin', 'instructor'])) {
             abort(403, 'Unauthorized access');
         }
 
-        $validated = $request->validate([
+        // Custom validation rules based on content type
+        $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'content_type' => 'required|in:audio,video,mixed',
-            'audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200', // 50MB max
-            'video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:204800', // 200MB max
             'transcript' => 'nullable|string',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'metadata' => 'nullable|array',
@@ -270,7 +275,36 @@ class AudioLearningController extends Controller
             'exercises.*.image_file' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:10240', // 10MB max
             'exercises.*.audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:20480', // 20MB max
             'exercises.*.document_file' => 'nullable|file|mimes:pdf,doc,docx,txt|max:10240', // 10MB max
-        ]);
+        ];
+
+        // Add conditional file validation based on content type
+        $contentType = $request->input('content_type');
+
+        // Debug logging
+        Log::info('AudioLearning Store - Content Type: ' . $contentType);
+        Log::info('AudioLearning Store - Has audio file: ' . ($request->hasFile('audio_file') ? 'Yes' : 'No'));
+        Log::info('AudioLearning Store - Has video file: ' . ($request->hasFile('video_file') ? 'Yes' : 'No'));
+
+        if ($contentType === 'audio') {
+            $rules['audio_file'] = 'required|file|mimes:mp3,wav,m4a,aac|max:51200'; // 50MB max
+            $rules['video_file'] = 'nullable|file|max:204800'; // Optional for audio type, relax validation
+        } elseif ($contentType === 'video') {
+            $rules['audio_file'] = 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200'; // Optional for video type
+            $rules['video_file'] = 'required|file|max:204800'; // 200MB max, relax mime validation for now
+        } elseif ($contentType === 'mixed') {
+            $rules['audio_file'] = 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200'; // At least one required
+            $rules['video_file'] = 'nullable|file|max:204800'; // At least one required, relax validation
+        }
+
+        // Debug validation rules
+        Log::info('AudioLearning Store - Validation Rules: ', $rules);
+
+        $validated = $request->validate($rules);
+
+        // For mixed content type, ensure at least one file is provided
+        if ($contentType === 'mixed' && !$request->hasFile('audio_file') && !$request->hasFile('video_file')) {
+            return back()->withErrors(['content_type' => 'For mixed content, at least one audio or video file is required.'])->withInput();
+        }
 
         DB::beginTransaction();
         try {
@@ -301,9 +335,17 @@ class AudioLearningController extends Controller
 
             // Handle video file upload
             if ($request->hasFile('video_file')) {
+                Log::info('AudioLearning Store - Processing video file upload');
                 $videoFile = $request->file('video_file');
+                Log::info('AudioLearning Store - Video file info: ', [
+                    'name' => $videoFile->getClientOriginalName(),
+                    'size' => $videoFile->getSize(),
+                    'mime' => $videoFile->getMimeType()
+                ]);
+
                 $fileName = time() . '_vid_' . $videoFile->getClientOriginalName();
                 $videoPath = $videoFile->storeAs('microlearning/videos', $fileName, 'public');
+                Log::info('AudioLearning Store - Video stored at: ' . $videoPath);
 
                 // Store video metadata
                 $videoMetadata = [
@@ -333,6 +375,14 @@ class AudioLearningController extends Controller
             }
 
             // Create microlearning lesson
+            Log::info('AudioLearning Store - Creating lesson with data: ', [
+                'title' => $validated['title'],
+                'content_type' => $validated['content_type'],
+                'audio_path' => $audioPath,
+                'video_path' => $videoPath,
+                'video_metadata' => $videoMetadata
+            ]);
+
             $audioLesson = AudioLesson::create([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
@@ -348,6 +398,8 @@ class AudioLearningController extends Controller
                 'sort_order' => AudioLesson::max('sort_order') + 1,
                 'available_for_courses' => $validated['available_for_courses'] ?? false,
             ]);
+
+            Log::info('AudioLearning Store - Lesson created with ID: ' . $audioLesson->id);
 
             // Create exercises if provided
             if (!empty($validated['exercises'])) {
@@ -465,30 +517,46 @@ class AudioLearningController extends Controller
 
         $audioLesson = AudioLesson::with('exercises')->findOrFail($id);
 
-        $validated = $request->validate([
+        // Base validation rules
+        $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'content_type' => 'required|in:audio,video,mixed',
-            'audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200', // 50MB max
-            'video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:204800', // 200MB max
             'transcript' => 'nullable|string',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'metadata' => 'nullable|array',
             'available_for_courses' => 'boolean',
+        ];
 
-            // Exercise data
-            'exercises' => 'nullable|array',
-            'exercises.*.id' => 'nullable|integer|exists:audio_exercises,id',
-            'exercises.*.question_text' => 'required_with:exercises|string',
-            'exercises.*.type' => 'required_with:exercises|in:multiple_choice,fill_blank,speech_response,comprehension',
-            'exercises.*.options' => 'nullable|array',
-            'exercises.*.correct_answers' => 'required_with:exercises|array',
-            'exercises.*.points' => 'required_with:exercises|integer|min:1|max:100',
-            'exercises.*.explanation' => 'nullable|string',
-            'exercises.*.image_file' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:10240', // 10MB max
-            'exercises.*.audio_file' => 'nullable|file|mimes:mp3,wav,m4a,aac|max:20480', // 20MB max
-            'exercises.*.document_file' => 'nullable|file|mimes:pdf,doc,docx,txt|max:10240', // 10MB max
-        ]);
+        // Add conditional file validation for update
+        $contentType = $request->input('content_type');
+
+        if ($contentType === 'video') {
+            $rules['video_file'] = 'nullable|file|max:204800'; // Relax validation for update
+        } else {
+            $rules['video_file'] = 'nullable|file|max:204800';
+        }
+
+        if ($contentType === 'audio') {
+            $rules['audio_file'] = 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200';
+        } else {
+            $rules['audio_file'] = 'nullable|file|mimes:mp3,wav,m4a,aac|max:51200';
+        }
+
+        // Add exercise validation rules
+        $rules['exercises'] = 'nullable|array';
+        $rules['exercises.*.id'] = 'nullable|integer|exists:audio_exercises,id';
+        $rules['exercises.*.question_text'] = 'required_with:exercises|string';
+        $rules['exercises.*.type'] = 'required_with:exercises|in:multiple_choice,fill_blank,speech_response,comprehension';
+        $rules['exercises.*.options'] = 'nullable|array';
+        $rules['exercises.*.correct_answers'] = 'required_with:exercises|array';
+        $rules['exercises.*.points'] = 'required_with:exercises|integer|min:1|max:100';
+        $rules['exercises.*.explanation'] = 'nullable|string';
+        $rules['exercises.*.image_file'] = 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:10240';
+        $rules['exercises.*.audio_file'] = 'nullable|file|mimes:mp3,wav,m4a,aac|max:20480';
+        $rules['exercises.*.document_file'] = 'nullable|file|mimes:pdf,doc,docx,txt|max:10240';
+
+        $validated = $request->validate($rules);
 
         DB::beginTransaction();
         try {

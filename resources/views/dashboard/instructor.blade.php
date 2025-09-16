@@ -290,6 +290,14 @@
                                 <span class="text-gray-600">Chatting Private</span>
                             </a>
 
+                            <!-- Kelola Tugas -->
+                            <a href="{{ route('assignments.index') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors hover-lift">
+                                <svg class="w-5 h-5 mr-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                </svg>
+                                <span class="text-orange-800">Kelola Tugas</span>
+                            </a>
+
                             <!-- Kelola Penilaian -->
                             <a href="{{ route('courses.gradebook', $stats['courses']['performance'][0]['id'] ?? 1) }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors hover-lift">
                                 <svg class="w-5 h-5 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
