@@ -64,7 +64,7 @@ class AssignmentSubmissionController extends Controller
         if ($assignment->submission_type === 'file' || $assignment->submission_type === 'both') {
             $maxFiles = $assignment->max_files ?: 1;
             $rules['files'] = 'nullable|array|max:' . $maxFiles;
-            $rules['files.*'] = 'file|max:' . ($assignment->max_file_size ? ($assignment->max_file_size / 1024) : 51200); // Convert to KB
+            $rules['files.*'] = 'file|max:' . ($assignment->max_file_size ? ($assignment->max_file_size / 1024) : 51200); // Convert bytes to KB for Laravel validation
 
             if ($assignment->allowed_file_types && !empty($assignment->allowed_file_types)) {
                 $mimeTypes = $this->getAceptedMimeTypes($assignment->allowed_file_types);
@@ -302,5 +302,36 @@ class AssignmentSubmissionController extends Controller
         ];
 
         return array_intersect_key($mimeMap, array_flip($extensions));
+    }
+
+    /**
+     * Submit a draft submission
+     */
+    public function submitDraft(Request $request, Assignment $assignment, AssignmentSubmission $submission)
+    {
+        // Check authorization
+        if ($submission->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Check if submission can still be submitted
+        if (!$assignment->canSubmit()) {
+            return redirect()->back()->with('error', 'Assignment submission has been closed.');
+        }
+
+        // Check if submission is in draft status
+        if ($submission->status !== 'draft') {
+            return redirect()->back()->with('error', 'Only draft submissions can be submitted.');
+        }
+
+        try {
+            // Use the model's submit method
+            $submission->submit();
+
+            return redirect()->route('assignments.submissions.show', [$assignment, $submission])
+                ->with('success', 'Assignment submitted successfully!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to submit assignment. Please try again.');
+        }
     }
 }

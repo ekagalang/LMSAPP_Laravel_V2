@@ -131,6 +131,11 @@ class Assignment extends Model
         return number_format($bytes / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
     }
 
+    public function getFileSizeFormatted(): string
+    {
+        return $this->getFormattedFileSizeLimit();
+    }
+
     public function getAllowedFileTypesString(): string
     {
         if (!$this->allowed_file_types || empty($this->allowed_file_types)) {

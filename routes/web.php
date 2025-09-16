@@ -402,15 +402,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Assignment Routes
     Route::prefix('assignments')->name('assignments.')->group(function () {
-        // Student routes
+        // Student routes (specific routes first to avoid parameter conflicts)
         Route::get('/student', [AssignmentController::class, 'studentIndex'])->name('student.index');
-        Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
-
-        // Submission routes for students
-        Route::get('/{assignment}/submit', [AssignmentSubmissionController::class, 'create'])->name('submissions.create');
-        Route::post('/{assignment}/submit', [AssignmentSubmissionController::class, 'store'])->name('submissions.store');
-        Route::get('/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'show'])->name('submissions.show');
-        Route::get('/{assignment}/submissions/{submission}/files/{fileIndex}', [AssignmentSubmissionController::class, 'downloadFile'])->name('submissions.download');
 
         // Instructor/Admin routes
         Route::middleware(['role:super-admin|instructor'])->group(function () {
@@ -424,6 +417,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Grading routes
             Route::post('/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade'])->name('submissions.grade');
         });
+
+        // Assignment show route (must be after specific routes to avoid conflicts)
+        Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
+
+        // Submission routes for students
+        Route::get('/{assignment}/submit', [AssignmentSubmissionController::class, 'create'])->name('submissions.create');
+        Route::post('/{assignment}/submit', [AssignmentSubmissionController::class, 'store'])->name('submissions.store');
+        Route::get('/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'show'])->name('submissions.show');
+        Route::post('/{assignment}/submissions/{submission}/submit', [AssignmentSubmissionController::class, 'submitDraft'])->name('submissions.submit');
+        Route::get('/{assignment}/submissions/{submission}/files/{fileIndex}', [AssignmentSubmissionController::class, 'downloadFile'])->name('submissions.download');
     });
 
     // Reflection Routes
