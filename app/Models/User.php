@@ -392,6 +392,13 @@ class User extends Authenticatable
      */
     public function hasCompletedContent(Content $content): bool
     {
+        if ($content->is_optional ?? false) {
+            return $this->completedContents()
+                ->where('content_id', $content->id)
+                ->wherePivot('completed', true)
+                ->exists();
+        }
+
         if ($content->type === 'quiz' && $content->quiz_id) {
             return $this->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
@@ -619,23 +626,9 @@ class User extends Authenticatable
      */
     public function courseProgress(Course $course): float
     {
-        $allContents = $course->contents; // Mengambil semua konten dari relasi
-        $totalContents = $allContents->count();
+        $progressData = $this->getProgressForCourse($course);
 
-        if ($totalContents === 0) {
-            return 0;
-        }
-
-        $completedCount = 0;
-        foreach ($allContents as $content) {
-            // Gunakan method hasCompletedContent() yang sudah ada
-            // karena method tersebut sudah memeriksa semua jenis konten (biasa, kuis, esai)
-            if ($this->hasCompletedContent($content)) {
-                $completedCount++;
-            }
-        }
-
-        return round(($completedCount / $totalContents) * 100, 2);
+        return (float) ($progressData['progress_percentage'] ?? 0);
     }
 
     /**
@@ -652,6 +645,11 @@ class User extends Authenticatable
         }
 
         foreach ($itemsToGrade as $item) {
+            if ($item->is_optional ?? false) {
+                // Konten opsional tidak menghalangi progres atau sertifikasi
+                continue;
+            }
+
             if ($item->type == 'essay') {
                 $submission = $this->essaySubmissions()->where('content_id', $item->id)->first();
 
@@ -809,6 +807,15 @@ class User extends Authenticatable
 
     public function getContentStatus(Content $content): string
     {
+        if ($content->is_optional ?? false) {
+            return $this->completedContents()
+                ->where('content_id', $content->id)
+                ->wherePivot('completed', true)
+                ->exists()
+                ? 'completed'
+                : 'not_started';
+        }
+
         if ($content->type === 'quiz' && $content->quiz_id) {
             $passedAttempt = $this->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
@@ -892,7 +899,10 @@ class User extends Authenticatable
                 }
             }
         } else {
-            return $this->completedContents()->where('content_id', $content->id)->exists()
+            return $this->completedContents()
+                ->where('content_id', $content->id)
+                ->wherePivot('completed', true)
+                ->exists()
                 ? 'completed'
                 : 'not_started';
         }

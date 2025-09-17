@@ -15,7 +15,12 @@ class Lesson extends Model
         'title',
         'description',
         'order',
-        'prerequisite_id' // Pastikan ini ada di $fillable
+        'prerequisite_id', // Pastikan ini ada di $fillable
+        'is_optional'
+    ];
+    
+    protected $casts = [
+        'is_optional' => 'boolean',
     ];
     
     /**

@@ -32,6 +32,7 @@ class Content extends Model
         'scoring_enabled',
         'grading_mode',
         'requires_review',
+        'is_optional',
     ];
 
     protected $casts = [
@@ -40,6 +41,7 @@ class Content extends Model
         'is_scheduled' => 'boolean',
         'scoring_enabled' => 'boolean',
         'requires_review' => 'boolean',
+        'is_optional' => 'boolean',
     ];
 
     /**

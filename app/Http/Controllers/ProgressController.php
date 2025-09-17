@@ -62,7 +62,8 @@ class ProgressController extends Controller
         }
 
         if ($allLessonsCompleted) {
-            return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan seluruh kursus ini.');
+            // Selaras dengan alur completeAndContinue: arahkan ke dashboard saat kursus selesai
+            return redirect()->route('dashboard')->with('success', 'Selamat! Anda telah menyelesaikan seluruh kursus ini.');
         }
 
         // Jika ini adalah konten terakhir dari pelajaran, tapi masih ada pelajaran lain,
@@ -78,7 +79,7 @@ class ProgressController extends Controller
         $contentIds = $lesson->contents->pluck('id')->toArray();
         if (!empty($contentIds)) {
             $user->contents()->syncWithoutDetaching(
-                array_fill_keys($contentIds, ['status' => 'completed'])
+                array_fill_keys($contentIds, ['completed' => true, 'completed_at' => now()])
             );
         }
 
@@ -104,12 +105,8 @@ class ProgressController extends Controller
         $progress = $user->courseProgress($course);
         Log::info("User {$user->id} progress: {$progress}%");
 
-        // Cek apakah semua graded items sudah dinilai
-        $allGradedItemsMarked = $user->areAllGradedItemsMarked($course);
-        Log::info("All graded items marked: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
-
-        // Syarat untuk mendapat sertifikat: progress 100% dan semua item graded sudah dinilai
-        if ($progress >= 100 && $allGradedItemsMarked) {
+        // Syarat untuk sertifikat: progress 100%
+        if ($progress >= 100) {
             // Cek apakah sertifikat sudah ada
             $existingCertificate = Certificate::where('course_id', $course->id)
                 ->where('user_id', $user->id)
@@ -122,7 +119,7 @@ class ProgressController extends Controller
                 Log::info("Certificate already exists for user {$user->id} in course {$course->id}");
             }
         } else {
-            Log::info("Certificate conditions not met - Progress: {$progress}%, All graded: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
+            Log::info("Certificate conditions not met - Progress: {$progress}%");
         }
     }
 
@@ -398,3 +395,4 @@ class ProgressController extends Controller
         return $debug;
     }
 }
+

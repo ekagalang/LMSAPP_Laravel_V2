@@ -10,15 +10,17 @@
             $isTask = in_array($content->type, ['quiz', 'essay']);
             $isContentEffectivelyCompleted = false;
 
-            if ($content->type === 'quiz' && $content->quiz_id) {
+            if ($content->is_optional ?? false) {
+                $isContentEffectivelyCompleted = $user->hasCompletedContent($content);
+            } elseif ($content->type === 'quiz' && $content->quiz_id) {
                 // Dianggap selesai jika ada percobaan yang lulus
                 $isContentEffectivelyCompleted = $user->quizAttempts()->where('quiz_id', $content->quiz_id)->where('passed', true)->exists();
             } elseif ($content->type === 'essay') {
-                // ✅ PERUBAHAN: Dianggap selesai jika sudah ada submission (tidak perlu dinilai)
+                // Essay dianggap selesai jika sudah ada submission (tidak perlu dinilai)
                 $isContentEffectivelyCompleted = $user->essaySubmissions()->where('content_id', $content->id)->exists();
             } else {
-                // Untuk konten biasa, cek di tabel pivot
-                $isContentEffectivelyCompleted = $user->completedContents->contains($content->id);
+                // Untuk konten biasa, gunakan helper yang konsisten dengan dashboard
+                $isContentEffectivelyCompleted = $user->hasCompletedContent($content);
             }
         @endphp
         contentCompleted: {{ $isContentEffectivelyCompleted ? 'true' : 'false' }},
@@ -92,23 +94,12 @@
                 <!-- Progress Bar -->
                 @php
                     $totalContentsInCourse = $course->lessons->flatMap->contents->count();
-                    // ✅ PERBAIKAN: Use fresh query for completed count dengan logika essay yang baru
+                    // Perbaikan: Use fresh query for completed count dengan logika essay yang baru
                     $completedContentsCount = 0;
                     foreach ($course->lessons as $lesson) {
                         foreach ($lesson->contents as $contentItem) {
-                            if ($contentItem->type === 'quiz' && $contentItem->quiz_id) {
-                                if ($user->quizAttempts()->where('quiz_id', $contentItem->quiz_id)->where('passed', true)->exists()) {
-                                    $completedContentsCount++;
-                                }
-                            } elseif ($contentItem->type === 'essay') {
-                                // ✅ PERUBAHAN: Essay dianggap selesai jika sudah submit
-                                if ($user->essaySubmissions()->where('content_id', $contentItem->id)->exists()) {
-                                    $completedContentsCount++;
-                                }
-                            } else {
-                                if ($user->completedContents()->where('content_id', $contentItem->id)->exists()) {
-                                    $completedContentsCount++;
-                                }
+                            if ($user->hasCompletedContent($contentItem)) {
+                                $completedContentsCount++;
                             }
                         }
                     }
@@ -136,25 +127,19 @@
                             <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
                                 {{ $loop->iteration }}
                             </div>
-                            <h4 class="font-semibold text-gray-900 flex-1">{{ $lesson->title }}</h4>
+                            <h4 class="font-semibold text-gray-900 flex-1 flex items-center">
+                                <span class="truncate">{{ $lesson->title }}</span>
+                                @if($lesson->is_optional ?? false)
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 uppercase tracking-wide">Opsional</span>
+                                @endif
+                            </h4>
                             @php
                                 $lessonContentsCount = $lesson->contents->count();
-                                // ✅ PERBAIKAN: Calculate lesson completed count dengan logika essay yang konsisten
+                                // Perbaikan: Calculate lesson completed count dengan logika essay yang konsisten
                                 $lessonCompletedCount = 0;
                                 foreach ($lesson->contents as $contentItem) {
-                                    if ($contentItem->type === 'quiz' && $contentItem->quiz_id) {
-                                        if ($user->quizAttempts()->where('quiz_id', $contentItem->quiz_id)->where('passed', true)->exists()) {
-                                            $lessonCompletedCount++;
-                                        }
-                                    } elseif ($contentItem->type === 'essay') {
-                                        // ✅ PERUBAHAN: Essay dianggap selesai jika sudah submit
-                                        if ($user->essaySubmissions()->where('content_id', $contentItem->id)->exists()) {
-                                            $lessonCompletedCount++;
-                                        }
-                                    } else {
-                                        if ($user->completedContents()->where('content_id', $contentItem->id)->exists()) {
-                                            $lessonCompletedCount++;
-                                        }
+                                    if ($user->hasCompletedContent($contentItem)) {
+                                        $lessonCompletedCount++;
                                     }
                                 }
                             @endphp
@@ -169,7 +154,7 @@
                                 @php
                                     $cIsTask = in_array($c->type, ['quiz', 'essay']);
 
-                                    // ✅ PERBAIKAN: Consistent completion check dengan logika essay baru
+                                    // Perbaikan: Consistent completion check dengan logika essay baru
                                     if ($c->type === 'essay') {
                                         $submission = $user->essaySubmissions()->where('content_id', $c->id)->first();
                                         if ($submission) {
@@ -181,7 +166,7 @@
                                     } elseif ($c->type === 'quiz' && $c->quiz_id) {
                                         $isCompleted = $user->quizAttempts()->where('quiz_id', $c->quiz_id)->where('passed', true)->exists();
                                     } else {
-                                        $isCompleted = $user->completedContents()->where('content_id', $c->id)->exists();
+                                        $isCompleted = $user->hasCompletedContent($c);
                                     }
 
                                     $isCurrent = $c->id === $content->id;
@@ -205,7 +190,15 @@
                                                         @case('quiz') 🧠 @break @case('essay') ✍️ @break @default 📝
                                                     @endswitch
                                                 </div>
-                                                <div class="flex-1 min-w-0"><p class="font-medium truncate">{{ $c->title }}</p><p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p></div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-medium truncate flex items-center">
+                                                        <span class="truncate">{{ $c->title }}</span>
+                                                        @if($c->is_optional ?? false)
+                                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 uppercase tracking-wide">Opsional</span>
+                                                        @endif
+                                                    </p>
+                                                    <p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p>
+                                                </div>
                                                 <div class="ml-2 flex-shrink-0">
                                                     @if($isCurrent)<div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 8.207a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 9.586z" clip-rule="evenodd"/></svg></div>
                                                     @elseif($isCompleted)<div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
@@ -218,7 +211,15 @@
                                         <div class="group block p-3 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
                                             <div class="flex items-center">
                                                 <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gray-200 text-gray-500"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg></div>
-                                                <div class="flex-1 min-w-0"><p class="font-medium truncate">{{ $c->title }}</p><p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p></div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-medium truncate flex items-center">
+                                                        <span class="truncate">{{ $c->title }}</span>
+                                                        @if($c->is_optional ?? false)
+                                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 uppercase tracking-wide">Opsional</span>
+                                                        @endif
+                                                    </p>
+                                                    <p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p>
+                                                </div>
                                                 <div class="ml-2 flex-shrink-0"><div class="w-6 h-6 bg-gray-300 rounded-full"></div></div>
                                             </div>
                                         </div>
@@ -312,7 +313,7 @@
                 </div>
             </header>
 
-            <!-- ✅ PERBAIKAN: Content Container dengan padding bottom yang cukup untuk bottom bar -->
+            <!-- PERBAIKAN: Content Container dengan padding bottom yang cukup untuk bottom bar -->
             <div class="flex-1 overflow-y-auto pb-32">
                 <div class="max-w-4xl mx-auto p-6 lg:p-8">
                     <!-- Content Card -->
@@ -669,7 +670,7 @@
                                     </div>
 
                                 @elseif($content->type == 'quiz' && $content->quiz)
-                                    <!-- ✅ PERBAIKAN: Tampilkan quiz content dengan benar -->
+                                    <!-- PERBAIKAN: Tampilkan quiz content dengan benar -->
                                     <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-8 border border-purple-100">
                                         <div class="text-center mb-6">
                                             <div class="w-20 h-20 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -794,7 +795,7 @@
                                             </p>
                                         </div>
 
-                                        {{-- ✅ Scheduling Status Display --}}
+                                        {{-- Scheduling Status Display --}}
                                         @if($content->is_scheduled)
                                             <div class="mb-6">
                                                 @if($schedulingStatus['status'] === 'upcoming')
@@ -908,14 +909,14 @@
             </div>
         </main>
 
-        <!-- ✅ PERBAIKAN UTAMA: Bottom Navigation dengan positioning yang lebih robust -->
+        <!-- PERBAIKAN UTAMA: Bottom Navigation dengan positioning yang lebih robust -->
         <div class="fixed bottom-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300 ease-in-out"
              :style="{
                 'left': sidebarOpen && window.innerWidth >= 1024 ? '384px' : '0px',
                 'right': '0px'
              }">
             @php
-                // ✅ PERBAIKAN: Mendapatkan konten dalam urutan yang benar
+                // Perbaikan: Mendapatkan konten dalam urutan yang benar
                 $allContents = $orderedContents; // Gunakan data yang sudah diurutkan dari controller
                 $currentIndex = $allContents->search(function($item) use ($content) {
                     return $item->id === $content->id;
@@ -924,14 +925,14 @@
                 $previousContent = $currentIndex > 0 ? $allContents->get($currentIndex - 1) : null;
                 $nextContent = ($currentIndex !== false && $currentIndex < $allContents->count() - 1) ? $allContents->get($currentIndex + 1) : null;
 
-                // ✅ PERBAIKAN LOGIC: Untuk quiz, cek apakah sudah lulus. Untuk essay, cek apakah sudah submit.
+                // Perbaikan LOGIC: Untuk quiz, cek apakah sudah lulus. Untuk essay, cek apakah sudah submit.
                 if ($content->type === 'quiz' && $content->quiz_id) {
                     $canGoNext = $user->quizAttempts()
                         ->where('quiz_id', $content->quiz_id)
                         ->where('passed', true)
                         ->exists() && $nextContent;
                 } elseif ($content->type === 'essay') {
-                    // ✅ PERUBAHAN: Essay bisa lanjut setelah submit
+                    // PERUBAHAN: Essay bisa lanjut setelah submit
                     $canGoNext = $user->essaySubmissions()
                         ->where('content_id', $content->id)
                         ->exists() && $nextContent;
@@ -939,7 +940,7 @@
                     $canGoNext = $isContentEffectivelyCompleted && $nextContent;
                 }
 
-                // ✅ FITUR BARU: Cek apakah ini konten terakhir dan semua sudah selesai
+                // FITUR BARU: Cek apakah ini konten terakhir dan semua sudah selesai
                 $isLastContent = !$nextContent && $isContentEffectivelyCompleted;
                 $allCourseContents = $course->lessons->flatMap->contents;
                 $isAllCourseCompleted = true;
@@ -958,9 +959,7 @@
                                 ->where('content_id', $courseContent->id)
                                 ->exists();
                         } else {
-                            $isContentDone = $user->completedContents()
-                                ->where('content_id', $courseContent->id)
-                                ->exists();
+                            $isContentDone = $user->hasCompletedContent($courseContent);
                         }
 
                         if (!$isContentDone) {
@@ -985,23 +984,25 @@
                         @endif
 
                         <div class="flex-1">
-                            @if ($canGoNext)
-                                <a href="{{ route('contents.show', $nextContent) }}"
-                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group">
+                            @if ($canGoNext || ((($content->is_optional ?? false)) && $nextContent))
+                                <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" class="w-full">
+                                    @csrf
+                                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group">
                                     <span class="text-sm mr-2">Selanjutnya</span>
                                     <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                     </svg>
-                                </a>
-                            @elseif(!$nextContent && $isContentEffectivelyCompleted)
-                                <!-- ✅ FITUR BARU: Cek apakah semua kursus sudah selesai -->
+                                    </button>
+                                </form>
+                            @elseif((!$nextContent) && ($isContentEffectivelyCompleted || (($content->is_optional ?? false))))
+                                <!-- FITUR BARU: Cek apakah semua kursus sudah selesai -->
                                 @if($isAllCourseCompleted)
                                     <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" class="w-full">
                                         @csrf
                                         <button type="submit"
                                                class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
-                                            <span class="text-sm mr-2">🎉 Selesaikan Kursus</span>
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                Selesaikan Kursus
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                             </svg>
                                         </button>
@@ -1021,7 +1022,7 @@
                                     Tandai Selesai
                                 </button>
                             @else
-                                <!-- ✅ TAMBAHAN: Pesan untuk quiz yang belum diselesaikan -->
+                                <!-- TAMBAHAN: Pesan untuk quiz yang belum diselesaikan -->
                                 <div class="w-full text-center py-3">
                                     <p class="text-sm text-gray-600">
                                         @if($content->type === 'quiz')
@@ -1061,22 +1062,23 @@
                         </div>
 
                         <div>
-                            @if ($canGoNext)
-                                <a href="{{ route('contents.show', $nextContent) }}"
-                                class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
+                            @if ($canGoNext || ((($content->is_optional ?? false)) && $nextContent))
+                                <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
                                     <span class="mr-2">Selanjutnya</span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                     </svg>
-                                </a>
-                            @elseif (!$nextContent && $isContentEffectivelyCompleted)
-                                {{-- ✅ FIX: Simple completion button - let controller handle the logic --}}
+                                    </button>
+                                </form>
+                            @elseif ((!$nextContent) && ($isContentEffectivelyCompleted || (($content->is_optional ?? false))))
+                                {{-- FIX: Simple completion button - let controller handle the logic --}}
                                 <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
                                     @csrf
                                     <button type="submit"
                                         class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
-                                        <span class="mr-2">✅</span>
-                                        Selesai & Lanjutkan
+                                            Selesai & Lanjutkan
                                     </button>
                                 </form>
                             @elseif (!$isContentEffectivelyCompleted && !$isTask)
@@ -1085,7 +1087,7 @@
                                     Tandai Selesai untuk Lanjut
                                 </button>
                             @else
-                                {{-- ✅ TAMBAHAN: Pesan untuk desktop --}}
+                                {{-- TAMBAHAN: Pesan untuk desktop --}}
                                 <div class="text-center py-3">
                                     <p class="text-sm text-gray-600">
                                         @if($content->type === 'quiz')
@@ -1263,7 +1265,7 @@
             font-weight: 600;
         }
 
-        /* ✅ PERBAIKAN: Custom scrollbar */
+        /* Perbaikan: Custom scrollbar */
         .overflow-y-auto::-webkit-scrollbar {
             width: 6px;
         }
@@ -1281,25 +1283,25 @@
             background: #94a3b8;
         }
 
-        /* ✅ PERBAIKAN: Enhanced button animations */
+        /* Perbaikan: Enhanced button animations */
         .group:hover {
             transform: translateY(-0.5px);
         }
 
-        /* ✅ PERBAIKAN: Ensure bottom navigation never gets covered */
+        /* Perbaikan: Ensure bottom navigation never gets covered */
         .fixed {
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
 
-        /* ✅ PERBAIKAN: Responsive Typography */
+        /* Perbaikan: Responsive Typography */
         @media (max-width: 640px) {
             .max-w-48 {
                 max-width: 180px;
             }
         }
 
-        /* ✅ PERBAIKAN: Enhanced backdrop blur support */
+        /* Perbaikan: Enhanced backdrop blur support */
         .backdrop-blur-md {
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
@@ -1310,7 +1312,7 @@
             -webkit-backdrop-filter: blur(4px);
         }
 
-        /* ✅ PERBAIKAN: Ensure no overlapping elements */
+        /* Perbaikan: Ensure no overlapping elements */
         .z-\[9999\] {
             z-index: 9999;
         }
@@ -1321,12 +1323,12 @@
     </style>
 
     <script>
-        // ✅ PERBAIKAN: Improved sidebar management for bottom bar
+        // Perbaikan: Improved sidebar management for bottom bar
         document.addEventListener('alpine:init', () => {
             Alpine.store('sidebarWidth', 384); // 24rem = 384px
         });
 
-        // ✅ PERBAIKAN: Auto-hide mobile sidebar when scrolling
+        // Perbaikan: Auto-hide mobile sidebar when scrolling
         let lastScrollTop = 0;
 
         window.addEventListener('scroll', function() {
@@ -1342,7 +1344,7 @@
             }
         }, false);
 
-        // ✅ PERBAIKAN: Enhanced keyboard shortcuts
+        // Perbaikan: Enhanced keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             // Prevent conflicts with form inputs
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -1374,7 +1376,7 @@
             }
         });
 
-        // ✅ PERBAIKAN: Prevent page scroll when modal is open
+        // Perbaikan: Prevent page scroll when modal is open
         document.addEventListener('alpine:init', () => {
             Alpine.data('contentData', () => ({
                 showProgress: false,
@@ -1390,7 +1392,7 @@
             }));
         });
 
-        // ✅ PERBAIKAN: Handle window resize for bottom bar
+        // Perbaikan: Handle window resize for bottom bar
         window.addEventListener('resize', function() {
             // Force re-calculation of bottom bar position
             if (window.innerWidth >= 1024) {

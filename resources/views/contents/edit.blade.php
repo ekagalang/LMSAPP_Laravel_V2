@@ -215,6 +215,16 @@
                                 </label>
                             </div>
 
+                            <div class="mt-6">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="is_optional" value="1"
+                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                                           @checked(old('is_optional', $content->is_optional ?? false))>
+                                    <span class="ml-2 text-sm text-gray-700">Boleh dilewati (opsional)</span>
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500">Jika dicentang, konten ini tidak akan mengunci konten berikutnya.</p>
+                            </div>
+
                             <div x-show="content.type === 'essay'" x-transition class="mb-6">
                                 <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">

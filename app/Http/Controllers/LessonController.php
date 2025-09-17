@@ -33,6 +33,7 @@ class LessonController extends Controller
             'description' => 'nullable|string',
             'order' => 'nullable|integer',
             'prerequisite_id' => 'nullable|exists:lessons,id',
+            'is_optional' => 'sometimes|boolean',
         ]);
 
         $course->lessons()->create([
@@ -40,6 +41,7 @@ class LessonController extends Controller
             'description' => $request->description,
             'order' => $request->order ?? $course->lessons()->count() + 1,
             'prerequisite_id' => $request->prerequisite_id,
+            'is_optional' => $request->boolean('is_optional'),
         ]);
 
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil ditambahkan!');
@@ -65,7 +67,8 @@ class LessonController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order' => 'nullable|integer',
-            'prerequisite_id' => 'nullable|exists:lessons,id|not_in:'
+            'prerequisite_id' => 'nullable|exists:lessons,id|not_in:',
+            'is_optional' => 'sometimes|boolean'
         ]);
 
         $lesson->update([
@@ -73,6 +76,7 @@ class LessonController extends Controller
             'description' => $request->description,
             'order' => $request->order ?? $lesson->order,
             'prerequisite_id' => $request->prerequisite_id,
+            'is_optional' => $request->boolean('is_optional'),
         ]);
 
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil diperbarui!');

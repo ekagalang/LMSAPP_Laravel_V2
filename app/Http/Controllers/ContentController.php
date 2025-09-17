@@ -76,7 +76,7 @@ class ContentController extends Controller
         $orderedContents = $this->getOrderedContents($course);
 
         $currentIndex = $orderedContents->search(function ($item) use ($content) {
-            return $item->id === $content->id;
+            return (int)$item->id === (int)$content->id;
         });
 
         // ✅ FIX: Ambil content berikutnya dari SELURUH course, bukan cuma lesson
@@ -116,24 +116,12 @@ class ContentController extends Controller
         $orderedContents = $this->getOrderedContents($course);
 
         foreach ($orderedContents as $content) {
-            $isCompleted = false;
-
-            if ($content->type === 'quiz' && $content->quiz_id) {
-                $isCompleted = $user->quizAttempts()
-                    ->where('quiz_id', $content->quiz_id)
-                    ->where('passed', true)
-                    ->exists();
-            } elseif ($content->type === 'essay') {
-                $isCompleted = $user->essaySubmissions()
-                    ->where('content_id', $content->id)
-                    ->exists();
-            } else {
-                $isCompleted = $user->completedContents()
-                    ->where('content_id', $content->id)
-                    ->exists();
+            // Konten opsional dianggap selesai walaupun belum dikerjakan
+            if (($content->is_optional ?? false) === true) {
+                continue;
             }
-
-            if (!$isCompleted) {
+            // Gunakan definisi tunggal untuk status selesai konten
+            if (!$user->hasCompletedContent($content)) {
                 return false; // Masih ada yang belum selesai
             }
         }
@@ -156,12 +144,8 @@ class ContentController extends Controller
         $progress = $user->courseProgress($course);
         Log::info("User {$user->id} progress: {$progress}%");
 
-        // Cek apakah semua graded items sudah dinilai
-        $allGradedItemsMarked = $user->areAllGradedItemsMarked($course);
-        Log::info("All graded items marked: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
-
-        // Syarat untuk mendapat sertifikat: progress 100% dan semua item graded sudah dinilai
-        if ($progress >= 100 && $allGradedItemsMarked) {
+        // Syarat untuk sertifikat: progress 100%
+        if ($progress >= 100) {
             // Cek apakah sertifikat sudah ada
             $existingCertificate = Certificate::where('course_id', $course->id)
                 ->where('user_id', $user->id)
@@ -174,7 +158,7 @@ class ContentController extends Controller
                 Log::info("Certificate already exists for user {$user->id} in course {$course->id}");
             }
         } else {
-            Log::info("Certificate conditions not met - Progress: {$progress}%, All graded: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
+            Log::info("Certificate conditions not met - Progress: {$progress}%");
         }
     }
 
@@ -284,6 +268,22 @@ class ContentController extends Controller
                 continue;
             }
 
+            // Jika ini adalah konten pertama di pelajarannya dan lesson punya prasyarat,
+            // pastikan prasyaratnya sudah selesai (kecuali prasyarat lesson ditandai opsional)
+            $isFirstInLesson = $orderedContents[$index - 1]->lesson_id !== $content->lesson_id;
+            if ($isFirstInLesson) {
+                $lesson = $content->lesson; // lazy load jika perlu
+                if ($lesson && $lesson->prerequisite) {
+                    $prereq = $lesson->prerequisite;
+                    // Jika prasyarat lesson tidak opsional, user harus menyelesaikannya
+                    if (!($prereq->is_optional ?? false)) {
+                        if (!auth()->user()->hasCompletedAllContentsInLesson($prereq)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
             $previousContent = $orderedContents[$index - 1];
             $previousCompleted = $this->isContentCompletedForUnlock($user, $previousContent);
 
@@ -299,6 +299,11 @@ class ContentController extends Controller
 
     private function isContentCompletedForUnlock(User $user, Content $content): bool
     {
+        // Konten opsional tidak menghalangi konten berikutnya
+        if ($content->is_optional) {
+            return true;
+        }
+
         if ($content->type === 'quiz' && $content->quiz_id) {
             return $user->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
@@ -358,6 +363,7 @@ class ContentController extends Controller
             'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay', 'zoom'])],
             'order' => 'nullable|integer',
             'file_upload' => 'nullable|file|max:102400',
+            'is_optional' => 'sometimes|boolean',
         ];
 
         // 🆕 TAMBAHAN: Validasi untuk scoring_enabled pada essay
@@ -422,6 +428,8 @@ class ContentController extends Controller
         try {
             $content->lesson_id = $lesson->id;
             $content->fill($validated);
+            // Pastikan flag opsional terset sesuai input (default false)
+            $content->is_optional = (bool) ($request->boolean('is_optional'));
 
             // 🆕 TAMBAHAN: Set essay settings berdasarkan review_mode
             if ($validated['type'] === 'essay') {
