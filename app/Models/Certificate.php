@@ -28,6 +28,10 @@ class Certificate extends Model
         'date_of_birth',
         'identity_number',
         'institution_name',
+        // New participant data fields
+        'gender',
+        'email',
+        'occupation',
     ];
 
     /**

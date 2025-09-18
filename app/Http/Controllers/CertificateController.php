@@ -37,10 +37,13 @@ class CertificateController extends Controller
     {
         $request->validate([
             'course_id' => 'required|exists:courses,id',
-            'place_of_birth' => 'required|string|max:255',
+            // Removed: place_of_birth, identity_number
             'date_of_birth' => 'required|date',
-            'identity_number' => 'required|string|max:255',
             'institution_name' => 'required|string|max:255',
+            // Added fields
+            'gender' => 'required|in:male,female',
+            'email' => 'required|email|max:255',
+            'occupation' => 'required|string|max:255',
         ]);
 
         $user = Auth::user();
@@ -73,10 +76,12 @@ class CertificateController extends Controller
                 'certificate_template_id' => $template->id,
                 'certificate_code' => $certificateCode,
                 'issued_at' => now(),
-                'place_of_birth' => $request->place_of_birth,
                 'date_of_birth' => $request->date_of_birth,
-                'identity_number' => $request->identity_number,
                 'institution_name' => $request->institution_name,
+                // Added fields
+                'gender' => $request->gender,
+                'email' => $request->email,
+                'occupation' => $request->occupation,
             ]);
 
             // Generate PDF menggunakan view render
