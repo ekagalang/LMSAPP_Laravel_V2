@@ -503,8 +503,69 @@ class CertificateController extends Controller
                 ->whereYear('issued_at', now()->year)
                 ->count(),
         ];
+        
+        // Demographic & market analytics from certificate form fields
+        $genderStats = Certificate::selectRaw('gender, COUNT(*) as total')
+            ->whereNotNull('gender')
+            ->groupBy('gender')
+            ->pluck('total', 'gender');
 
-        return view('certificate-management.analytics', compact('analytics', 'monthlyStats', 'courseStats', 'templateStats'));
+        $dobCertificates = Certificate::whereNotNull('date_of_birth')->get(['date_of_birth']);
+        $ageGroups = [
+            '<=18' => 0,
+            '19-24' => 0,
+            '25-34' => 0,
+            '35-44' => 0,
+            '45-54' => 0,
+            '55+' => 0,
+        ];
+        foreach ($dobCertificates as $c) {
+            if (!$c->date_of_birth) continue;
+            $age = $c->date_of_birth->age;
+            if ($age <= 18) $ageGroups['<=18']++;
+            elseif ($age <= 24) $ageGroups['19-24']++;
+            elseif ($age <= 34) $ageGroups['25-34']++;
+            elseif ($age <= 44) $ageGroups['35-44']++;
+            elseif ($age <= 54) $ageGroups['45-54']++;
+            else $ageGroups['55+']++;
+        }
+
+        $topOccupations = Certificate::selectRaw('occupation, COUNT(*) as total')
+            ->whereNotNull('occupation')
+            ->where('occupation', '!=', '')
+            ->groupBy('occupation')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get();
+
+        $topInstitutions = Certificate::selectRaw('institution_name, COUNT(*) as total')
+            ->whereNotNull('institution_name')
+            ->where('institution_name', '!=', '')
+            ->groupBy('institution_name')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get();
+
+        $emails = Certificate::whereNotNull('email')->pluck('email');
+        $domainCounts = [];
+        foreach ($emails as $email) {
+            $parts = explode('@', strtolower(trim($email)));
+            if (count($parts) === 2) {
+                $domain = $parts[1];
+                $domainCounts[$domain] = ($domainCounts[$domain] ?? 0) + 1;
+            }
+        }
+        arsort($domainCounts);
+        $topEmailDomains = collect($domainCounts)
+            ->take(10)
+            ->map(function ($count, $domain) {
+                return ['domain' => $domain, 'total' => $count];
+            })->values();
+
+        return view('certificate-management.analytics', compact(
+            'analytics', 'monthlyStats', 'courseStats', 'templateStats',
+            'genderStats', 'ageGroups', 'topOccupations', 'topInstitutions', 'topEmailDomains'
+        ));
     }
 
     /**

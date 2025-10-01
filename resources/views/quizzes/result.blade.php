@@ -316,10 +316,10 @@
                     <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
                         {{-- [PERBAIKAN] Arahkan tombol kembali ke halaman materi (content) --}}
-                        <a href="{{ route('contents.show', $content->id) }}" 
+                        <a href="javascript:void(0)" onclick="window.history.back()"
                            class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold btn-hover flex items-center justify-center space-x-2">
                             <i class="fas fa-arrow-left"></i>
-                            <span>Kembali ke Materi</span>
+                            <span>Kembali</span>
                         </a>
                         
                         <!-- Tombol Coba Lagi - HANYA JIKA TIDAK LULUS -->

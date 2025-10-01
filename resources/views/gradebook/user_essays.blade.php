@@ -25,11 +25,11 @@
                     </div>
                 </div>
             </div>
-            <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-5 py-3 bg-white border border-gray-300 rounded-xl font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 shadow-sm">
+            <a href="javascript:void(0)" onclick="window.history.back()" class="inline-flex items-center px-5 py-3 bg-white border border-gray-300 rounded-xl font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 shadow-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
-                Kembali ke Daftar Peserta
+                Kembali
             </a>
         </div>
     </x-slot>

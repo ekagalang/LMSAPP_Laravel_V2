@@ -379,9 +379,14 @@
                                             </div>
                                         </div>
                                         <div class="flex justify-between items-center mt-4">
-                                            <a href="{{ route('courses.show', $course['id']) }}" class="text-green-600 hover:underline font-medium text-sm">
-                                                {{ $course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan Belajar' }}
-                                            </a>
+                                            <div class="flex items-center gap-4">
+                                                <a href="{{ route('courses.show', $course['id']) }}" class="text-green-600 hover:underline font-medium text-sm">
+                                                    {{ $course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan Belajar' }}
+                                                </a>
+                                                <a href="{{ route('courses.my-scores', $course['id']) }}" class="text-blue-600 hover:underline font-medium text-sm">
+                                                    Nilai & Hasil
+                                                </a>
+                                            </div>
                                             
                                             @php
                                                 // Improved logic dengan error handling

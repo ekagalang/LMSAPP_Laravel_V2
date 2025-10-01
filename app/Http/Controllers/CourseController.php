@@ -535,6 +535,170 @@ class CourseController extends Controller
         return $pdf->download('laporan-progres-' . Str::slug($course->title) . '.pdf');
     }
 
+    public function showScores(Course $course, Request $request)
+    {
+        $this->authorize('viewProgress', $course);
+
+        $user = Auth::user();
+
+        // Build course list for filter dropdown similar to showProgress
+        if ($user->hasRole('super-admin')) {
+            $courseOptions = Course::with('instructors')->orderBy('title')->get();
+        } elseif ($user->hasRole('event-organizer')) {
+            $courseOptions = $user->eventOrganizedCourses()->with('instructors')->orderBy('title')->get();
+        } elseif ($user->hasRole('instructor')) {
+            $courseOptions = $user->taughtCourses()->with('instructors')->orderBy('title')->get();
+        } else {
+            $courseOptions = collect();
+        }
+        if (!$courseOptions->contains('id', $course->id)) {
+            $courseOptions->push($course);
+        }
+
+        // Filter participants by instructor periods (same logic as showProgress)
+        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+            $instructorPeriods = $user->instructorPeriods()
+                ->where('course_id', $course->id)
+                ->pluck('course_periods.id');
+
+            if ($instructorPeriods->isNotEmpty()) {
+                $participantsQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                    $query->whereIn('course_periods.id', $instructorPeriods);
+                });
+            } else {
+                $participantsQuery = $course->enrolledUsers();
+            }
+        } else {
+            $participantsQuery = $course->enrolledUsers();
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $participantsQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%");
+            });
+        }
+
+        $participants = $participantsQuery->orderBy('name')->get();
+
+        // Get lessons with their quizzes for better organization
+        $lessonsWithQuizzes = $course->lessons()
+            ->with(['contents' => function ($query) {
+                $query->where('type', 'quiz')
+                      ->whereNotNull('quiz_id')
+                      ->with(['quiz' => function ($q) {
+                          $q->with('questions');
+                      }])
+                      ->orderBy('order');
+            }])
+            ->whereHas('contents', function ($query) {
+                $query->where('type', 'quiz')->whereNotNull('quiz_id');
+            })
+            ->orderBy('order')
+            ->get();
+
+        $participantsData = $participants->map(function (User $participant) use ($course, $lessonsWithQuizzes) {
+            $participantQuizData = [];
+            $totalQuizAverage = 0;
+            $totalQuizCount = 0;
+
+            foreach ($lessonsWithQuizzes as $lesson) {
+                $lessonQuizzes = [];
+                
+                foreach ($lesson->contents as $content) {
+                    if ($content->type === 'quiz' && $content->quiz) {
+                        $quiz = $content->quiz;
+                        
+                        // Get all attempts for this quiz by this participant
+                        $attempts = $participant->quizAttempts()
+                            ->where('quiz_id', $quiz->id)
+                            ->orderByDesc('completed_at')
+                            ->get();
+
+                        $attemptsData = [];
+                        $latestScore = 0;
+                        $isPassed = false;
+                        $passMarks = (int) ($quiz->pass_marks ?? 0);
+                        
+                        foreach ($attempts as $index => $attempt) {
+                            $totalMarks = (int) ($quiz->total_marks ?? 0);
+                            if ($totalMarks <= 0) {
+                                $totalMarks = $quiz->questions->sum('marks') ?: 1;
+                            }
+                            
+                            $percentage = $totalMarks > 0 ? round(($attempt->score / $totalMarks) * 100, 2) : 0;
+                            $attemptPassed = $attempt->passed || ($passMarks > 0 && $attempt->score >= $passMarks);
+                            
+                            if ($index === 0) { // Latest attempt
+                                $latestScore = $percentage;
+                                $isPassed = $attemptPassed;
+                            }
+                            
+                            $attemptsData[] = [
+                                'attempt_number' => $attempts->count() - $index,
+                                'score' => $attempt->score,
+                                'total_marks' => $totalMarks,
+                                'percentage' => $percentage,
+                                'passed' => $attemptPassed,
+                                'completed_at' => $attempt->completed_at,
+                                'is_latest' => $index === 0
+                            ];
+                        }
+
+                        if (count($attemptsData) > 0) {
+                            $totalQuizAverage += $latestScore;
+                            $totalQuizCount++;
+                        }
+
+                        $lessonQuizzes[] = [
+                            'quiz_id' => $quiz->id,
+                            'quiz_title' => $quiz->title,
+                            'attempts' => $attemptsData,
+                            'latest_score' => $latestScore,
+                            'is_passed' => $isPassed,
+                            'total_attempts' => count($attemptsData),
+                            'pass_marks' => $passMarks,
+                            'needs_retry' => !$isPassed && count($attemptsData) > 0
+                        ];
+                    }
+                }
+
+                if (count($lessonQuizzes) > 0) {
+                    $participantQuizData[] = [
+                        'lesson_id' => $lesson->id,
+                        'lesson_title' => $lesson->title,
+                        'lesson_order' => $lesson->order,
+                        'quizzes' => $lessonQuizzes
+                    ];
+                }
+            }
+
+            // Progress summary for context
+            $progressData = $participant->getProgressForCourse($course);
+            $overallQuizAverage = $totalQuizCount > 0 ? round($totalQuizAverage / $totalQuizCount, 2) : 0;
+
+            return [
+                'id' => $participant->id,
+                'name' => $participant->name,
+                'email' => $participant->email,
+                'quiz_data' => $participantQuizData,
+                'overall_quiz_average' => $overallQuizAverage,
+                'progress_percentage' => $progressData['progress_percentage'] ?? 0,
+                'total_quiz_attempts' => collect($participantQuizData)->flatMap(function($lesson) {
+                    return collect($lesson['quizzes'])->sum('total_attempts');
+                })->sum()
+            ];
+        });
+
+        return view('courses.scores', [
+            'course' => $course,
+            'courseOptions' => $courseOptions,
+            'participantsData' => $participantsData,
+            'lessonsWithQuizzes' => $lessonsWithQuizzes,
+        ]);
+    }
+
     public function addEventOrganizer(Request $request, Course $course)
     {
         $this->authorize('update', $course);

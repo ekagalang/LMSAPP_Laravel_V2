@@ -2,13 +2,13 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             <div class="space-y-2">
-                <a href="{{ route('courses.show', $lesson->course) }}"
+                <a href="javascript:void(0)" onclick="window.history.back()"
                    class="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-200 group">
                     <svg class="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
-                    Kembali ke Detail Kursus
+                    Kembali
                 </a>
                 <h1 class="text-3xl font-bold text-gray-900">
                     {{ $content->exists ? '✏️ Edit Konten' : '✨ Buat Konten Baru' }}

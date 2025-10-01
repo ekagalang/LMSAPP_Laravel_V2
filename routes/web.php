@@ -209,6 +209,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('courses.exportProgressPdf')
         ->middleware('auth');
 
+    // Participant: My Scores page (per course)
+    Route::get('/courses/{course}/my-scores', [ProgressController::class, 'myScores'])
+        ->name('courses.my-scores');
+
+    // Course Scores (Admin/Instruktur/EO) - view-only participant scores per course
+    Route::get('/courses/{course}/scores', [CourseController::class, 'showScores'])
+        ->name('courses.scores');
+
     // Prasyarat
     Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
 
@@ -260,8 +268,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Route untuk Gradebook
+    // GET index terbuka untuk pengguna yang berhak lihat progres (policy di controller),
+    // sedangkan aksi grading tetap dibatasi dengan permission 'grade quizzes'.
+    Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
     Route::middleware(['permission:grade quizzes'])->group(function () {
-        Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
         Route::get('/courses/{course}/gradebook/essays/user/{user}', [GradebookController::class, 'showUserEssays'])->name('gradebook.user_essays');
         Route::post('/essay-submissions/{submission}/grade', [GradebookController::class, 'storeEssayGrade'])->name('gradebook.storeEssayGrade');
         Route::post('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'storeFeedback'])->name('gradebook.storeFeedback');

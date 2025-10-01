@@ -16,15 +16,16 @@
                     </div>
                 </div>
                 <p class="text-sm text-gray-600 max-w-2xl">
-                    Kelola penilaian esai dan berikan feedback komprehensif untuk semua peserta kursus Anda.
+                    Fokus pada penilaian esai dan pemberian feedback komprehensif. Untuk melihat nilai quiz, gunakan menu "Lihat Nilai" di halaman kursus.
                 </p>
             </div>
-            <a href="{{ route('courses.show', $course) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all duration-200 shadow-sm">
+            <a href="javascript:void(0)" onclick="window.history.back()" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all duration-200 shadow-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
-                Kembali ke Kursus
+                Kembali
             </a>
+            
         </div>
     </x-slot>
 
@@ -48,7 +49,7 @@
             
             {{-- Enhanced Search & Filter Section --}}
             <div class="mb-8 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
                     <div class="space-y-2">
                         <label for="course_filter" class="flex items-center text-sm font-semibold text-gray-700">
                             <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,33 +66,35 @@
                         </select>
                     </div>
 
-                    <form action="{{ route('courses.gradebook', $course) }}" method="GET" class="space-y-2">
-                        <label for="search" class="flex items-center text-sm font-semibold text-gray-700">
-                            <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                            Cari Peserta di Kursus Ini
-                        </label>
-                        <div class="flex space-x-3">
-                            <div class="relative flex-1">
-                                <x-text-input type="text" name="search" id="search" class="w-full pl-4 pr-4 py-3 rounded-lg shadow-sm" placeholder="Masukkan nama atau email peserta..." value="{{ request('search') }}" />
-                            </div>
-                            <x-primary-button class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 shadow-sm">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="space-y-4">
+                        <form action="{{ route('courses.gradebook', $course) }}" method="GET" class="space-y-2">
+                            <label for="search" class="flex items-center text-sm font-semibold text-gray-700">
+                                <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
-                                Cari
-                            </x-primary-button>
-                            @if(request('search'))
-                                <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-3 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                Cari Peserta di Kursus Ini
+                            </label>
+                            <div class="flex space-x-3">
+                                <div class="relative flex-1">
+                                    <x-text-input type="text" name="search" id="search" class="w-full pl-4 pr-4 py-3 rounded-lg shadow-sm" placeholder="Masukkan nama atau email peserta..." value="{{ request('search') }}" />
+                                </div>
+                                <x-primary-button class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 shadow-sm">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                     </svg>
-                                    Reset
-                                </a>
-                            @endif
-                        </div>
-                    </form>
+                                    Cari
+                                </x-primary-button>
+                                @if(request('search'))
+                                    <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-3 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                        Reset
+                                    </a>
+                                @endif
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 

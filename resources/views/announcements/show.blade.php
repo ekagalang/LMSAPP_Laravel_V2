@@ -7,12 +7,12 @@
                 </h2>
                 <p class="text-sm text-gray-600 mt-1">Lihat detail pengumuman yang dipilih</p>
             </div>
-            <a href="{{ route('announcements.index') }}" 
+            <a href="javascript:void(0)" onclick="window.history.back()"
                class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 border border-gray-300 rounded-xl font-semibold text-sm text-gray-700 uppercase tracking-wide transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
-                Kembali ke Daftar
+                Kembali
             </a>
         </div>
     </x-slot>

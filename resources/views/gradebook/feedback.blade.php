@@ -66,7 +66,7 @@
                 </div>
             </div>
              <div class="mt-6">
-                <a href="{{ route('courses.gradebook', $course) }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Kembali ke Gradebook</a>
+                <a href="javascript:void(0)" onclick="window.history.back()" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Kembali</a>
             </div>
         </div>
     </div>

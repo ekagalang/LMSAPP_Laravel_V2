@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\EssaySubmission;
 use App\Models\Feedback;
 use App\Models\Certificate; // <-- TAMBAHKAN USE STATEMENT
+use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,12 +24,22 @@ class GradebookController extends Controller
      */
     public function index(Request $request, Course $course)
     {
+        $activeTab = $request->query('tab', 'essays');
+        
+        // Redirect scores tab to dedicated quiz scores page
+        if ($activeTab === 'scores') {
+            return redirect()->route('courses.scores', $course)
+                ->with('info', 'Halaman nilai quiz telah dipindahkan. Gunakan menu "Lihat Nilai" di halaman kursus untuk akses cepat.');
+        }
+        
         $this->authorize('viewGradebook', $course);
         $user = Auth::user();
 
         $allCoursesForFilter = collect();
         if ($user->hasRole('super-admin')) {
             $allCoursesForFilter = Course::orderBy('title')->get();
+        } elseif ($user->hasRole('event-organizer')) {
+            $allCoursesForFilter = $user->eventOrganizedCourses()->orderBy('title')->get();
         } elseif ($user->hasRole('instructor')) {
             $allCoursesForFilter = Course::whereHas('instructors', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
@@ -67,6 +78,7 @@ class GradebookController extends Controller
             $query->where('course_id', $course->id);
         }])->get();
 
+
         $essayContentIds = $course->lessons()->with('contents')
             ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
 
@@ -94,7 +106,14 @@ class GradebookController extends Controller
         }
         $participantsWithEssays = $participantsWithEssaysQuery->get();
 
-        return view('gradebook.index', compact('course', 'participants', 'participantsWithEssays', 'allCoursesForFilter', 'essayContentIds'));
+
+        return view('gradebook.index', compact(
+            'course',
+            'participants',
+            'participantsWithEssays',
+            'allCoursesForFilter',
+            'essayContentIds'
+        ));
     }
 
     /**

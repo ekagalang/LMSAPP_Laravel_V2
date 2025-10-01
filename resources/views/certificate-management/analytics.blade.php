@@ -248,6 +248,127 @@
                 @endif
             </div>
         </div>
+
+        <!-- Market & Demographic Insights -->
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Demographics -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Demografi Peserta</h3>
+                    <p class="text-sm text-gray-500 mt-1">Berdasarkan data form sertifikat</p>
+                </div>
+                <div class="p-6 space-y-8">
+                    <!-- Gender -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-gray-900">Jenis Kelamin</h4>
+                            <span class="text-xs text-gray-500">Total: {{ number_format($analytics['total_certificates']) }}</span>
+                        </div>
+                        @php
+                            $total = max(1, $analytics['total_certificates']);
+                        @endphp
+                        <div class="space-y-2">
+                            @forelse($genderStats as $gender => $count)
+                                @php $pct = round(($count / $total) * 100, 1); @endphp
+                                <div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="capitalize text-gray-700">{{ $gender }}</span>
+                                        <span class="text-gray-600">{{ $count }} ({{ $pct }}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="h-2 rounded-full bg-indigo-600" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-gray-500 text-sm">Belum ada data gender</div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <!-- Age Groups -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-gray-900">Kelompok Usia</h4>
+                        </div>
+                        <div class="space-y-2">
+                            @php $ageTotal = max(1, array_sum($ageGroups)); @endphp
+                            @foreach($ageGroups as $label => $count)
+                                @php $pct = round(($count / $ageTotal) * 100, 1); @endphp
+                                <div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-700">{{ $label }}</span>
+                                        <span class="text-gray-600">{{ $count }} ({{ $pct }}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="h-2 rounded-full bg-green-600" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Insights -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Market & Pemasaran</h3>
+                    <p class="text-sm text-gray-500 mt-1">Institusi, profesi, dan domain email teratas</p>
+                </div>
+                <div class="p-6 grid grid-cols-1 gap-8">
+                    <!-- Occupations -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Profesi Teratas</h4>
+                        <div class="space-y-3">
+                            @forelse($topOccupations as $row)
+                                @php $pct = round(($row->total / max(1, $analytics['total_certificates'])) * 100, 1); @endphp
+                                <div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-700 truncate">{{ $row->occupation }}</span>
+                                        <span class="text-gray-600">{{ $row->total }} ({{ $pct }}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="h-2 rounded-full bg-purple-600" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-gray-500 text-sm">Belum ada data profesi</div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <!-- Institutions -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Institusi Teratas</h4>
+                        <div class="space-y-2 max-h-56 overflow-auto pr-1">
+                            @forelse($topInstitutions as $row)
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 truncate" title="{{ $row->institution_name }}">{{ $row->institution_name }}</span>
+                                    <span class="text-gray-600">{{ $row->total }}</span>
+                                </div>
+                            @empty
+                                <div class="text-gray-500 text-sm">Belum ada data institusi</div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <!-- Email Domains -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Domain Email Teratas</h4>
+                        <div class="space-y-2 max-h-56 overflow-auto pr-1">
+                            @forelse($topEmailDomains as $row)
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700">{{ $row['domain'] }}</span>
+                                    <span class="text-gray-600">{{ $row['total'] }}</span>
+                                </div>
+                            @empty
+                                <div class="text-gray-500 text-sm">Belum ada data email</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 </x-app-layout>
