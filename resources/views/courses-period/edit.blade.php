@@ -99,8 +99,8 @@
                 <div class="p-8" x-data="{
                     formData: {
                         name: '{{ old('name', $period->name) }}',
-                        start_date: '{{ old('start_date', $period->start_date->format('Y-m-d')) }}',
-                        end_date: '{{ old('end_date', $period->end_date->format('Y-m-d')) }}',
+                        start_date: '{{ old('start_date', $period->start_date ? $period->start_date->format('Y-m-d') : '') }}',
+                        end_date: '{{ old('end_date', $period->end_date ? $period->end_date->format('Y-m-d') : '') }}',
                         description: '{{ old('description', $period->description) }}',
                         max_participants: '{{ old('max_participants', $period->max_participants) }}',
                         status: '{{ old('status', $period->status) }}'

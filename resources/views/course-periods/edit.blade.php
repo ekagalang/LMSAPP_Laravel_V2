@@ -65,9 +65,9 @@
                                     Tanggal Mulai
                                     <span class="text-red-500">*</span>
                                 </label>
-                                <input type="datetime-local" name="start_date" id="start_date" 
-                                       value="{{ old('start_date', $period->start_date->format('Y-m-d\TH:i')) }}"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 bg-gray-50 focus:bg-white" 
+                                <input type="datetime-local" name="start_date" id="start_date"
+                                       value="{{ old('start_date', $period->start_date ? $period->start_date->format('Y-m-d\TH:i') : '') }}"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 bg-gray-50 focus:bg-white"
                                        required>
                                 @error('start_date')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -79,9 +79,9 @@
                                     Tanggal Selesai
                                     <span class="text-red-500">*</span>
                                 </label>
-                                <input type="datetime-local" name="end_date" id="end_date" 
-                                       value="{{ old('end_date', $period->end_date->format('Y-m-d\TH:i')) }}"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 bg-gray-50 focus:bg-white" 
+                                <input type="datetime-local" name="end_date" id="end_date"
+                                       value="{{ old('end_date', $period->end_date ? $period->end_date->format('Y-m-d\TH:i') : '') }}"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 bg-gray-50 focus:bg-white"
                                        required>
                                 @error('end_date')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>

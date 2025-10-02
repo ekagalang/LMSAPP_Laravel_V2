@@ -40,10 +40,17 @@
                 <h1 class="text-2xl font-bold text-gray-900">{{ $period->name }}</h1>
                 <p class="mt-1 text-sm text-gray-600">{{ $course->title }}</p>
                 <div class="mt-2 flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">
-                        <i class="fas fa-calendar mr-1"></i>
-                        {{ $period->start_date->format('d M Y') }} - {{ $period->end_date->format('d M Y') }}
-                    </span>
+                    @if($period->start_date && $period->end_date)
+                        <span class="text-sm text-gray-500">
+                            <i class="fas fa-calendar mr-1"></i>
+                            {{ $period->start_date->format('d M Y') }} - {{ $period->end_date->format('d M Y') }}
+                        </span>
+                    @else
+                        <span class="text-sm text-gray-500 italic">
+                            <i class="fas fa-calendar mr-1"></i>
+                            Tanggal belum ditentukan
+                        </span>
+                    @endif
                     <span>{!! $period->status_badge !!}</span>
                     @if($period->max_participants)
                     <span class="text-sm text-gray-500">
