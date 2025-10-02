@@ -2,9 +2,9 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <a href="{{ route('courses.show', $course) }}" class="inline-flex items-center text-gray-500 hover:text-gray-700 text-sm font-medium">
+                <a href="javascript:void(0)" onclick="window.history.back()" class="inline-flex items-center text-gray-500 hover:text-gray-700 text-sm font-medium">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    {{ __('Kembali ke Detail Kursus') }}
+                    {{ __('Kembali') }}
                 </a>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight mt-2">
                     {{ __('Tambah Pelajaran Baru untuk Kursus:') }} {{ $course->title }}
@@ -58,6 +58,13 @@
                             @error('order')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="is_optional" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" @checked(old('is_optional', false))>
+                                <span class="ml-2 text-sm text-gray-700">Pelajaran opsional (tidak wajib untuk membuka pelajaran yang menjadikannya prasyarat)</span>
+                            </label>
                         </div>
 
                         <div class="flex items-center justify-end mt-6">

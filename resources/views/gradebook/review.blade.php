@@ -16,7 +16,7 @@
                         <div>
                             <h3 class="text-2xl font-bold">Skor Akhir: {{ number_format($attempt->score) }}</h3>
                         </div>
-                        <a href="{{ route('courses.gradebook', $attempt->quiz->lesson->course) }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Kembali ke Gradebook</a>
+                        <a href="javascript:void(0)" onclick="window.history.back()" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Kembali</a>
                     </div>
 
                     @foreach ($attempt->quiz->questions as $question)

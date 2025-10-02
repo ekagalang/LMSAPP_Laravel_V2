@@ -9,8 +9,8 @@
                     Tinjau dan berikan nilai untuk jawaban esai yang masuk.
                 </p>
             </div>
-            <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                &larr; Kembali ke Gradebook
+            <a href="javascript:void(0)" onclick="window.history.back()" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                &larr; Kembali
             </a>
         </div>
     </x-slot>

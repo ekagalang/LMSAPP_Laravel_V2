@@ -2,12 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(php artisan route:list:*)",
-      "Bash(php artisan config:clear:*)",
       "Bash(php artisan view:clear:*)",
       "Bash(php:*)",
-      "Bash(grep:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(findstr:*)",
       "Bash(powershell:*)"
     ],
     "deny": [],

@@ -10,11 +10,11 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-3">
-                <a href="{{ route('courses.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-xl font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 shadow-sm">
+                <a href="javascript:void(0)" onclick="window.history.back()" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-xl font-medium text-sm text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 shadow-sm">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Kembali ke Daftar Kursus
+                    Kembali
                 </a>
                 @can('view', $course)
                     <a href="{{ route('courses.discussions.index', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
@@ -29,10 +29,16 @@
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
-                        Buku Nilai & Feedback
+                        Penilaian Essay
                     </a>
                 @endcan
                 @can('view progress reports')
+                    <a href="{{ route('courses.scores', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-medium text-sm hover:from-indigo-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Nilai Quiz
+                    </a>
                     <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium text-sm hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
@@ -41,6 +47,12 @@
                     </a>
                 @endcan
                 @can('update', $course)
+                    <a href="{{ route('courses.tokens', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium text-sm hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                        </svg>
+                        Token Kelas
+                    </a>
                     <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium text-sm hover:from-purple-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -91,7 +103,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                 </svg>
-                                <span>Periode & Chat</span>
+                                <span>Kelas & Chat</span>
                             </div>
                         </button>
 
@@ -425,8 +437,8 @@
                 <div x-show="currentTab === 'periods'" x-cloak class="p-8" 
                      x-data="periodManager({{ $course->id }}, @js($course->periods->toArray() ?? []))">
                     <div class="mb-8">
-                        <h3 class="text-2xl font-bold text-gray-900">Periode & Komunikasi Kursus</h3>
-                        <p class="text-gray-600 mt-1">Kelola periode kursus dan akses chat realtime</p>
+                        <h3 class="text-2xl font-bold text-gray-900">Kelas & Komunikasi Kursus</h3>
+                        <p class="text-gray-600 mt-1">Kelola kelas kursus dan akses chat realtime</p>
                     </div>
 
                     @if($course->periods && $course->periods->count() > 0)
@@ -443,7 +455,7 @@
                                         </div>
                                         <input x-model="searchTerm" type="text" 
                                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                               placeholder="Cari periode berdasarkan nama atau deskripsi...">
+                                               placeholder="Cari kelas berdasarkan nama atau deskripsi...">
                                     </div>
                                 </div>
 
@@ -473,7 +485,7 @@
                             <div class="flex items-center space-x-4">
                                 <div class="flex items-center space-x-2">
                                     <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                                    <span class="text-sm text-gray-600">Periode Aktif: {{ $course->periods->where('status', 'active')->count() }}</span>
+                                    <span class="text-sm text-gray-600">Kelas Aktif: {{ $course->periods->where('status', 'active')->count() }}</span>
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
@@ -492,7 +504,7 @@
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                         </svg>
-                                        Tambah Periode
+                                        Tambah Kelas
                                     </a>
                                 @endcan
 
@@ -607,8 +619,8 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </div>
-                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Tidak ada periode yang ditemukan</h4>
-                            <p class="text-gray-600" x-text="`Tidak ada periode yang cocok dengan "${searchTerm}"`"></p>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Tidak ada kelas yang ditemukan</h4>
+                            <p class="text-gray-600" x-text="`Tidak ada kelas yang cocok dengan \"${searchTerm}\"`"></p>
                         </div>
 
                         @if($course->periods->where('status', 'active')->count() === 0)
@@ -618,8 +630,8 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.232 19.5c-.77.833.192 2.5 1.732 2.5z"></path>
                                     </svg>
                                     <div>
-                                        <h4 class="text-lg font-medium text-yellow-800">Tidak ada periode aktif</h4>
-                                        <p class="text-sm text-yellow-700 mt-1">Chat tidak tersedia saat ini. Tambahkan periode baru atau aktifkan periode yang ada.</p>
+                                        <h4 class="text-lg font-medium text-yellow-800">Tidak ada kelas aktif</h4>
+                                        <p class="text-sm text-yellow-700 mt-1">Chat tidak tersedia saat ini. Tambahkan kelas baru atau aktifkan kelas yang ada.</p>
                                     </div>
                                 </div>
                             </div>
@@ -633,15 +645,15 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                 </svg>
                             </div>
-                            <h4 class="text-2xl font-bold text-gray-900 mb-3">Belum Ada Periode Kursus</h4>
-                            <p class="text-gray-600 text-lg mb-8 max-w-md mx-auto">Buat periode kursus untuk mengaktifkan fitur chat dan mengelola timeline pembelajaran.</p>
+                            <h4 class="text-2xl font-bold text-gray-900 mb-3">Belum Ada Kelas Kursus</h4>
+                            <p class="text-gray-600 text-lg mb-8 max-w-md mx-auto">Buat kelas kursus untuk mengaktifkan fitur chat dan mengelola timeline pembelajaran.</p>
                             @can('update', $course)
                                 <a href="{{ route('course-periods.create', ['course' => $course->id]) }}"
                                     class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                     </svg>
-                                    Buat Periode Pertama
+                                    Buat Kelas Pertama
                                 </a>
                             @endcan
                         </div>
@@ -1075,11 +1087,11 @@
                 
                 deleteSelected() {
                     if (this.selectedPeriods.length === 0) {
-                        alert('Pilih periode yang ingin dihapus');
+                        alert('Pilih kelas yang ingin dihapus');
                         return;
                     }
                     
-                    if (confirm(`Yakin ingin menghapus ${this.selectedPeriods.length} periode yang dipilih?`)) {
+                    if (confirm(`Yakin ingin menghapus ${this.selectedPeriods.length} kelas yang dipilih?`)) {
                         // Create forms and submit them
                         this.selectedPeriods.forEach(periodId => {
                             this.deletePeriod(periodId);
@@ -1088,7 +1100,7 @@
                 },
                 
                 deletePeriod(periodId) {
-                    if (confirm('Yakin ingin menghapus periode ini?')) {
+                    if (confirm('Yakin ingin menghapus kelas ini?')) {
                         const form = document.createElement('form');
                         form.method = 'POST';
                         form.action = `/courses/${courseId}/periods/${periodId}`;

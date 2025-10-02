@@ -10,9 +10,9 @@
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     
-                    <a href="{{ route('contents.show', $submission->content->id) }}" 
+                    <a href="javascript:void(0)" onclick="window.history.back()"
                        class="text-indigo-600 dark:text-indigo-400 hover:underline mb-6 inline-block">
-                        &larr; Kembali ke Materi
+                        &larr; Kembali
                     </a>
 
                     {{-- Info Submission --}}

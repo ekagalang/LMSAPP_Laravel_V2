@@ -2,12 +2,12 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div>
-                <a href="{{ route('courses.index') }}"
+                <a href="javascript:void(0)" onclick="window.history.back()"
                    class="inline-flex items-center text-indigo-600 hover:text-indigo-800 text-sm font-medium mb-2 transition-colors duration-200">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    {{ __('Kembali ke Daftar Kursus') }}
+                    {{ __('Kembali') }}
                 </a>
                 <h2 class="font-bold text-2xl text-gray-900 leading-tight">
                     {{ __('Buat Kursus Baru') }}
@@ -39,7 +39,7 @@
                         <div class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm">
                             2
                         </div>
-                        <span class="ml-2 text-sm">Periode & Timeline</span>
+                        <span class="ml-2 text-sm">Kelas & Timeline</span>
                     </div>
                     <div class="flex-1 h-0.5 bg-gray-200 mx-4"></div>
                     <div class="flex items-center text-gray-400">
@@ -55,7 +55,7 @@
                 <!-- Header Form -->
                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
                     <h3 class="text-lg font-semibold text-white">Informasi Kursus</h3>
-                    <p class="text-indigo-100 text-sm mt-1">Masukkan detail dasar kursus dan periode pembelajaran</p>
+                    <p class="text-indigo-100 text-sm mt-1">Masukkan detail dasar kursus dan kelas pembelajaran</p>
                 </div>
 
                 <div class="p-8" x-data="{
@@ -265,7 +265,7 @@
                                     <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                     </svg>
-                                    Periode Kursus
+                                    Kelas Kursus
                                     <span class="ml-2 text-sm font-normal text-gray-500">(Opsional)</span>
                                 </h3>
 
@@ -281,7 +281,7 @@
                                            @change="console.log('Periods enabled:', enablePeriods)"
                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <label for="enable_periods" class="ml-2 text-sm font-medium text-gray-700">
-                                        Aktifkan Manajemen Periode
+                                        Aktifkan Manajemen Kelas
                                     </label>
                                     <!-- Debug info -->
                                     <span x-text="enablePeriods ? ' ✓ AKTIF' : ' ✗ NONAKTIF'"
@@ -297,13 +297,13 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <div>
-                                        <h4 class="text-sm font-medium text-blue-800 mb-1">Tentang Periode Kursus</h4>
+                                        <h4 class="text-sm font-medium text-blue-800 mb-1">Tentang Kelas Kursus</h4>
                                         <p class="text-sm text-blue-700">
-                                            Periode kursus berguna untuk mengelola batch/angkatan yang berbeda dari kursus yang sama.
-                                            Setiap periode memiliki jadwal dan peserta yang terpisah. Fitur chat juga akan terbatas per periode.
+                                            Kelas kursus berguna untuk mengelola batch/angkatan yang berbeda dari kursus yang sama.
+                                            Setiap kelas memiliki jadwal dan peserta yang terpisah. Fitur chat juga akan terbatas per kelas.
                                         </p>
                                         <p class="text-xs text-blue-600 mt-2">
-                                            💡 Jika tidak diaktifkan, sistem akan membuat periode default otomatis.
+                                            💡 Jika tidak diaktifkan, sistem akan membuat kelas default otomatis.
                                         </p>
                                     </div>
                                 </div>
@@ -322,14 +322,14 @@
                                                class="rounded border-gray-300 text-green-600 shadow-sm focus:border-green-500 focus:ring-green-500"
                                                {{ old('create_default_period') ? 'checked' : '' }}>
                                         <label for="create_default_period" class="ml-2 text-sm font-medium text-gray-700">
-                                            Buat periode default cepat
+                                            Buat kelas default cepat
                                         </label>
                                     </div>
 
                                     <div x-show="createDefaultPeriod" x-transition class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label for="default_start_date" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Tanggal Mulai *
+                                                Tanggal Mulai
                                             </label>
                                             <input type="date"
                                                    name="default_start_date"
@@ -343,7 +343,7 @@
                                         </div>
                                         <div>
                                             <label for="default_end_date" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Tanggal Selesai *
+                                                Tanggal Selesai
                                             </label>
                                             <input type="date"
                                                    name="default_end_date"
@@ -361,8 +361,8 @@
                                 <div>
                                     <div class="flex items-center justify-between mb-4">
                                         <h4 class="text-md font-medium text-gray-900">
-                                            Periode Kustom
-                                            <span x-text="`(${customPeriods.length} periode)`" class="text-sm text-gray-500"></span>
+                                            Kelas Kustom
+                                            <span x-text="`(${customPeriods.length} kelas)`" class="text-sm text-gray-500"></span>
                                         </h4>
                                         <button type="button"
                                                 @click="addPeriod(); console.log('Button clicked!');"
@@ -370,7 +370,7 @@
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                             </svg>
-                                            Tambah Periode
+                                            Tambah Kelas
                                         </button>
                                     </div>
 
@@ -379,7 +379,7 @@
                                             <div class="bg-white border border-gray-200 rounded-lg p-4">
                                                 <div class="flex items-center justify-between mb-3">
                                                     <h5 class="text-sm font-medium text-gray-900">
-                                                        Periode #<span x-text="index + 1"></span>
+                                                        Kelas #<span x-text="index + 1"></span>
                                                     </h5>
                                                     <button type="button"
                                                             @click="removePeriod(index)"
@@ -393,7 +393,7 @@
                                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                                     <div class="md:col-span-2">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                            Nama Periode *
+                                                            Nama Kelas *
                                                         </label>
                                                         <input type="text"
                                                                :name="`periods[${index}][name]`"
@@ -404,23 +404,21 @@
                                                     </div>
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                            Tanggal Mulai *
+                                                            Tanggal Mulai
                                                         </label>
                                                         <input type="date"
                                                                :name="`periods[${index}][start_date]`"
                                                                x-model="period.start_date"
-                                                               required
                                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                                                min="{{ date('Y-m-d') }}">
                                                     </div>
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                            Tanggal Selesai *
+                                                            Tanggal Selesai
                                                         </label>
                                                         <input type="date"
                                                                :name="`periods[${index}][end_date]`"
                                                                x-model="period.end_date"
-                                                               required
                                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                                     </div>
                                                 </div>
@@ -434,7 +432,7 @@
                                                                   x-model="period.description"
                                                                   rows="2"
                                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                                  placeholder="Deskripsi periode..."></textarea>
+                                                                  placeholder="Deskripsi kelas..."></textarea>
                                                     </div>
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -455,7 +453,7 @@
                                             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                             </svg>
-                                            <p class="text-sm">Belum ada periode kustom. Klik "Tambah Periode" untuk menambahkan.</p>
+                                            <p class="text-sm">Belum ada kelas kustom. Klik "Tambah Kelas" untuk menambahkan.</p>
                                         </div>
                                     </div>
                                 </div>

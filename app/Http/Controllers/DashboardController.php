@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\Content;
 use App\Models\Discussion;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
@@ -348,23 +349,8 @@ class DashboardController extends Controller
                     foreach ($lesson->contents as $content) {
                         $courseTotalContents++;
 
-                        // Check completion based on content type
-                        $isCompleted = false;
-                        if ($content->type === 'quiz' && $content->quiz_id) {
-                            // For quiz content, check if passed
-                            $isCompleted = $user->quizAttempts()
-                                ->where('quiz_id', $content->quiz_id)
-                                ->where('passed', true)
-                                ->exists();
-                        } elseif ($content->type === 'essay') {
-                            // For essay content, check if submitted
-                            $isCompleted = $user->essaySubmissions()
-                                ->where('content_id', $content->id)
-                                ->exists();
-                        } else {
-                            // For regular content, check completion table
-                            $isCompleted = $user->completedContents()->where('content_id', $content->id)->exists();
-                        }
+                        // Check completion based on content type and optional status
+                        $isCompleted = $this->isContentCompletedByUser($user, $content);
 
                         if ($isCompleted) {
                             $courseCompletedContents++;
@@ -381,19 +367,7 @@ class DashboardController extends Controller
                     $lessonCompletedContents = 0;
 
                     foreach ($lesson->contents as $content) {
-                        $isCompleted = false;
-                        if ($content->type === 'quiz' && $content->quiz_id) {
-                            $isCompleted = $user->quizAttempts()
-                                ->where('quiz_id', $content->quiz_id)
-                                ->where('passed', true)
-                                ->exists();
-                        } elseif ($content->type === 'essay') {
-                            $isCompleted = $user->essaySubmissions()
-                                ->where('content_id', $content->id)
-                                ->exists();
-                        } else {
-                            $isCompleted = $user->completedContents()->where('content_id', $content->id)->exists();
-                        }
+                        $isCompleted = $this->isContentCompletedByUser($user, $content);
 
                         if ($isCompleted) {
                             $lessonCompletedContents++;
@@ -481,6 +455,10 @@ class DashboardController extends Controller
                     ->get()
                     ->flatMap(function ($lesson) use ($user) {
                         return $lesson->contents->filter(function ($content) use ($user) {
+                            // Skip konten opsional dari rekomendasi (agar tidak terlihat sebagai PR)
+                            if ($content->is_optional ?? false) {
+                                return false;
+                            }
                             // Check if not completed based on content type
                             if ($content->type === 'quiz' && $content->quiz_id) {
                                 return !$user->quizAttempts()
@@ -545,6 +523,34 @@ class DashboardController extends Controller
             Log::error('Error in getParticipantStats: ' . $e->getMessage());
             return $this->getEmptyStats();
         }
+    }
+
+    private function isContentCompletedByUser(User $user, Content $content): bool
+    {
+        if (($content->is_optional ?? false)) {
+            return $user->completedContents()
+                ->where('content_id', $content->id)
+                ->wherePivot('completed', true)
+                ->exists();
+        }
+
+        if ($content->type === 'quiz' && $content->quiz_id) {
+            return $user->quizAttempts()
+                ->where('quiz_id', $content->quiz_id)
+                ->where('passed', true)
+                ->exists();
+        }
+
+        if ($content->type === 'essay') {
+            return $user->essaySubmissions()
+                ->where('content_id', $content->id)
+                ->exists();
+        }
+
+        return $user->completedContents()
+            ->where('content_id', $content->id)
+            ->wherePivot('completed', true)
+            ->exists();
     }
 
     private function getInstructorStats($user)

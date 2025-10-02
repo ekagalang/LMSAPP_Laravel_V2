@@ -11,7 +11,7 @@ class Chat extends Model
     use HasFactory;
 
     protected $fillable = [
-        'course_period_id',
+        'course_class_id',
         'created_by',
         'name',
         'type',
@@ -28,9 +28,15 @@ class Chat extends Model
     // RELATIONSHIPS
     // ========================================
 
+    public function courseClass()
+    {
+        return $this->belongsTo(CourseClass::class);
+    }
+
+    // Alias for backward compatibility
     public function coursePeriod()
     {
-        return $this->belongsTo(CoursePeriod::class);
+        return $this->courseClass();
     }
 
     public function creator()
@@ -82,11 +88,17 @@ class Chat extends Model
         });
     }
 
-    public function scopeWithActivePeriod($query)
+    public function scopeWithActiveClass($query)
     {
-        return $query->whereHas('coursePeriod', function ($q) {
+        return $query->whereHas('courseClass', function ($q) {
             $q->active();
         });
+    }
+
+    // Alias for backward compatibility
+    public function scopeWithActivePeriod($query)
+    {
+        return $this->scopeWithActiveClass($query);
     }
 
     // ========================================
@@ -152,16 +164,16 @@ class Chat extends Model
 
     public function isChatAllowed(): bool
     {
-        if (!$this->coursePeriod) {
+        if (!$this->courseClass) {
             return true; // Global admin chat
         }
 
-        return $this->coursePeriod->isChatAllowed();
+        return $this->courseClass->isChatAllowed();
     }
 
     public function getContextInfo(): array
     {
-        if (!$this->coursePeriod) {
+        if (!$this->courseClass) {
             return [
                 'type' => 'global',
                 'context' => 'Admin Chat'
@@ -170,9 +182,9 @@ class Chat extends Model
 
         return [
             'type' => 'course',
-            'context' => $this->coursePeriod->course->title,
-            'period' => $this->coursePeriod->name,
-            'status' => $this->coursePeriod->status
+            'context' => $this->courseClass->course->title,
+            'class' => $this->courseClass->name,
+            'status' => $this->courseClass->status
         ];
     }
 

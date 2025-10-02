@@ -1,36 +1,55 @@
 <?php
-// app/Models/CoursePeriod.php
+// app/Models/CourseClass.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class CoursePeriod extends Model
+class CourseClass extends Model
 {
     use HasFactory;
+
+    protected $table = 'course_classes';
 
     protected $fillable = [
         'course_id',
         'name',
+        'class_code',
         'start_date',
         'end_date',
         'status',
         'description',
-        'max_participants'
+        'max_participants',
+        'enrollment_token',
+        'token_enabled',
+        'token_expires_at'
     ];
 
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+        'token_enabled' => 'boolean',
+        'token_expires_at' => 'datetime',
     ];
 
     // Auto-update status when saving
     protected static function booted()
     {
-        static::saving(function ($period) {
-            $period->updateStatusBasedOnDates();
+        static::saving(function ($class) {
+            // Auto-update status based on dates if dates exist
+            if ($class->start_date && $class->end_date) {
+                $class->updateStatusBasedOnDates();
+            }
+        });
+
+        static::creating(function ($class) {
+            // Auto-generate class_code if not provided
+            if (empty($class->class_code)) {
+                $class->class_code = strtoupper(Str::random(8));
+            }
         });
     }
 
@@ -50,12 +69,12 @@ class CoursePeriod extends Model
 
     public function instructors()
     {
-        return $this->belongsToMany(User::class, 'course_period_instructor');
+        return $this->belongsToMany(User::class, 'course_class_instructor');
     }
 
     public function participants()
     {
-        return $this->belongsToMany(User::class, 'course_period_user')->withPivot('feedback')->withTimestamps();
+        return $this->belongsToMany(User::class, 'course_class_user')->withPivot('feedback')->withTimestamps();
     }
 
     public function enrolledUsers()
@@ -203,5 +222,49 @@ class CoursePeriod extends Model
         }
 
         return now()->diffInDays($this->end_date, false);
+    }
+
+    // ========================================
+    // TOKEN METHODS
+    // ========================================
+
+    public function generateEnrollmentToken($length = 8): string
+    {
+        $token = strtoupper(Str::random($length));
+
+        // Ensure uniqueness
+        while (static::where('enrollment_token', $token)->exists()) {
+            $token = strtoupper(Str::random($length));
+        }
+
+        $this->enrollment_token = $token;
+        $this->token_enabled = true;
+        $this->save();
+
+        return $token;
+    }
+
+    public function disableToken(): void
+    {
+        $this->token_enabled = false;
+        $this->save();
+    }
+
+    public function isTokenValid(): bool
+    {
+        if (!$this->token_enabled || !$this->enrollment_token) {
+            return false;
+        }
+
+        if ($this->token_expires_at && $this->token_expires_at->isPast()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function validateToken(string $token): bool
+    {
+        return $this->enrollment_token === strtoupper($token) && $this->isTokenValid();
     }
 }

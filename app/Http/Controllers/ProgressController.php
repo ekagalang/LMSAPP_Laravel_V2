@@ -17,6 +17,114 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ProgressController extends Controller
 {
+    public function myScores(Course $course)
+    {
+        $user = Auth::user();
+
+        // Authorization: only participants can view their own scores
+        if (!$user->hasRole('participant')) {
+            abort(403, 'Akses ditolak. Halaman ini hanya untuk peserta.');
+        }
+
+        // Ensure participant is enrolled in the course
+        if (!$course->enrolledUsers()->where('user_id', $user->id)->exists()) {
+            abort(403, 'Anda tidak terdaftar pada kursus ini.');
+        }
+
+        // QUIZ: Ambil semua attempt peserta untuk kuis dalam kursus ini
+        $quizAttempts = $user->quizAttempts()
+            ->whereHas('quiz.lesson.course', function ($q) use ($course) {
+                $q->where('id', $course->id);
+            })
+            ->with(['quiz' => function ($q) {
+                $q->select('id', 'title', 'total_marks', 'pass_marks', 'lesson_id');
+            }, 'quiz.lesson.course'])
+            ->orderByDesc('completed_at')
+            ->get();
+
+        // Kelompokkan per kuis dan tampilkan SEMUA attempt (dengan ringkasan attempt terbaru untuk perhitungan rata-rata)
+        $quizSummaries = $quizAttempts
+            ->groupBy('quiz_id')
+            ->map(function ($attempts) {
+                $attemptsSorted = $attempts->sortByDesc('completed_at');
+                $quiz = $attemptsSorted->first()->quiz;
+
+                $attemptItems = $attemptsSorted->map(function ($attempt) use ($quiz) {
+                    $totalMarks = (int) ($quiz->total_marks ?? 0);
+                    if ($totalMarks <= 0) {
+                        $sumMarks = (int) ($quiz->questions()->sum('marks'));
+                        $totalMarks = max(1, $sumMarks);
+                    }
+                    $percentage = round(((int)$attempt->score / $totalMarks) * 100, 2);
+
+                    return [
+                        'attempt_id' => $attempt->id,
+                        'score' => (int) $attempt->score,
+                        'total' => (int) $totalMarks,
+                        'percentage' => $percentage,
+                        'passed' => (bool) $attempt->passed,
+                        'completed_at' => $attempt->completed_at,
+                    ];
+                })->values();
+
+                $latest = $attemptItems->first();
+
+                return [
+                    'quiz_id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'latest_percentage' => $latest['percentage'] ?? 0,
+                    'attempts' => $attemptItems,
+                ];
+            })
+            ->values();
+
+        $quizAverage = round(($quizSummaries->avg('latest_percentage') ?? 0), 2);
+
+        // ESSAY: Ambil semua submission dalam kursus ini
+        $essaySubmissions = $user->essaySubmissions()
+            ->whereHas('content.lesson.course', function ($q) use ($course) {
+                $q->where('id', $course->id);
+            })
+            ->with(['content' => function ($q) {
+                $q->select('id', 'title', 'lesson_id', 'type', 'scoring_enabled', 'grading_mode');
+            }, 'answers'])
+            ->get();
+
+        $essaySummaries = $essaySubmissions->map(function ($submission) {
+            $scoringEnabled = (bool) ($submission->content->scoring_enabled ?? true);
+
+            if ($scoringEnabled) {
+                $score = (int) ($submission->total_score ?? 0);
+                $max = (int) ($submission->max_total_score ?? 0);
+                $percentage = $max > 0 ? round(($score / $max) * 100, 2) : null;
+            } else {
+                $score = null;
+                $max = null;
+                $percentage = null;
+            }
+
+            return [
+                'submission_id' => $submission->id,
+                'title' => $submission->content->title,
+                'scoring_enabled' => $scoringEnabled,
+                'score' => $score,
+                'total' => $max,
+                'percentage' => $percentage,
+                'graded' => (bool) $submission->is_fully_graded,
+                'graded_at' => $submission->graded_at,
+            ];
+        });
+
+        $essayAverage = round(($essaySummaries->filter(fn ($e) => $e['percentage'] !== null)->avg('percentage') ?? 0), 2);
+
+        return view('progress.my-scores', [
+            'course' => $course,
+            'quizSummaries' => $quizSummaries,
+            'essaySummaries' => $essaySummaries,
+            'quizAverage' => $quizAverage,
+            'essayAverage' => $essayAverage,
+        ]);
+    }
     public function markContentAsCompleted(Content $content)
     {
         $user = Auth::user();
@@ -62,7 +170,8 @@ class ProgressController extends Controller
         }
 
         if ($allLessonsCompleted) {
-            return redirect()->route('courses.show', $course->id)->with('success', 'Selamat! Anda telah menyelesaikan seluruh kursus ini.');
+            // Selaras dengan alur completeAndContinue: arahkan ke dashboard saat kursus selesai
+            return redirect()->route('dashboard')->with('success', 'Selamat! Anda telah menyelesaikan seluruh kursus ini.');
         }
 
         // Jika ini adalah konten terakhir dari pelajaran, tapi masih ada pelajaran lain,
@@ -78,7 +187,7 @@ class ProgressController extends Controller
         $contentIds = $lesson->contents->pluck('id')->toArray();
         if (!empty($contentIds)) {
             $user->contents()->syncWithoutDetaching(
-                array_fill_keys($contentIds, ['status' => 'completed'])
+                array_fill_keys($contentIds, ['completed' => true, 'completed_at' => now()])
             );
         }
 
@@ -104,12 +213,8 @@ class ProgressController extends Controller
         $progress = $user->courseProgress($course);
         Log::info("User {$user->id} progress: {$progress}%");
 
-        // Cek apakah semua graded items sudah dinilai
-        $allGradedItemsMarked = $user->areAllGradedItemsMarked($course);
-        Log::info("All graded items marked: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
-
-        // Syarat untuk mendapat sertifikat: progress 100% dan semua item graded sudah dinilai
-        if ($progress >= 100 && $allGradedItemsMarked) {
+        // Syarat untuk sertifikat: progress 100%
+        if ($progress >= 100) {
             // Cek apakah sertifikat sudah ada
             $existingCertificate = Certificate::where('course_id', $course->id)
                 ->where('user_id', $user->id)
@@ -122,7 +227,7 @@ class ProgressController extends Controller
                 Log::info("Certificate already exists for user {$user->id} in course {$course->id}");
             }
         } else {
-            Log::info("Certificate conditions not met - Progress: {$progress}%, All graded: " . ($allGradedItemsMarked ? 'Yes' : 'No'));
+            Log::info("Certificate conditions not met - Progress: {$progress}%");
         }
     }
 
@@ -398,3 +503,4 @@ class ProgressController extends Controller
         return $debug;
     }
 }
+

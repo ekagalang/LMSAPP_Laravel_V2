@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
-use App\Models\CoursePeriod;
+use App\Models\CourseClass;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
-class CoursePeriodController extends Controller
+class CourseClassController extends Controller
 {
     public function __construct()
     {
@@ -35,7 +35,7 @@ class CoursePeriodController extends Controller
     /**
      * Display the specified course period.
      */
-    public function show(Course $course, CoursePeriod $period)
+    public function show(Course $course, CourseClass $period)
     {
         $this->authorize('view', $course);
 
@@ -115,7 +115,7 @@ class CoursePeriodController extends Controller
     /**
      * Show the form for editing the specified course period.
      */
-    public function edit(Course $course, CoursePeriod $period)
+    public function edit(Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -130,7 +130,7 @@ class CoursePeriodController extends Controller
     /**
      * Update the specified course period in storage.
      */
-    public function update(Request $request, Course $course, CoursePeriod $period)
+    public function update(Request $request, Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -180,7 +180,7 @@ class CoursePeriodController extends Controller
     /**
      * Remove the specified course period from storage.
      */
-    public function destroy(Course $course, CoursePeriod $period)
+    public function destroy(Course $course, CourseClass $period)
 {
     $this->authorize('update', $course);
 
@@ -228,7 +228,7 @@ class CoursePeriodController extends Controller
     /**
      * Duplicate a course period
      */
-    public function duplicate(Course $course, CoursePeriod $period)
+    public function duplicate(Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -266,7 +266,7 @@ class CoursePeriodController extends Controller
     /**
      * Show period management page (instructors and participants)
      */
-    public function manage(Course $course, CoursePeriod $period)
+    public function manage(Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -275,27 +275,27 @@ class CoursePeriodController extends Controller
         }
 
         $period->load(['instructors', 'participants']);
-        
-        // Get instructors who are already assigned to ANY period of this course
-        $assignedInstructorIds = DB::table('course_period_instructor')
-            ->join('course_periods', 'course_period_instructor.course_period_id', '=', 'course_periods.id')
-            ->where('course_periods.course_id', $course->id)
-            ->pluck('course_period_instructor.user_id')
+
+        // Get instructors who are already assigned to ANY class of this course
+        $assignedInstructorIds = DB::table('course_class_instructor')
+            ->join('course_classes', 'course_class_instructor.course_class_id', '=', 'course_classes.id')
+            ->where('course_classes.course_id', $course->id)
+            ->pluck('course_class_instructor.user_id')
             ->unique();
-        
-        // Get available instructors (from course instructors, excluding those assigned to any period)
+
+        // Get available instructors (from course instructors, excluding those assigned to any class)
         $availableInstructors = $course->instructors()
             ->whereNotIn('users.id', $assignedInstructorIds)
             ->get();
-        
-        // Get participants who are already assigned to ANY period of this course
-        $assignedParticipantIds = DB::table('course_period_user')
-            ->join('course_periods', 'course_period_user.course_period_id', '=', 'course_periods.id')
-            ->where('course_periods.course_id', $course->id)
-            ->pluck('course_period_user.user_id')
+
+        // Get participants who are already assigned to ANY class of this course
+        $assignedParticipantIds = DB::table('course_class_user')
+            ->join('course_classes', 'course_class_user.course_class_id', '=', 'course_classes.id')
+            ->where('course_classes.course_id', $course->id)
+            ->pluck('course_class_user.user_id')
             ->unique();
-        
-        // Get available participants (from course participants, excluding those assigned to any period)
+
+        // Get available participants (from course participants, excluding those assigned to any class)
         $availableParticipants = $course->participants()
             ->whereNotIn('users.id', $assignedParticipantIds)
             ->get();
@@ -311,7 +311,7 @@ class CoursePeriodController extends Controller
     /**
      * Add instructor to period
      */
-    public function addInstructor(Request $request, Course $course, CoursePeriod $period)
+    public function addInstructor(Request $request, Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -347,7 +347,7 @@ class CoursePeriodController extends Controller
     /**
      * Remove instructor from period
      */
-    public function removeInstructor(Course $course, CoursePeriod $period, User $user)
+    public function removeInstructor(Course $course, CourseClass $period, User $user)
     {
         $this->authorize('update', $course);
 
@@ -363,7 +363,7 @@ class CoursePeriodController extends Controller
     /**
      * Add participant(s) to period - supports multiple selection
      */
-    public function addParticipant(Request $request, Course $course, CoursePeriod $period)
+    public function addParticipant(Request $request, Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -422,7 +422,7 @@ class CoursePeriodController extends Controller
     /**
      * Remove participant from period
      */
-    public function removeParticipant(Course $course, CoursePeriod $period, User $user)
+    public function removeParticipant(Course $course, CourseClass $period, User $user)
     {
         $this->authorize('update', $course);
 
@@ -438,7 +438,7 @@ class CoursePeriodController extends Controller
     /**
      * Bulk remove participants from period
      */
-    public function bulkRemoveParticipants(Request $request, Course $course, CoursePeriod $period)
+    public function bulkRemoveParticipants(Request $request, Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -467,7 +467,7 @@ class CoursePeriodController extends Controller
     /**
      * Enroll user to a specific period (for public enrollment)
      */
-    public function enroll(Course $course, CoursePeriod $period)
+    public function enroll(Course $course, CourseClass $period)
     {
         $user = Auth::user();
 
@@ -502,5 +502,68 @@ class CoursePeriodController extends Controller
         $period->participants()->attach($user->id);
 
         return back()->with('success', "Berhasil bergabung dengan periode {$period->name}!");
+    }
+
+    /**
+     * Generate enrollment token for class
+     */
+    public function generateToken(Course $course, CourseClass $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        try {
+            $token = $period->generateEnrollmentToken();
+
+            return back()->with('success', "Token kelas berhasil dibuat: {$token}");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal generate token: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Regenerate enrollment token for class
+     */
+    public function regenerateToken(Course $course, CourseClass $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        try {
+            $token = $period->generateEnrollmentToken();
+
+            return back()->with('success', "Token kelas baru berhasil dibuat: {$token}");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal regenerate token: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Toggle token enabled/disabled for class
+     */
+    public function toggleToken(Course $course, CourseClass $period)
+    {
+        $this->authorize('update', $course);
+
+        if ($period->course_id !== $course->id) {
+            abort(404);
+        }
+
+        try {
+            $period->token_enabled = !$period->token_enabled;
+            $period->save();
+
+            $status = $period->token_enabled ? 'diaktifkan' : 'dinonaktifkan';
+
+            return back()->with('success', "Token kelas berhasil {$status}");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal toggle token: ' . $e->getMessage()]);
+        }
     }
 }

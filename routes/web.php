@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\CoursePeriodController;
+use App\Http\Controllers\CourseClassController;
+use App\Http\Controllers\TokenEnrollmentController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\DashboardController;
@@ -84,6 +85,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/courses/{course}/add-instructor', [CourseController::class, 'addInstructor'])->name('courses.addInstructor');
     Route::delete('/courses/{course}/remove-instructor', [CourseController::class, 'removeInstructor'])->name('courses.removeInstructor');
 
+    // Course Token Management
+    Route::get('/courses/{course}/tokens', [CourseController::class, 'tokens'])->name('courses.tokens');
+    Route::post('/courses/{course}/token/generate', [CourseController::class, 'generateToken'])->name('courses.token.generate');
+    Route::post('/courses/{course}/token/regenerate', [CourseController::class, 'regenerateToken'])->name('courses.token.regenerate');
+    Route::post('/courses/{course}/token/toggle', [CourseController::class, 'toggleToken'])->name('courses.token.toggle');
+
     Route::get('/courses/{course}/progress', [CourseController::class, 'showProgress'])->name('courses.progress');
     Route::get('/courses/{course}/progress/pdf', [CourseController::class, 'downloadProgressPdf'])->name('courses.progress.pdf');
     Route::get('/courses/{course}/participant/{user}/progress', [CourseController::class, 'showParticipantProgress'])->name('courses.participant.progress');
@@ -131,39 +138,50 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/courses/{course}/add-eo', [CourseController::class, 'addEventOrganizer'])->name('courses.addEo');
     Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
 
-    // Course Period routes
-    Route::get('/courses/{course}/periods', [CoursePeriodController::class, 'index'])
+    // Token Enrollment routes
+    Route::post('/enroll/course', [TokenEnrollmentController::class, 'enrollCourse'])
+        ->name('enroll.course');
+    Route::post('/enroll/class', [TokenEnrollmentController::class, 'enrollClass'])
+        ->name('enroll.class');
+
+    // Course Class routes
+    Route::get('/courses/{course}/periods', [CourseClassController::class, 'index'])
         ->name('course-periods.index');
-    Route::get('/courses/{course}/periods/create', [CoursePeriodController::class, 'create'])
+    Route::get('/courses/{course}/periods/create', [CourseClassController::class, 'create'])
         ->name('course-periods.create');
-    Route::post('/courses/{course}/periods', [CoursePeriodController::class, 'store'])
+    Route::post('/courses/{course}/periods', [CourseClassController::class, 'store'])
         ->name('course-periods.store');
-    Route::get('/courses/{course}/periods/{period}', [CoursePeriodController::class, 'show'])
+    Route::get('/courses/{course}/periods/{period}', [CourseClassController::class, 'show'])
         ->name('course-periods.show');
-    Route::get('/courses/{course}/periods/{period}/edit', [CoursePeriodController::class, 'edit'])
+    Route::get('/courses/{course}/periods/{period}/edit', [CourseClassController::class, 'edit'])
         ->name('course-periods.edit');
-    Route::put('/courses/{course}/periods/{period}', [CoursePeriodController::class, 'update'])
+    Route::put('/courses/{course}/periods/{period}', [CourseClassController::class, 'update'])
         ->name('course-periods.update');
-    Route::delete('/courses/{course}/periods/{period}', [CoursePeriodController::class, 'destroy'])
+    Route::delete('/courses/{course}/periods/{period}', [CourseClassController::class, 'destroy'])
         ->name('course-periods.destroy');
-    Route::post('/courses/{course}/periods/{period}/duplicate', [CoursePeriodController::class, 'duplicate'])
+    Route::post('/courses/{course}/periods/{period}/duplicate', [CourseClassController::class, 'duplicate'])
         ->name('course-periods.duplicate');
-    
-    // Period management routes
-    Route::get('/courses/{course}/periods/{period}/manage', [CoursePeriodController::class, 'manage'])
+
+    // Class management routes
+    Route::get('/courses/{course}/periods/{period}/manage', [CourseClassController::class, 'manage'])
         ->name('course-periods.manage');
-    Route::post('/courses/{course}/periods/{period}/instructors', [CoursePeriodController::class, 'addInstructor'])
+    Route::post('/courses/{course}/periods/{period}/instructors', [CourseClassController::class, 'addInstructor'])
         ->name('course-periods.add-instructor');
-    Route::delete('/courses/{course}/periods/{period}/instructors/{user}', [CoursePeriodController::class, 'removeInstructor'])
+    Route::delete('/courses/{course}/periods/{period}/instructors/{user}', [CourseClassController::class, 'removeInstructor'])
         ->name('course-periods.remove-instructor');
-    Route::post('/courses/{course}/periods/{period}/participants', [CoursePeriodController::class, 'addParticipant'])
+    Route::post('/courses/{course}/periods/{period}/participants', [CourseClassController::class, 'addParticipant'])
         ->name('course-periods.add-participant');
-    Route::delete('/courses/{course}/periods/{period}/participants/{user}', [CoursePeriodController::class, 'removeParticipant'])
+    Route::delete('/courses/{course}/periods/{period}/participants/{user}', [CourseClassController::class, 'removeParticipant'])
         ->name('course-periods.remove-participant');
-    Route::delete('/courses/{course}/periods/{period}/participants', [CoursePeriodController::class, 'bulkRemoveParticipants'])
+    Route::delete('/courses/{course}/periods/{period}/participants', [CourseClassController::class, 'bulkRemoveParticipants'])
         ->name('course-periods.bulk-remove-participants');
-    Route::post('/courses/{course}/periods/{period}/enroll', [CoursePeriodController::class, 'enroll'])
+    Route::post('/courses/{course}/periods/{period}/enroll', [CourseClassController::class, 'enroll'])
         ->name('course-periods.enroll');
+
+    // Class Token Management
+    Route::post('/courses/{course}/periods/{period}/token/generate', [CourseClassController::class, 'generateToken'])->name('course-periods.token.generate');
+    Route::post('/courses/{course}/periods/{period}/token/regenerate', [CourseClassController::class, 'regenerateToken'])->name('course-periods.token.regenerate');
+    Route::post('/courses/{course}/periods/{period}/token/toggle', [CourseClassController::class, 'toggleToken'])->name('course-periods.token.toggle');
 
     // ============================================================================
     // 🔥 UPDATED CHAT ROUTES - Layout Terpadu dengan Sidebar + Main Chat Area
@@ -208,6 +226,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/courses/{course}/export-progress-pdf', [ProgressController::class, 'exportCourseProgressPdf'])
         ->name('courses.exportProgressPdf')
         ->middleware('auth');
+
+    // Participant: My Scores page (per course)
+    Route::get('/courses/{course}/my-scores', [ProgressController::class, 'myScores'])
+        ->name('courses.my-scores');
+
+    // Course Scores (Admin/Instruktur/EO) - view-only participant scores per course
+    Route::get('/courses/{course}/scores', [CourseController::class, 'showScores'])
+        ->name('courses.scores');
 
     // Prasyarat
     Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
@@ -260,8 +286,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Route untuk Gradebook
+    // GET index terbuka untuk pengguna yang berhak lihat progres (policy di controller),
+    // sedangkan aksi grading tetap dibatasi dengan permission 'grade quizzes'.
+    Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
     Route::middleware(['permission:grade quizzes'])->group(function () {
-        Route::get('/courses/{course}/gradebook', [GradebookController::class, 'index'])->name('courses.gradebook');
         Route::get('/courses/{course}/gradebook/essays/user/{user}', [GradebookController::class, 'showUserEssays'])->name('gradebook.user_essays');
         Route::post('/essay-submissions/{submission}/grade', [GradebookController::class, 'storeEssayGrade'])->name('gradebook.storeEssayGrade');
         Route::post('/courses/{course}/participant/{user}/feedback', [GradebookController::class, 'storeFeedback'])->name('gradebook.storeFeedback');
