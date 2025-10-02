@@ -126,6 +126,11 @@ class CourseClass extends Model
 
     public function isActive(): bool
     {
+        // If no dates set, rely on status only
+        if (!$this->start_date || !$this->end_date) {
+            return $this->status === 'active';
+        }
+
         return $this->status === 'active' &&
             $this->start_date <= now() &&
             $this->end_date >= now();
@@ -133,11 +138,21 @@ class CourseClass extends Model
 
     public function isUpcoming(): bool
     {
+        // If no start date set, rely on status only
+        if (!$this->start_date) {
+            return $this->status === 'upcoming';
+        }
+
         return $this->status === 'upcoming' && $this->start_date > now();
     }
 
     public function isCompleted(): bool
     {
+        // If no end date set, rely on status only
+        if (!$this->end_date) {
+            return $this->status === 'completed';
+        }
+
         return $this->status === 'completed' || $this->end_date < now();
     }
 
@@ -148,6 +163,11 @@ class CourseClass extends Model
 
     public function updateStatusBasedOnDates(): void
     {
+        // Don't auto-update status if dates are not set
+        if (!$this->start_date || !$this->end_date) {
+            return;
+        }
+
         $now = now();
 
         if ($now < $this->start_date) {
@@ -212,12 +232,20 @@ class CourseClass extends Model
 
     public function getDurationInDays(): int
     {
+        if (!$this->start_date || !$this->end_date) {
+            return 0;
+        }
+
         return $this->start_date->diffInDays($this->end_date);
     }
 
     public function getRemainingDays(): int
     {
         if ($this->isCompleted()) {
+            return 0;
+        }
+
+        if (!$this->end_date) {
             return 0;
         }
 

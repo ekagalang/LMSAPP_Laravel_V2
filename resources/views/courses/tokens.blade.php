@@ -207,9 +207,13 @@
                                     <div class="flex items-start justify-between mb-4">
                                         <div class="flex-1">
                                             <h4 class="font-semibold text-gray-900 mb-1">{{ $class->name }}</h4>
-                                            <p class="text-xs text-gray-500">
-                                                {{ $class->start_date->format('d M Y') }} - {{ $class->end_date->format('d M Y') }}
-                                            </p>
+                                            @if($class->start_date && $class->end_date)
+                                                <p class="text-xs text-gray-500">
+                                                    {{ $class->start_date->format('d M Y') }} - {{ $class->end_date->format('d M Y') }}
+                                                </p>
+                                            @else
+                                                <p class="text-xs text-gray-500 italic">Tanggal belum ditentukan</p>
+                                            @endif
                                             @if($class->max_participants)
                                                 <p class="text-xs text-gray-500">
                                                     {{ $class->participants->count() }}/{{ $class->max_participants }} peserta

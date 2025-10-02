@@ -96,8 +96,8 @@
                         return [
                             'id' => $period->id,
                             'name' => $period->name,
-                            'start_date' => $period->start_date->format('Y-m-d'),
-                            'end_date' => $period->end_date->format('Y-m-d'),
+                            'start_date' => $period->start_date ? $period->start_date->format('Y-m-d') : '',
+                            'end_date' => $period->end_date ? $period->end_date->format('Y-m-d') : '',
                             'description' => $period->description,
                             'max_participants' => $period->max_participants,
                             'status' => $period->status

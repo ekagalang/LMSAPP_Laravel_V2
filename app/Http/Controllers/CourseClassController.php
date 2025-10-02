@@ -69,9 +69,8 @@ class CourseClassController extends Controller
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            /* 'start_date' => 'required|date|after_or_equal:today' */
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
             'description' => 'nullable|string|max:1000',
             'max_participants' => 'nullable|integer|min:1|max:1000',
             'status' => 'required|in:upcoming,active,completed,cancelled',
@@ -80,12 +79,12 @@ class CourseClassController extends Controller
         try {
             DB::beginTransaction();
 
-            // Auto-determine status based on dates if not explicitly set
-            $startDate = Carbon::parse($validatedData['start_date']);
-            $endDate = Carbon::parse($validatedData['end_date']);
-            $now = now();
+            // Handle optional dates
+            $startDate = isset($validatedData['start_date']) ? Carbon::parse($validatedData['start_date']) : null;
+            $endDate = isset($validatedData['end_date']) ? Carbon::parse($validatedData['end_date']) : null;
 
-            if ($validatedData['status'] === 'upcoming' && $startDate->isPast()) {
+            // Auto-determine status based on dates if not explicitly set
+            if ($startDate && $validatedData['status'] === 'upcoming' && $startDate->isPast()) {
                 $validatedData['status'] = 'active';
             }
 
@@ -141,8 +140,8 @@ class CourseClassController extends Controller
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
             'description' => 'nullable|string|max:1000',
             'max_participants' => 'nullable|integer|min:1|max:1000',
             'status' => 'required|in:upcoming,active,completed,cancelled',
@@ -151,8 +150,8 @@ class CourseClassController extends Controller
         try {
             DB::beginTransaction();
 
-            $startDate = Carbon::parse($validatedData['start_date']);
-            $endDate = Carbon::parse($validatedData['end_date']);
+            $startDate = isset($validatedData['start_date']) ? Carbon::parse($validatedData['start_date']) : null;
+            $endDate = isset($validatedData['end_date']) ? Carbon::parse($validatedData['end_date']) : null;
 
             $period->update([
                 'name' => $validatedData['name'],
