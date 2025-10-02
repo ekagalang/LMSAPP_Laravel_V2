@@ -552,6 +552,87 @@
                         </div>
                     </div>
 
+                    <!-- Token Enrollment Section -->
+                    <div class="mb-4">
+                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            <div class="px-5 py-3">
+                            <div class="flex items-center">
+                                <h3 class="text-lg font-medium text-gray-900">Gabung Kelas</h3>
+                            </div>
+                            </div>
+
+                            <!-- Forms wrapper: rapat antar form -->
+                            <div class="px-4 pb-3 space-y-2">
+
+                            <!-- Course Token Form -->
+                            <form action="{{ route('enroll.course') }}" method="POST" class="w-full">
+                                @csrf
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                <svg class="w-4 h-4 inline mr-1 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                                    </path>
+                                </svg>
+                                Token Kursus
+                                </label>
+
+                                <div class="flex w-full overflow-hidden rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
+                                <input
+                                    type="text"
+                                    name="token"
+                                    placeholder="Masukkan token kursus"
+                                    maxlength="20"
+                                    required
+                                    class="flex-1 h-11 px-3 placeholder-gray-400 focus:outline-none" />
+                                <button type="submit"
+                                    class="h-11 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors duration-200 flex items-center justify-center">
+                                    <span class="sr-only">Gabung Course</span>
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M13.172 12l-4.95-4.95 1.414-1.414L16 12l-6.364 6.364-1.414-1.414z"/>
+                                    </svg>
+                                </button>
+                                </div>
+                            </form>
+
+                            <!-- Class Token Form -->
+                            <form action="{{ route('enroll.class') }}" method="POST" class="w-full">
+                                @csrf
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                <svg class="w-4 h-4 inline mr-1 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                Token Kelas
+                                </label>
+
+                                <div class="flex w-full overflow-hidden rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                                <input
+                                    type="text"
+                                    name="token"
+                                    placeholder="Masukkan token kelas"
+                                    maxlength="20"
+                                    required
+                                    class="flex-1 h-11 px-3 placeholder-gray-400 focus:outline-none" />
+                                <button type="submit"
+                                    class="h-11 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors duration-200 flex items-center justify-center">
+                                    <span class="sr-only">Gabung Kelas</span>
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M13.172 12l-4.95-4.95 1.414-1.414L16 12l-6.364 6.364-1.414-1.414z"/>
+                                    </svg>
+                                </button>
+                                </div>
+                            </form>
+
+                            @if($errors->has('token'))
+                                <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                <p class="text-sm text-red-600">{{ $errors->first('token') }}</p>
+                                </div>
+                            @endif
+
+                            </div>
+                        </div>
+                        </div>
+
                     <!-- Next to Study -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-6 py-4 border-b border-gray-200">

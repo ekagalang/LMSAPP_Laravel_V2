@@ -4,7 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Feedback;
-use App\Models\CoursePeriod;
+use App\Models\CourseClass;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -93,29 +93,47 @@ class User extends Authenticatable
     }
 
     /**
-     * Relasi ke periode sebagai instruktur
+     * Relasi ke kelas sebagai instruktur
      */
+    public function instructorClasses()
+    {
+        return $this->belongsToMany(CourseClass::class, 'course_class_instructor');
+    }
+
+    // Alias backward compatibility
     public function instructorPeriods()
     {
-        return $this->belongsToMany(CoursePeriod::class, 'course_period_instructor');
+        return $this->instructorClasses();
     }
 
     /**
-     * Relasi ke periode sebagai participant
+     * Relasi ke kelas sebagai participant
      */
+    public function participantClasses()
+    {
+        return $this->belongsToMany(CourseClass::class, 'course_class_user')->withPivot('feedback')->withTimestamps();
+    }
+
+    // Alias backward compatibility
     public function participantPeriods()
     {
-        return $this->belongsToMany(CoursePeriod::class, 'course_period_user')->withPivot('feedback')->withTimestamps();
+        return $this->participantClasses();
     }
 
     /**
-     * Get all periods where user is involved (either as instructor or participant)
+     * Get all classes where user is involved (either as instructor or participant)
      */
+    public function allClasses()
+    {
+        $instructorClasses = $this->instructorClasses()->get();
+        $participantClasses = $this->participantClasses()->get();
+        return $instructorClasses->merge($participantClasses)->unique('id');
+    }
+
+    // Alias backward compatibility
     public function allPeriods()
     {
-        $instructorPeriods = $this->instructorPeriods()->get();
-        $participantPeriods = $this->participantPeriods()->get();
-        return $instructorPeriods->merge($participantPeriods)->unique('id');
+        return $this->allClasses();
     }
 
     /**
@@ -473,7 +491,7 @@ class User extends Authenticatable
 
     public function coursePeriods()
     {
-        return $this->belongsToMany(CoursePeriod::class, 'course_period_participants', 'user_id', 'course_period_id')
+        return $this->belongsToMany(CourseClass::class, 'course_class_user', 'user_id', 'course_class_id')
             ->withTimestamps();
     }
 
@@ -508,7 +526,7 @@ class User extends Authenticatable
 
         // If course period is specified, check course-specific permissions
         if ($coursePeriodId) {
-            $coursePeriod = \App\Models\CoursePeriod::find($coursePeriodId);
+            $coursePeriod = \App\Models\CourseClass::find($coursePeriodId);
             if (!$coursePeriod) {
                 return false;
             }
@@ -558,7 +576,7 @@ class User extends Authenticatable
             ->unique();
 
         // Get active periods for these courses
-        return CoursePeriod::whereIn('course_id', $allCourseIds)
+        return CourseClass::whereIn('course_id', $allCourseIds)
             ->active()
             ->pluck('id');
     }
@@ -590,7 +608,7 @@ class User extends Authenticatable
         }
 
         // Get all users who are enrolled, instructors, or event organizers in the same course periods
-        $courseIds = CoursePeriod::whereIn('id', $activePeriods)->pluck('course_id')->unique();
+        $courseIds = CourseClass::whereIn('id', $activePeriods)->pluck('course_id')->unique();
 
         $query = User::where('id', '!=', $this->id)
             ->where(function ($q) use ($courseIds) {
@@ -953,7 +971,7 @@ class User extends Authenticatable
 
         // Convert to model if ID is passed
         if (is_numeric($coursePeriod)) {
-            $coursePeriod = \App\Models\CoursePeriod::find($coursePeriod);
+            $coursePeriod = \App\Models\CourseClass::find($coursePeriod);
             if (!$coursePeriod) {
                 return false;
             }
@@ -996,7 +1014,7 @@ class User extends Authenticatable
 
         $sharedIds = $myCoursePeriods->intersect($otherCoursePeriods);
 
-        return \App\Models\CoursePeriod::whereIn('id', $sharedIds)->with('course')->get();
+        return \App\Models\CourseClass::whereIn('id', $sharedIds)->with('course')->get();
     }
 
     /**
@@ -1006,7 +1024,7 @@ class User extends Authenticatable
     {
         // Admin can see all course periods
         if ($this->hasRole('super-admin')) {
-            return \App\Models\CoursePeriod::with('course')->get();
+            return \App\Models\CourseClass::with('course')->get();
         }
 
         $coursePeriodIds = collect();
@@ -1014,14 +1032,14 @@ class User extends Authenticatable
         // Get course periods where user is instructor
         if ($this->hasRole('instructor')) {
             $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
-            $instructorPeriods = \App\Models\CoursePeriod::whereIn('course_id', $instructorCourseIds)->pluck('id');
+            $instructorPeriods = \App\Models\CourseClass::whereIn('course_id', $instructorCourseIds)->pluck('id');
             $coursePeriodIds = $coursePeriodIds->merge($instructorPeriods);
         }
 
         // Get course periods where user is event organizer
         if ($this->hasRole('event-organizer')) {
             $eoCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
-            $eoPeriods = \App\Models\CoursePeriod::whereIn('course_id', $eoCourseIds)->pluck('id');
+            $eoPeriods = \App\Models\CourseClass::whereIn('course_id', $eoCourseIds)->pluck('id');
             $coursePeriodIds = $coursePeriodIds->merge($eoPeriods);
         }
 
@@ -1030,12 +1048,12 @@ class User extends Authenticatable
         if ($this->hasRole('participant')) {
             // Assuming participants are enrolled in courses, then check active periods for those courses
             $enrolledCourseIds = $this->courses()->pluck('course_id');
-            $participantPeriods = \App\Models\CoursePeriod::whereIn('course_id', $enrolledCourseIds)->pluck('id');
+            $participantPeriods = \App\Models\CourseClass::whereIn('course_id', $enrolledCourseIds)->pluck('id');
             $coursePeriodIds = $coursePeriodIds->merge($participantPeriods);
         }
 
         // Return unique course periods
-        return \App\Models\CoursePeriod::whereIn('id', $coursePeriodIds->unique())
+        return \App\Models\CourseClass::whereIn('id', $coursePeriodIds->unique())
             ->with('course')
             ->get();
     }
@@ -1058,7 +1076,7 @@ class User extends Authenticatable
 
         // If specific course period is selected
         if ($coursePeriodId) {
-            $coursePeriod = \App\Models\CoursePeriod::find($coursePeriodId);
+            $coursePeriod = \App\Models\CourseClass::find($coursePeriodId);
             if (!$coursePeriod) {
                 return collect();
             }

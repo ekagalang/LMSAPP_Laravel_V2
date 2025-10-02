@@ -729,4 +729,67 @@ class CourseController extends Controller
             return redirect()->route('courses.index')->with('error', 'Failed to duplicate course. Please try again.');
         }
     }
+
+    /**
+     * Show token management page
+     */
+    public function tokens(Course $course)
+    {
+        $this->authorize('update', $course);
+
+        $course->load(['classes.participants']);
+
+        return view('courses.tokens', compact('course'));
+    }
+
+    /**
+     * Generate enrollment token for course
+     */
+    public function generateToken(Course $course)
+    {
+        $this->authorize('update', $course);
+
+        try {
+            $token = $course->generateEnrollmentToken();
+
+            return back()->with('success', "Token berhasil dibuat: {$token}");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal generate token: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Regenerate enrollment token for course
+     */
+    public function regenerateToken(Course $course)
+    {
+        $this->authorize('update', $course);
+
+        try {
+            $token = $course->generateEnrollmentToken();
+
+            return back()->with('success', "Token baru berhasil dibuat: {$token}");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal regenerate token: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Toggle token enabled/disabled
+     */
+    public function toggleToken(Course $course)
+    {
+        $this->authorize('update', $course);
+
+        try {
+            $course->token_enabled = !$course->token_enabled;
+            $course->save();
+
+            $status = $course->token_enabled ? 'diaktifkan' : 'dinonaktifkan';
+
+            return back()->with('success', "Token berhasil {$status}");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal toggle token: ' . $e->getMessage()]);
+        }
+    }
 }

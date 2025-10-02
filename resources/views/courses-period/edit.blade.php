@@ -10,7 +10,7 @@
                     {{ __('Kembali') }}
                 </a>
                 <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                    {{ __('Edit Periode') }}
+                    {{ __('Edit Kelas') }}
                 </h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $period->name }} - {{ $course->title }}</p>
             </div>
@@ -65,11 +65,35 @@
                 </div>
             </div>
 
+            <!-- Token Management Link -->
+            <a href="{{ route('courses.tokens', $course) }}" class="block mb-6">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 overflow-hidden shadow-lg sm:rounded-xl hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]">
+                    <div class="px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-white">Kelola Token Enrollment</h3>
+                                <p class="text-indigo-100 text-sm mt-1">Kelola token untuk course dan semua kelas termasuk kelas ini</p>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
             <div class="bg-white overflow-hidden shadow-lg sm:rounded-xl">
                 <!-- Header Form -->
                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-white">Edit Periode Kursus</h3>
-                    <p class="text-indigo-100 text-sm mt-1">Perbarui detail periode untuk {{ $period->name }}</p>
+                    <h3 class="text-lg font-semibold text-white">Edit Kelas Kursus</h3>
+                    <p class="text-indigo-100 text-sm mt-1">Perbarui detail kelas untuk {{ $period->name }}</p>
                 </div>
 
                 <div class="p-8" x-data="{
@@ -154,7 +178,7 @@
                                         <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                                         </svg>
-                                        Nama Periode *
+                                        Nama Kelas *
                                     </label>
                                     <input type="text"
                                            name="name"
@@ -186,14 +210,14 @@
                                         <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
                                         </svg>
-                                        Deskripsi Periode
+                                        Deskripsi Kelas
                                     </label>
                                     <textarea name="description"
                                               id="description"
                                               x-model="formData.description"
                                               rows="4"
                                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 resize-none"
-                                              placeholder="Deskripsi khusus untuk periode ini (opsional)..."></textarea>
+                                              placeholder="Deskripsi khusus untuk kelas ini (opsional)..."></textarea>
 
                                     <div class="flex justify-between items-center mt-1">
                                         @error('description')
@@ -204,7 +228,7 @@
                                                 {{ $message }}
                                             </p>
                                         @else
-                                            <p class="text-gray-400 text-xs">Jelaskan keunikan periode ini</p>
+                                            <p class="text-gray-400 text-xs">Jelaskan keunikan kelas ini</p>
                                         @enderror
                                         <p class="text-gray-400 text-xs" x-text="`${formData.description.length} karakter`"></p>
                                     </div>
@@ -253,15 +277,14 @@
                                         <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                         </svg>
-                                        Tanggal Mulai *
+                                        Tanggal Mulai
                                     </label>
                                     <input type="date"
                                            name="start_date"
                                            id="start_date"
                                            x-model="formData.start_date"
                                            @change="validateDates(); generatePeriodName();"
-                                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400"
-                                           required>
+                                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400">
 
                                     @error('start_date')
                                         <p class="text-red-500 text-sm mt-2 flex items-center">
@@ -279,15 +302,14 @@
                                         <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                         </svg>
-                                        Tanggal Selesai *
+                                        Tanggal Selesai
                                     </label>
                                     <input type="date"
                                            name="end_date"
                                            id="end_date"
                                            x-model="formData.end_date"
                                            @change="validateDates()"
-                                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400"
-                                           required>
+                                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400">
 
                                     <div x-show="errors.end_date" class="text-red-500 text-sm mt-2">
                                         <span x-text="errors.end_date"></span>
@@ -309,7 +331,7 @@
                                         <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
-                                        Status Periode *
+                                        Status Kelas *
                                     </label>
                                     <select name="status"
                                             id="status"
@@ -340,7 +362,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                             </svg>
-                                            Preview Periode
+                                            Preview Kelas
                                         </h4>
                                         <div class="space-y-2 text-sm">
                                             <div class="flex justify-between">
@@ -372,7 +394,7 @@
                                         <h4 class="text-gray-800 font-medium text-sm mb-3">Aksi Cepat</h4>
                                         <div class="flex space-x-2">
                                             <a href="{{ route('course-periods.duplicate', [$course, $period]) }}"
-                                               onclick="return confirm('Yakin ingin menduplikasi periode ini?')"
+                                               onclick="return confirm('Yakin ingin menduplikasi kelas ini?')"
                                                class="inline-flex items-center px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
@@ -409,7 +431,7 @@
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                     </svg>
-                                    Perbarui Periode
+                                    Perbarui Kelas
                                 </button>
                             </div>
                         </div>
@@ -437,13 +459,13 @@
                                             </svg>
                                         </div>
                                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                            <h3 class="text-lg leading-6 font-medium text-gray-900">Hapus Periode</h3>
+                                            <h3 class="text-lg leading-6 font-medium text-gray-900">Hapus Kelas</h3>
                                             <div class="mt-2">
                                                 <p class="text-sm text-gray-500">
-                                                    Apakah Anda yakin ingin menghapus periode "{{ $period->name }}"?
+                                                    Apakah Anda yakin ingin menghapus kelas "{{ $period->name }}"?
                                                     @if($enrolledCount > 0)
                                                         <br><br>
-                                                        <span class="font-medium text-red-600">Perhatian: Periode ini memiliki {{ $enrolledCount }} peserta terdaftar. Periode tidak dapat dihapus sampai semua peserta dipindahkan atau dihapus.</span>
+                                                        <span class="font-medium text-red-600">Perhatian: Kelas ini memiliki {{ $enrolledCount }} peserta terdaftar. Kelas tidak dapat dihapus sampai semua peserta dipindahkan atau dihapus.</span>
                                                     @else
                                                         Tindakan ini tidak dapat dibatalkan.
                                                     @endif
@@ -458,7 +480,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-                                                Hapus Periode
+                                                Hapus Kelas
                                             </button>
                                         </form>
                                     @endif

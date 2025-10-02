@@ -17,6 +17,14 @@ class Course extends Model
         'thumbnail',
         'status',
         'certificate_template_id',
+        'enrollment_token',
+        'token_enabled',
+        'token_expires_at',
+    ];
+
+    protected $casts = [
+        'token_enabled' => 'boolean',
+        'token_expires_at' => 'datetime',
     ];
 
     /**
@@ -100,29 +108,41 @@ class Course extends Model
     // ========================================
 
     /**
-     * Course periods - one course can have multiple periods/batches
+     * Course classes - one course can have multiple classes
      */
+    public function classes()
+    {
+        return $this->hasMany(CourseClass::class)->orderBy('start_date');
+    }
+
+    // Alias for backward compatibility
     public function periods()
     {
-        return $this->hasMany(CoursePeriod::class)->orderBy('start_date');
+        return $this->classes();
     }
 
     /**
-     * Currently active period
+     * Currently active class
      */
-    public function activePeriod()
+    public function activeClass()
     {
-        return $this->hasOne(CoursePeriod::class)->where('status', 'active')
+        return $this->hasOne(CourseClass::class)->where('status', 'active')
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now());
     }
 
+    // Alias for backward compatibility
+    public function activePeriod()
+    {
+        return $this->activeClass();
+    }
+
     /**
-     * All chats related to this course through periods
+     * All chats related to this course through classes
      */
     public function chats()
     {
-        return $this->hasManyThrough(Chat::class, CoursePeriod::class);
+        return $this->hasManyThrough(Chat::class, CourseClass::class);
     }
 
     // ========================================
@@ -299,5 +319,49 @@ class Course extends Model
             }
         }
         return $count;
+    }
+
+    // ========================================
+    // TOKEN METHODS
+    // ========================================
+
+    public function generateEnrollmentToken($length = 8): string
+    {
+        $token = strtoupper(\Illuminate\Support\Str::random($length));
+
+        // Ensure uniqueness
+        while (static::where('enrollment_token', $token)->exists()) {
+            $token = strtoupper(\Illuminate\Support\Str::random($length));
+        }
+
+        $this->enrollment_token = $token;
+        $this->token_enabled = true;
+        $this->save();
+
+        return $token;
+    }
+
+    public function disableToken(): void
+    {
+        $this->token_enabled = false;
+        $this->save();
+    }
+
+    public function isTokenValid(): bool
+    {
+        if (!$this->token_enabled || !$this->enrollment_token) {
+            return false;
+        }
+
+        if ($this->token_expires_at && $this->token_expires_at->isPast()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function validateToken(string $token): bool
+    {
+        return $this->enrollment_token === strtoupper($token) && $this->isTokenValid();
     }
 }
