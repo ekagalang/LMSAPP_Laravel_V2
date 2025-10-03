@@ -103,17 +103,22 @@
             @endif
 
             <!-- Participants Quiz Scores -->
-            <div class="space-y-6">
+            <div class="space-y-4">
                 @forelse ($participantsData as $participant)
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                        <!-- Participant Header -->
-                        <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                        <!-- Participant Header - Clickable -->
+                        <button type="button"
+                                class="w-full bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200 hover:from-gray-100 hover:to-gray-200 transition-colors duration-200"
+                                onclick="toggleAccordion('participant-{{ $participant['id'] }}')">
                             <div class="flex flex-wrap items-center justify-between gap-4">
                                 <div class="flex items-center space-x-3">
+                                    <svg class="w-5 h-5 text-gray-500 transition-transform duration-200 accordion-icon" id="icon-participant-{{ $participant['id'] }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
                                     <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
                                         {{ strtoupper(substr($participant['name'], 0, 2)) }}
                                     </div>
-                                    <div>
+                                    <div class="text-left">
                                         <h3 class="text-lg font-semibold text-gray-900">{{ $participant['name'] }}</h3>
                                         <p class="text-sm text-gray-600">{{ $participant['email'] }}</p>
                                     </div>
@@ -133,10 +138,10 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </button>
 
-                        <!-- Quiz Details by Lesson -->
-                        <div class="p-6">
+                        <!-- Quiz Details by Lesson - Collapsible -->
+                        <div class="hidden p-6" id="content-participant-{{ $participant['id'] }}">
                             @if(count($participant['quiz_data']) > 0)
                                 <div class="space-y-6">
                                     @foreach($participant['quiz_data'] as $lessonData)
@@ -218,7 +223,7 @@
                                                                                 {{ $attempt['passed'] ? 'Lulus' : 'Tidak Lulus' }}
                                                                             </span>
                                                                             <span class="text-xs text-gray-500">
-                                                                                {{ $attempt['completed_at']->format('d/m H:i') }}
+                                                                                {{ $attempt['completed_at'] ? $attempt['completed_at']->format('d/m H:i') : '-' }}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -286,4 +291,19 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleAccordion(id) {
+            const content = document.getElementById('content-' + id);
+            const icon = document.getElementById('icon-' + id);
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.style.transform = 'rotate(90deg)';
+            } else {
+                content.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
 </x-app-layout>

@@ -245,6 +245,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
         Route::resource('roles', RoleController::class)->except(['show']);
 
+        // Participants
+        Route::get('/participants', [\App\Http\Controllers\Admin\ParticipantController::class, 'index'])->name('participants.index');
+        Route::get('/participants/analytics', [\App\Http\Controllers\Admin\ParticipantController::class, 'analytics'])->name('participants.analytics');
+        Route::get('/participants/{user}', [\App\Http\Controllers\Admin\ParticipantController::class, 'show'])->name('participants.show');
+
         // Sertifikat
         Route::get('certificate-templates/create/enhanced', [CertificateTemplateController::class, 'createEnhanced'])->name('certificate-templates.create-enhanced');
         Route::get('certificate-templates/{certificateTemplate}/edit/enhanced', [CertificateTemplateController::class, 'editEnhanced'])->name('certificate-templates.edit-enhanced');
