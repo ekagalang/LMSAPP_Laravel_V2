@@ -47,6 +47,56 @@
             @endif
         </div>
 
+        <div>
+            <x-input-label for="date_of_birth" :value="__('Tanggal Lahir')" />
+            <x-text-input id="date_of_birth" name="date_of_birth" type="date" class="mt-1 block w-full" :value="old('date_of_birth', $user->date_of_birth)" required />
+            <x-input-error class="mt-2" :messages="$errors->get('date_of_birth')" />
+        </div>
+
+        <div>
+            <x-input-label for="gender" :value="__('Jenis Kelamin')" />
+            <select id="gender" name="gender" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required>
+                <option value="">Pilih Jenis Kelamin</option>
+                <option value="male" {{ old('gender', $user->gender) == 'male' ? 'selected' : '' }}>Laki-laki</option>
+                <option value="female" {{ old('gender', $user->gender) == 'female' ? 'selected' : '' }}>Perempuan</option>
+            </select>
+            <x-input-error class="mt-2" :messages="$errors->get('gender')" />
+        </div>
+
+        <div>
+            <x-input-label for="institution_name" :value="__('Nama Instansi/Sekolah')" />
+            <x-text-input id="institution_name" name="institution_name" type="text" class="mt-1 block w-full" :value="old('institution_name', $user->institution_name)" required />
+            <x-input-error class="mt-2" :messages="$errors->get('institution_name')" />
+        </div>
+
+        <div>
+            <x-input-label for="occupation" :value="__('Pekerjaan')" />
+            <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                @php($selectedOcc = old('occupation', $user->occupation))
+                @foreach ([
+                    'Pelajar/Mahasiswa',
+                    'PNS/ASN',
+                    'TNI/Polri',
+                    'Karyawan Swasta',
+                    'Pegawai BUMN',
+                    'Wiraswasta',
+                    'Buruh/Tenaga Harian Lepas',
+                    'Pedagang',
+                    'Sopir/Pengemudi',
+                    'Ibu Rumah Tangga',
+                    'Pensiunan',
+                    'Tidak Bekerja',
+                    'Lainnya'
+                ] as $job)
+                    <label class="relative flex items-center p-2 rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50 transition">
+                        <input type="radio" name="occupation" value="{{ $job }}" class="mr-2" {{ $selectedOcc === $job ? 'checked' : '' }} required>
+                        <span class="text-sm">{{ $job }}</span>
+                    </label>
+                @endforeach
+            </div>
+            <x-input-error class="mt-2" :messages="$errors->get('occupation')" />
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('auth');
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
+    Route::get('/quizzes/{quiz}/leaderboard', [QuizController::class, 'leaderboard'])->name('quizzes.leaderboard');
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
     Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
 

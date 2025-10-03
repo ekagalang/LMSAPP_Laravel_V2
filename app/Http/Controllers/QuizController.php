@@ -32,6 +32,7 @@ class QuizController extends Controller
             'showResult',
             'checkTimeRemaining',
             'saveProgress',
+            'leaderboard',
         ]);
     }
 
@@ -90,10 +91,10 @@ class QuizController extends Controller
             'lesson_id' => 'required|exists:lessons,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'total_marks' => 'required|integer|min:0',
-            'pass_marks' => 'required|integer|min:0|lte:total_marks',
+            'passing_percentage' => 'required|integer|min:0|max:100',
             'show_answers_after_attempt' => 'boolean',
-            'time_limit' => 'nullable|integer|min:1|max:1440', // ✅ BARU: Validasi time limit (max 24 jam)
+            'enable_leaderboard' => 'boolean',
+            'time_limit' => 'nullable|integer|min:1|max:1440',
             'status' => ['required', Rule::in(['draft', 'published'])],
             'questions' => 'required|array|min:1',
             'questions.*.question_text' => 'required|string',
@@ -110,10 +111,10 @@ class QuizController extends Controller
             'lesson_id' => $validatedData['lesson_id'],
             'title' => $validatedData['title'],
             'description' => $validatedData['description'],
-            'total_marks' => $validatedData['total_marks'],
-            'pass_marks' => $validatedData['pass_marks'],
+            'passing_percentage' => $validatedData['passing_percentage'],
             'show_answers_after_attempt' => $request->has('show_answers_after_attempt'),
-            'time_limit' => $validatedData['time_limit'], // ✅ BARU: Simpan time limit
+            'enable_leaderboard' => $request->has('enable_leaderboard'),
+            'time_limit' => $validatedData['time_limit'],
             'status' => $validatedData['status'],
         ]);
 
@@ -171,10 +172,10 @@ class QuizController extends Controller
             'lesson_id' => 'required|exists:lessons,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'total_marks' => 'required|integer|min:0',
-            'pass_marks' => 'required|integer|min:0|lte:total_marks',
+            'passing_percentage' => 'required|integer|min:0|max:100',
             'show_answers_after_attempt' => 'boolean',
-            'time_limit' => 'nullable|integer|min:1|max:1440', // ✅ BARU: Validasi time limit
+            'enable_leaderboard' => 'boolean',
+            'time_limit' => 'nullable|integer|min:1|max:1440',
             'status' => ['required', Rule::in(['draft', 'published'])],
             'questions_to_delete' => 'array',
             'questions_to_delete.*' => 'exists:questions,id',
@@ -196,10 +197,10 @@ class QuizController extends Controller
             'lesson_id' => $validatedData['lesson_id'],
             'title' => $validatedData['title'],
             'description' => $validatedData['description'],
-            'total_marks' => $validatedData['total_marks'],
-            'pass_marks' => $validatedData['pass_marks'],
+            'passing_percentage' => $validatedData['passing_percentage'],
             'show_answers_after_attempt' => $request->has('show_answers_after_attempt'),
-            'time_limit' => $validatedData['time_limit'], // ✅ BARU: Update time limit
+            'enable_leaderboard' => $request->has('enable_leaderboard'),
+            'time_limit' => $validatedData['time_limit'],
             'status' => $validatedData['status'],
         ]);
 
@@ -628,7 +629,7 @@ class QuizController extends Controller
         $score_percentage = ($total_marks > 0) ? ($score / $total_marks) * 100 : 0;
         
         // Cek apakah attempt saat ini lulus
-        $passed = $attempt->passed;
+        $isPassed = $attempt->passed;
 
         // Cek apakah pengguna PERNAH lulus kuis ini sebelumnya dari semua attempt
         $hasPassedQuizBefore = $user->quizAttempts()
@@ -638,13 +639,13 @@ class QuizController extends Controller
 
         // Kirim semua data yang dibutuhkan ke view
         return view('quizzes.result', compact(
-            'quiz', 
-            'attempt', 
-            'content', 
+            'quiz',
+            'attempt',
+            'content',
             'score',
             'total_marks',
             'score_percentage',
-            'passed',
+            'isPassed',
             'hasPassedQuizBefore' // Variabel baru untuk view
         ));
         
@@ -674,6 +675,22 @@ class QuizController extends Controller
     {
         $this->authorize('start', $quiz);
         return view('quizzes.start', compact('quiz'));
+    }
+
+    /**
+     * Show leaderboard for quiz
+     */
+    public function leaderboard(Quiz $quiz)
+    {
+        // Check if leaderboard is enabled
+        if (!$quiz->enable_leaderboard) {
+            abort(404, 'Leaderboard tidak tersedia untuk quiz ini.');
+        }
+
+        // Get leaderboard data (best attempts per user)
+        $leaderboard = $quiz->getLeaderboardWithBestAttempts();
+
+        return view('quizzes.leaderboard', compact('quiz', 'leaderboard'));
     }
 
     public function attempt(Quiz $quiz)

@@ -11,14 +11,17 @@
             <label class="block text-sm font-medium">Deskripsi</label>
             <textarea name="quiz[description]" x-model="content.quiz.description" rows="3" class="mt-1 block w-full rounded-md"></textarea>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium">Total Nilai</label>
-                <input type="number" name="quiz[total_marks]" x-model.number="content.quiz.total_marks" class="mt-1 block w-full rounded-md" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium">Nilai Lulus</label>
-                <input type="number" name="quiz[pass_marks]" x-model.number="content.quiz.pass_marks" class="mt-1 block w-full rounded-md" required>
+                <label class="block text-sm font-medium">Persentase Lulus (%)</label>
+                <input type="number"
+                       name="quiz[passing_percentage]"
+                       x-model.number="content.quiz.passing_percentage"
+                       class="mt-1 block w-full rounded-md"
+                       min="0"
+                       max="100"
+                       required>
+                <p class="text-xs text-gray-500 mt-1">Nilai minimum untuk lulus (0-100%)</p>
             </div>
             <div>
                 <label class="block text-sm font-medium">Status</label>
@@ -28,11 +31,16 @@
                 </select>
             </div>
         </div>
-        <div>
+        <div class="space-y-3">
             <label class="flex items-center">
                 <input type="hidden" name="quiz[show_answers_after_attempt]" value="0">
                 <input type="checkbox" name="quiz[show_answers_after_attempt]" value="1" x-model="content.quiz.show_answers_after_attempt" class="rounded">
                 <span class="ml-2 text-sm">Tampilkan jawaban setelah percobaan</span>
+            </label>
+            <label class="flex items-center">
+                <input type="hidden" name="quiz[enable_leaderboard]" value="0">
+                <input type="checkbox" name="quiz[enable_leaderboard]" value="1" x-model="content.quiz.enable_leaderboard" class="rounded">
+                <span class="ml-2 text-sm">Aktifkan Leaderboard</span>
             </label>
         </div>
     </div>

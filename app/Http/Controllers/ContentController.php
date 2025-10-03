@@ -597,11 +597,11 @@ class ContentController extends Controller
                 'user_id' => Auth::id(),
                 'title' => $quizData['title'],
                 'description' => $quizData['description'] ?? null,
-                'total_marks' => $quizData['total_marks'] ?? 0,
-                'pass_marks' => $quizData['pass_marks'] ?? 0,
+                'passing_percentage' => $quizData['passing_percentage'] ?? 70,
                 'time_limit' => $quizData['time_limit'] ?? null,
                 'status' => $quizData['status'] ?? 'draft',
                 'show_answers_after_attempt' => filter_var($quizData['show_answers_after_attempt'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'enable_leaderboard' => filter_var($quizData['enable_leaderboard'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ]
         );
 

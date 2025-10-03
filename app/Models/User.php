@@ -26,6 +26,12 @@ class User extends Authenticatable
         'email',
         'password',
         'role', // Keep for backward compatibility
+        'date_of_birth',
+        'institution_name',
+        'gender',
+        'occupation',
+        'phone',
+        'monthly_income',
     ];
 
     /**
