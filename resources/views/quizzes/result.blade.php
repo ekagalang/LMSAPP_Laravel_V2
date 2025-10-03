@@ -90,7 +90,7 @@
             <div class="bg-white rounded-xl card-shadow overflow-hidden bounce-in">
                 <!-- Status Banner -->
                 @php
-                    $percentage = $quiz->total_marks > 0 ? round(($attempt->score / $quiz->total_marks) * 100) : 0;
+                    $percentage = $attempt->percentage ?? 0;
                     $isPassed = $attempt->passed;
                 @endphp
                 
@@ -110,18 +110,18 @@
                         <div class="flex items-center space-x-6 mb-6 lg:mb-0">
                             <div class="score-circle" style="background: conic-gradient({{ $isPassed ? '#4ade80' : '#ef4444' }} 0deg {{ $percentage * 3.6 }}deg, #e5e7eb {{ $percentage * 3.6 }}deg 360deg);">
                                 <div class="score-text text-center">
-                                    <div class="text-2xl font-bold text-gray-800">{{ number_format($attempt->score, 0) }}</div>
-                                    <div class="text-sm text-gray-500">dari {{ $quiz->total_marks }}</div>
+                                    <div class="text-3xl font-bold text-gray-800">{{ number_format($percentage, 1) }}%</div>
+                                    <div class="text-sm text-gray-500">Nilai Anda</div>
                                 </div>
                             </div>
                             <div>
-                                <h3 class="text-xl font-semibold text-gray-800 mb-2">Skor Anda</h3>
+                                <h3 class="text-xl font-semibold text-gray-800 mb-2">Persentase Nilai</h3>
                                 <div class="flex items-center space-x-4">
-                                    <span class="text-3xl font-bold {{ $isPassed ? 'text-green-500' : 'text-red-500' }}">{{ number_format($attempt->score, 2) }}</span>
-                                    <span class="text-gray-400">/</span>
-                                    <span class="text-xl text-gray-600">{{ $quiz->total_marks }}</span>
+                                    <span class="text-3xl font-bold {{ $isPassed ? 'text-green-500' : 'text-red-500' }}">{{ number_format($percentage, 1) }}%</span>
                                 </div>
-                                <div class="text-sm text-gray-500 mt-1">Persentase: {{ $percentage }}%</div>
+                                <div class="text-sm text-gray-500 mt-1">
+                                    Minimum untuk lulus: {{ $quiz->passing_percentage }}%
+                                </div>
                             </div>
                         </div>
 
@@ -185,7 +185,7 @@
                                 <i class="fas fa-target text-gray-500"></i>
                                 <div>
                                     <div class="text-sm text-gray-600">Passing Grade</div>
-                                    <div class="font-semibold">{{ $quiz->pass_marks }} Poin</div>
+                                    <div class="font-semibold">{{ $quiz->passing_percentage }}%</div>
                                 </div>
                             </div>
                         </div>
@@ -313,18 +313,87 @@
                         </div>
                     @endif
 
+                    <!-- Leaderboard Preview -->
+                    @if($quiz->enable_leaderboard)
+                        @php
+                            $leaderboard = $quiz->getLeaderboardWithBestAttempts(5);
+                            $userRank = $leaderboard->where('user.id', Auth::id())->first();
+                        @endphp
+
+                        @if($leaderboard->count() > 0)
+                            <div class="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-6 mb-8">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-bold text-gray-800 flex items-center text-lg">
+                                        <svg class="w-6 h-6 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                        </svg>
+                                        Top 5 Leaderboard
+                                    </h4>
+                                    <a href="{{ route('quizzes.leaderboard', $quiz) }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                        Lihat Semua →
+                                    </a>
+                                </div>
+
+                                <div class="space-y-2">
+                                    @foreach($leaderboard as $entry)
+                                        @php
+                                            $isCurrentUser = $entry['user']->id === Auth::id();
+                                            $medalColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600'];
+                                            $medalColor = $medalColors[$entry['rank'] - 1] ?? 'text-gray-400';
+                                        @endphp
+                                        <div class="flex items-center justify-between p-3 rounded-lg {{ $isCurrentUser ? 'bg-blue-100 border-2 border-blue-400' : 'bg-white' }}">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="font-bold text-lg {{ $medalColor }} w-8">
+                                                    @if($entry['rank'] <= 3)
+                                                        <i class="fas fa-medal"></i>
+                                                    @else
+                                                        #{{ $entry['rank'] }}
+                                                    @endif
+                                                </span>
+                                                <div>
+                                                    <div class="font-semibold {{ $isCurrentUser ? 'text-blue-900' : 'text-gray-900' }}">
+                                                        {{ $entry['user']->name }} {{ $isCurrentUser ? '(Anda)' : '' }}
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">
+                                                        {{ $entry['completed_at']->diffForHumans() }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-bold text-lg {{ $entry['passed'] ? 'text-green-600' : 'text-red-600' }}">
+                                                    {{ number_format($entry['percentage'], 1) }}%
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ number_format($entry['percentage'], 1) }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                @if($userRank)
+                                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <div class="text-sm text-blue-800">
+                                            <strong>Peringkat Anda:</strong> #{{ $userRank['rank'] }} dari {{ $leaderboard->count() }} peserta
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+                    @endif
+
                     <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        {{-- [PERBAIKAN] Arahkan tombol kembali ke halaman materi (content) --}}
-                        <a href="javascript:void(0)" onclick="window.history.back()"
+                        {{-- [FIX] Kembali ke halaman content --}}
+                        <a href="{{ route('contents.show', $content) }}"
                            class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold btn-hover flex items-center justify-center space-x-2">
                             <i class="fas fa-arrow-left"></i>
-                            <span>Kembali</span>
+                            <span>Kembali ke Materi</span>
                         </a>
-                        
+
                         <!-- Tombol Coba Lagi - HANYA JIKA TIDAK LULUS -->
                         @if(!$hasPassedQuizBefore)
-                            <a href="{{ route('quizzes.start', $quiz) }}" 
+                            <a href="{{ route('quizzes.start', $quiz) }}"
                                class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold btn-hover flex items-center justify-center space-x-2">
                                 <i class="fas fa-redo"></i>
                                 <span>Coba Lagi</span>

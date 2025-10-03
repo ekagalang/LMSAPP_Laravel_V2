@@ -915,6 +915,7 @@
                     // Fix quiz data conversion
                     if (this.content.quiz) {
                         this.content.quiz.show_answers_after_attempt = !!parseInt(this.content.quiz.show_answers_after_attempt);
+                        this.content.quiz.enable_leaderboard = !!parseInt(this.content.quiz.enable_leaderboard);
                         if (this.content.quiz.questions) {
                             this.content.quiz.questions.forEach(q => {
                                 if (q.options) {
@@ -1069,10 +1070,10 @@
                         title: this.content.title || '',
                         description: '',
                         duration: 0,
-                        total_marks: 100,
-                        pass_marks: 70,
+                        passing_percentage: 70,
                         status: 'draft',
                         show_answers_after_attempt: false,
+                        enable_leaderboard: false,
                         questions: []
                     };
                 },

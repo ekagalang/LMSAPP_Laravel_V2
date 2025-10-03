@@ -19,48 +19,32 @@ class CertificateController extends Controller
     {
         $user = Auth::user();
 
-        // Pastikan pengguna berhak mendapatkan sertifikat sebelum menampilkan form
+        // Pastikan pengguna berhak mendapatkan sertifikat
         if (!$user->isEligibleForCertificate($course)) {
             return redirect()->route('dashboard')->with('error', 'Anda belum memenuhi syarat untuk mendapatkan sertifikat di kursus ini.');
         }
 
-        // Cek apakah sertifikat sudah ada, jika ya, langsung arahkan ke halaman unduh
+        // Cek apakah sertifikat sudah ada
         if ($user->hasCertificateForCourse($course)) {
             $certificate = $user->getCertificateForCourse($course);
             return redirect()->route('certificates.download', $certificate);
         }
 
-        return view('certificates.create', compact('course'));
+        // Cek apakah data user sudah lengkap
+        if (!$user->date_of_birth || !$user->institution_name || !$user->gender || !$user->occupation) {
+            return redirect()->route('profile.edit')
+                ->with('error', 'Silakan lengkapi data profil Anda terlebih dahulu untuk mendapatkan sertifikat.');
+        }
+
+        // Langsung generate sertifikat tanpa form
+        return $this->generateCertificate($course);
     }
 
-    public function store(Request $request)
+    private function generateCertificate(Course $course)
     {
-        $request->validate([
-            'course_id' => 'required|exists:courses,id',
-            // Removed: place_of_birth, identity_number
-            'date_of_birth' => 'required|date',
-            'institution_name' => 'required|string|max:255',
-            // Added fields
-            'gender' => 'required|in:male,female',
-            'email' => 'required|email|max:255',
-            'occupation' => 'required|string|max:255',
-        ]);
-
         $user = Auth::user();
-        $course = Course::findOrFail($request->course_id);
-
-        // Otorisasi sekali lagi untuk keamanan
-        if (!$user->isEligibleForCertificate($course)) {
-            return redirect()->route('dashboard')->with('error', 'Anda tidak diizinkan untuk melakukan tindakan ini.');
-        }
-
-        // Cek lagi untuk menghindari duplikasi
-        if ($user->hasCertificateForCourse($course)) {
-            $certificate = $user->getCertificateForCourse($course);
-            return redirect()->route('dashboard')->with('success', 'Sertifikat untuk kursus "' . $course->title . '" sudah tersedia. Anda dapat mengunduhnya dari <a href="' . route('certificates.index') . '" class="text-blue-600 hover:text-blue-800 underline">halaman sertifikat</a>.');
-        }
-
         $template = $course->certificateTemplate;
+
         if (!$template) {
             return redirect()->back()->with('error', 'Template sertifikat untuk kursus ini tidak ditemukan.');
         }
@@ -69,19 +53,18 @@ class CertificateController extends Controller
             // Generate kode unik sertifikat
             $certificateCode = Certificate::generateCertificateCode();
 
-            // Buat record sertifikat di database dengan data diri
+            // Buat record sertifikat dengan data dari user
             $certificate = Certificate::create([
                 'user_id' => $user->id,
                 'course_id' => $course->id,
                 'certificate_template_id' => $template->id,
                 'certificate_code' => $certificateCode,
                 'issued_at' => now(),
-                'date_of_birth' => $request->date_of_birth,
-                'institution_name' => $request->institution_name,
-                // Added fields
-                'gender' => $request->gender,
-                'email' => $request->email,
-                'occupation' => $request->occupation,
+                'date_of_birth' => $user->date_of_birth,
+                'institution_name' => $user->institution_name,
+                'gender' => $user->gender,
+                'email' => $user->email,
+                'occupation' => $user->occupation,
             ]);
 
             // Generate PDF menggunakan view render
