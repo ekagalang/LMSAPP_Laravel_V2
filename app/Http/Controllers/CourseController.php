@@ -183,9 +183,9 @@ class CourseController extends Controller
             'certificate_template_id' => 'nullable|exists:certificate_templates,id',
             'enable_periods' => 'nullable|boolean',
             'periods_to_delete' => 'nullable|array',
-            'periods_to_delete.*' => 'exists:course_periods,id',
+            'periods_to_delete.*' => 'exists:course_classes,id',
             'periods' => 'nullable|array',
-            'periods.*.id' => 'nullable|exists:course_periods,id',
+            'periods.*.id' => 'nullable|exists:course_classes,id',
             'periods.*.name' => 'required_with:periods|string|max:255',
             'periods.*.start_date' => 'nullable|date',
             'periods.*.end_date' => 'nullable|date|after:periods.*.start_date',
@@ -345,12 +345,12 @@ class CourseController extends Controller
             // Get periods where this instructor is assigned for this course
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
-                ->pluck('course_periods.id');
+                ->pluck('course_classes.id');
             
             if ($instructorPeriods->isNotEmpty()) {
                 // Get participants only from instructor's assigned periods
                 $enrolledUsersQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
-                    $query->whereIn('course_periods.id', $instructorPeriods);
+                    $query->whereIn('course_classes.id', $instructorPeriods);
                 });
             } else {
                 // If instructor is not assigned to any periods, show course-level participants
@@ -559,11 +559,11 @@ class CourseController extends Controller
         if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
-                ->pluck('course_periods.id');
+                ->pluck('course_classes.id');
 
             if ($instructorPeriods->isNotEmpty()) {
                 $participantsQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
-                    $query->whereIn('course_periods.id', $instructorPeriods);
+                    $query->whereIn('course_classes.id', $instructorPeriods);
                 });
             } else {
                 $participantsQuery = $course->enrolledUsers();

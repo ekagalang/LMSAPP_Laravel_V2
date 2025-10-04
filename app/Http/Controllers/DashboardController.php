@@ -655,12 +655,12 @@ class DashboardController extends Controller
                 // Get participants only from periods assigned to this instructor
                 $instructorPeriods = $user->instructorPeriods()
                     ->where('course_id', $course->id)
-                    ->pluck('course_periods.id');
+                    ->pluck('course_classes.id');
                 
                 if ($instructorPeriods->isNotEmpty()) {
                     // Get participants only from instructor's assigned periods
                     $participants = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
-                        $query->whereIn('course_periods.id', $instructorPeriods);
+                        $query->whereIn('course_classes.id', $instructorPeriods);
                     })->get();
                 } else {
                     // Fallback to course-level participants if no periods assigned

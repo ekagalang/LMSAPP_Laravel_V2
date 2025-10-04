@@ -51,12 +51,12 @@ class GradebookController extends Controller
             // Get periods where this instructor is assigned for this course
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
-                ->pluck('course_periods.id');
+                ->pluck('course_classes.id');
             
             if ($instructorPeriods->isNotEmpty()) {
                 // Get participants only from instructor's assigned periods
                 $participantsQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
-                    $query->whereIn('course_periods.id', $instructorPeriods);
+                    $query->whereIn('course_classes.id', $instructorPeriods);
                 });
             } else {
                 // If instructor is not assigned to any periods, show course-level participants
@@ -86,7 +86,7 @@ class GradebookController extends Controller
         if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
             if ($instructorPeriods->isNotEmpty()) {
                 $participantsWithEssaysQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
-                    $query->whereIn('course_periods.id', $instructorPeriods);
+                    $query->whereIn('course_classes.id', $instructorPeriods);
                 })->whereHas('essaySubmissions', fn($q) => $q->whereIn('content_id', $essayContentIds));
             } else {
                 $participantsWithEssaysQuery = $course->enrolledUsers()
