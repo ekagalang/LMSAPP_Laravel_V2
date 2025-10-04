@@ -347,9 +347,9 @@ class ChatController extends Controller
 
 
     /**
-     * Get available course periods for chat creation
+     * Get available course classes for chat creation
      */
-    public function availableCoursePeriods(Request $request)
+    public function availableCourseClasses(Request $request)
     {
         // Use the new method from User model
         $courseClasses = auth()->user()->getAccessibleCourseClasses();

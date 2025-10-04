@@ -496,10 +496,16 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    public function coursePeriods()
+    public function courseClasses()
     {
         return $this->belongsToMany(CourseClass::class, 'course_class_user', 'user_id', 'course_class_id')
             ->withTimestamps();
+    }
+
+    // Alias for backward compatibility
+    public function coursePeriods()
+    {
+        return $this->courseClasses();
     }
 
     public function activeChats()
@@ -1027,7 +1033,7 @@ class User extends Authenticatable
     /**
      * Check if user has access to course periods (for chat creation)
      */
-    public function getAccessibleCoursePeriods()
+    public function getAccessibleCourseClasses()
     {
         // Admin can see all course periods
         if ($this->hasRole('super-admin')) {
@@ -1059,10 +1065,16 @@ class User extends Authenticatable
             $coursePeriodIds = $coursePeriodIds->merge($participantPeriods);
         }
 
-        // Return unique course periods
+        // Return unique course classes
         return \App\Models\CourseClass::whereIn('id', $coursePeriodIds->unique())
             ->with('course')
             ->get();
+    }
+
+    // Alias for backward compatibility
+    public function getAccessibleCoursePeriods()
+    {
+        return $this->getAccessibleCourseClasses();
     }
 
     public function getAvailableUsersForChat($coursePeriodId = null, $search = null)

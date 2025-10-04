@@ -215,7 +215,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers'])
             ->name('chats.users');
 
-        Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods'])
+        Route::get('/course-classes/available', [App\Http\Controllers\Api\ChatController::class, 'availableCourseClasses'])
             ->name('chats.periods');
     });
 
@@ -391,7 +391,7 @@ Route::middleware('auth:sanctum')->prefix('api')->group(function () {
 
     // Helper routes untuk mobile/external apps
     Route::get('/users/available', [App\Http\Controllers\Api\ChatController::class, 'availableUsers']);
-    Route::get('/course-periods/available', [App\Http\Controllers\Api\ChatController::class, 'availableCoursePeriods']);
+    Route::get('/course-classes/available', [App\Http\Controllers\Api\ChatController::class, 'availableCourseClasses']);
 });
 
 require __DIR__ . '/auth.php';

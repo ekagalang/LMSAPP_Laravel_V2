@@ -237,7 +237,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Course <span class="text-gray-500">(Optional)</span>
                             </label>
-                            <select name="course_period_id" id="coursePeriodSelect" 
+                            <select name="course_class_id" id="courseClassSelect" 
                                     class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Select a course...</option>
                             </select>
@@ -247,7 +247,7 @@
                         </div>
                         @else
                         {{-- Participants don't see course selection --}}
-                        <input type="hidden" name="course_period_id" value="">
+                        <input type="hidden" name="course_class_id" value="">
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                             <p class="text-sm text-blue-700">
                                 💬 You can chat with instructors, organizers, and other participants from your courses.
@@ -626,11 +626,11 @@
         }
 
         // Load available users for chat creation (updated dengan course filtering)
-        async function loadAvailableUsers(coursePeriodId = null) {
+        async function loadAvailableUsers(courseClassId = null) {
             try {
                 const url = new URL('/users/available', window.location.origin);
-                if (coursePeriodId) {
-                    url.searchParams.append('course_period_id', coursePeriodId);
+                if (courseClassId) {
+                    url.searchParams.append('course_class_id', courseClassId);
                 }
                 
                 const response = await fetch(url, {
@@ -673,7 +673,7 @@
         // Load available course periods
         async function loadAvailableCoursePeriods() {
             try {
-                const response = await fetch('/course-periods/available', {
+                const response = await fetch('/course-classes/available', {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -681,7 +681,7 @@
                 });
                 
                 const data = await response.json();
-                const select = document.getElementById('coursePeriodSelect');
+                const select = document.getElementById('courseClassSelect');
                 
                 if (response.ok && Array.isArray(data)) {
                     select.innerHTML = '<option value="">Select a course...</option>' + 
@@ -693,15 +693,15 @@
                 }
             } catch (error) {
                 console.error('Error loading course periods:', error);
-                document.getElementById('coursePeriodSelect').innerHTML = '<option value="">Error loading courses</option>';
+                document.getElementById('courseClassSelect').innerHTML = '<option value="">Error loading courses</option>';
             }
         }
 
         // Handle course period change
         function handleCoursePeriodChange() {
-            const coursePeriodSelect = document.getElementById('coursePeriodSelect');
-            if (coursePeriodSelect) {
-                coursePeriodSelect.addEventListener('change', function() {
+            const courseClassSelect = document.getElementById('courseClassSelect');
+            if (courseClassSelect) {
+                courseClassSelect.addEventListener('change', function() {
                     const selectedCourseId = this.value;
                     // Reload users based on selected course
                     loadAvailableUsers(selectedCourseId);
@@ -769,9 +769,9 @@
             });
 
             // Handle course period change (only if course selection exists)
-            const coursePeriodSelect = document.getElementById('coursePeriodSelect');
-            if (coursePeriodSelect) {
-                coursePeriodSelect.addEventListener('change', function() {
+            const courseClassSelect = document.getElementById('courseClassSelect');
+            if (courseClassSelect) {
+                courseClassSelect.addEventListener('change', function() {
                     const selectedCourseId = this.value;
                     // Reload users based on selected course
                     loadAvailableUsers(selectedCourseId);
@@ -829,7 +829,7 @@
             type: formData.get('type'),
             participant_ids: participantIds, // ✅ FIXED: Tidak include current user
             name: formData.get('name') || null,
-            course_period_id: formData.get('course_period_id') || null
+            course_class_id: formData.get('course_class_id') || null
         };
 
         console.log('Creating chat with data:', chatData);
@@ -918,7 +918,7 @@
             },
             body: JSON.stringify({
                 type: formData.get('type'),
-                course_period_id: formData.get('course_period_id') || null,
+                course_class_id: formData.get('course_class_id') || null,
                 participant_ids: filteredParticipants, // ✅ FIXED: Use filtered participants
                 name: formData.get('title') || null
             })
