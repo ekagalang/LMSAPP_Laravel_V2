@@ -30,12 +30,12 @@ class DiscussionController extends Controller
             // Get periods where this instructor is assigned for this course
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
-                ->pluck('course_periods.id');
+                ->pluck('course_classes.id');
             
             if ($instructorPeriods->isNotEmpty()) {
                 // Get participant IDs only from instructor's assigned periods
                 $allowedParticipantIds = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
-                    $query->whereIn('course_periods.id', $instructorPeriods);
+                    $query->whereIn('course_classes.id', $instructorPeriods);
                 })->pluck('id');
 
                 // Also include instructor's own discussions and replies
