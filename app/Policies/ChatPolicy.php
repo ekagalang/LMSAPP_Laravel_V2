@@ -22,7 +22,7 @@ class ChatPolicy
         }
 
         // If chat is associated with a course period, it must be active
-        if ($chat->coursePeriod && !$chat->coursePeriod->isActive()) {
+        if ($chat->courseClass && !$chat->courseClass->isActive()) {
             // Only admin can view inactive course chats
             return $user->hasRole('super-admin');
         }
@@ -64,7 +64,7 @@ class ChatPolicy
         }
 
         // If chat has a course period, it must be active
-        if ($chat->coursePeriod && !$chat->coursePeriod->isActive()) {
+        if ($chat->courseClass && !$chat->courseClass->isActive()) {
             return false;
         }
 
@@ -84,13 +84,13 @@ class ChatPolicy
         }
 
         // Instructors can add participants to course chats where they are instructors
-        if ($user->hasRole('instructor') && $chat->coursePeriod) {
-            return $chat->coursePeriod->course->instructors->contains($user->id);
+        if ($user->hasRole('instructor') && $chat->courseClass) {
+            return $chat->courseClass->course->instructors->contains($user->id);
         }
 
         // Event organizers can add participants to course chats where they are organizers
-        if ($user->hasRole('event-organizer') && $chat->coursePeriod) {
-            return $chat->coursePeriod->course->eventOrganizers->contains($user->id);
+        if ($user->hasRole('event-organizer') && $chat->courseClass) {
+            return $chat->courseClass->course->eventOrganizers->contains($user->id);
         }
 
         return false;
@@ -109,13 +109,13 @@ class ChatPolicy
         }
 
         // Instructors can remove participants from course chats where they are instructors
-        if ($user->hasRole('instructor') && $chat->coursePeriod) {
-            return $chat->coursePeriod->course->instructors->contains($user->id);
+        if ($user->hasRole('instructor') && $chat->courseClass) {
+            return $chat->courseClass->course->instructors->contains($user->id);
         }
 
         // Event organizers can remove participants from course chats where they are organizers
-        if ($user->hasRole('event-organizer') && $chat->coursePeriod) {
-            return $chat->coursePeriod->course->eventOrganizers->contains($user->id);
+        if ($user->hasRole('event-organizer') && $chat->courseClass) {
+            return $chat->courseClass->course->eventOrganizers->contains($user->id);
         }
 
         return false;
@@ -124,15 +124,15 @@ class ChatPolicy
     /**
      * ✅ FIXED: Check if user can create chat for specific course period
      */
-    public function createForCoursePeriod(User $user, $coursePeriodId = null): bool
+    public function createForCourseClass(User $user, $courseClassId = null): bool
     {
-        // If no course period specified, use general create permission
-        if (!$coursePeriodId) {
+        // If no course class specified, use general create permission
+        if (!$courseClassId) {
             return $this->create($user);
         }
 
-        $coursePeriod = \App\Models\CoursePeriod::find($coursePeriodId);
-        if (!$coursePeriod) {
+        $courseClass = \App\Models\CourseClass::find($courseClassId);
+        if (!$courseClass) {
             return false;
         }
 
@@ -144,7 +144,7 @@ class ChatPolicy
         // ✅ FIXED: Allow instructors to create chat in their courses
         if ($user->hasRole('instructor')) {
             // Check if user is instructor of this course
-            $isInstructor = $coursePeriod->course->instructors()->where('user_id', $user->id)->exists();
+            $isInstructor = $courseClass->course->instructors()->where('user_id', $user->id)->exists();
             if ($isInstructor) {
                 return true;
             }
@@ -153,7 +153,7 @@ class ChatPolicy
         // ✅ FIXED: Allow event organizers to create chat in their courses  
         if ($user->hasRole('event-organizer')) {
             // Check if user is event organizer of this course
-            $isEventOrganizer = $coursePeriod->course->eventOrganizers()->where('user_id', $user->id)->exists();
+            $isEventOrganizer = $courseClass->course->eventOrganizers()->where('user_id', $user->id)->exists();
             if ($isEventOrganizer) {
                 return true;
             }
@@ -161,7 +161,7 @@ class ChatPolicy
 
         // ✅ FIXED: Check if user is participant in this course period
         // This covers students and other participants
-        $isParticipant = $coursePeriod->participants()->where('user_id', $user->id)->exists();
+        $isParticipant = $courseClass->participants()->where('user_id', $user->id)->exists();
         if ($isParticipant) {
             return true;
         }

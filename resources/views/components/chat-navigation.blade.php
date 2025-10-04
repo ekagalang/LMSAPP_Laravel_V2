@@ -104,9 +104,9 @@
                                 <span>Direct Message</span>
                             @endif
                             
-                            @if($chat->course_period_id)
+                            @if($chat->course_class_id)
                                 <span>•</span>
-                                <span class="text-blue-600 font-medium">{{ $chat->coursePeriod->course->title }}</span>
+                                <span class="text-blue-600 font-medium">{{ $chat->courseClass->course->title }}</span>
                             @endif
                         </div>
                     </div>
