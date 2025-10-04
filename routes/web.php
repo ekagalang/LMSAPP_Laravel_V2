@@ -252,7 +252,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Sertifikat
         Route::get('certificate-templates/create/enhanced', [CertificateTemplateController::class, 'createEnhanced'])->name('certificate-templates.create-enhanced');
+        Route::get('certificate-templates/create/advanced', [CertificateTemplateController::class, 'createAdvanced'])->name('certificate-templates.create-advanced');
         Route::get('certificate-templates/{certificateTemplate}/edit/enhanced', [CertificateTemplateController::class, 'editEnhanced'])->name('certificate-templates.edit-enhanced');
+        Route::get('certificate-templates/{certificateTemplate}/edit/advanced', [CertificateTemplateController::class, 'editAdvanced'])->name('certificate-templates.edit-advanced');
+        Route::get('certificate-templates/{certificateTemplate}/preview', [CertificateTemplateController::class, 'preview'])->name('certificate-templates.preview');
+        Route::post('certificate-templates/{certificateTemplate}/preview', [CertificateTemplateController::class, 'generatePreview'])->name('certificate-templates.generate-preview');
+        Route::post('certificate-templates/{certificateTemplate}/duplicate', [CertificateTemplateController::class, 'duplicate'])->name('certificate-templates.duplicate');
         Route::resource('certificate-templates', CertificateTemplateController::class);
 
         // [BARU] Route untuk Manajemen Pengumuman

@@ -190,6 +190,71 @@
                         </div>
                     </div>
 
+                    <!-- Background Controls -->
+                    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 mb-6">
+                        <h3 class="font-semibold text-gray-900 mb-3">Background Settings - Page <span x-text="activePageIndex + 1"></span></h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Current Background -->
+                            <div>
+                                <label class="text-xs font-medium text-gray-600 mb-1 block">Current Background</label>
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                    <template x-if="pages[activePageIndex]?.backgroundUrl">
+                                        <div>
+                                            <img :src="pages[activePageIndex].backgroundUrl" class="w-full h-24 object-cover rounded mb-2">
+                                            <button type="button" @click="removeBackground()" class="text-xs text-red-600 hover:text-red-800">Remove Background</button>
+                                        </div>
+                                    </template>
+                                    <template x-if="!pages[activePageIndex]?.backgroundUrl">
+                                        <div class="text-gray-500">
+                                            <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <p class="text-xs">No background</p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Upload New Background -->
+                            <div>
+                                <label class="text-xs font-medium text-gray-600 mb-1 block">Upload New Background</label>
+                                <label :for="'bg_upload_' + activePageIndex" class="cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 block text-center">
+                                    <svg class="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                    </svg>
+                                    <p class="text-xs text-gray-600">Click to upload</p>
+                                    <p class="text-xs text-gray-400 mt-1">PNG, JPG, GIF (Max 5MB)</p>
+                                </label>
+                                <input :id="'bg_upload_' + activePageIndex" type="file" @change="changeBackground($event)" accept="image/*" class="hidden">
+                            </div>
+
+                            <!-- Background Settings -->
+                            <div x-show="pages[activePageIndex]?.backgroundUrl">
+                                <label class="text-xs font-medium text-gray-600 mb-1 block">Background Size</label>
+                                <select x-model="pages[activePageIndex].backgroundSize" class="w-full text-sm border border-gray-300 rounded px-2 py-1 mb-2">
+                                    <option value="cover">Cover (Fill)</option>
+                                    <option value="contain">Contain (Fit)</option>
+                                    <option value="100% 100%">Stretch</option>
+                                    <option value="auto">Original Size</option>
+                                </select>
+                                
+                                <label class="text-xs font-medium text-gray-600 mb-1 block">Background Position</label>
+                                <select x-model="pages[activePageIndex].backgroundPosition" class="w-full text-sm border border-gray-300 rounded px-2 py-1">
+                                    <option value="center">Center</option>
+                                    <option value="top">Top</option>
+                                    <option value="bottom">Bottom</option>
+                                    <option value="left">Left</option>
+                                    <option value="right">Right</option>
+                                    <option value="top left">Top Left</option>
+                                    <option value="top right">Top Right</option>
+                                    <option value="bottom left">Bottom Left</option>
+                                    <option value="bottom right">Bottom Right</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex gap-6">
                         <!-- Left Sidebar -->
                         <div class="w-80 space-y-6">
@@ -276,7 +341,13 @@
                                         <!-- Background Image -->
                                         <template x-if="pages[activePageIndex] && pages[activePageIndex].backgroundUrl">
                                             <img :src="pages[activePageIndex].backgroundUrl" 
-                                                 class="absolute inset-0 w-full h-full object-cover pointer-events-none">
+                                                 class="absolute inset-0 w-full h-full pointer-events-none"
+                                                 :style="{
+                                                     objectFit: pages[activePageIndex].backgroundSize === 'cover' ? 'cover' : 
+                                                               pages[activePageIndex].backgroundSize === 'contain' ? 'contain' : 
+                                                               pages[activePageIndex].backgroundSize === '100% 100%' ? 'fill' : 'none',
+                                                     objectPosition: pages[activePageIndex].backgroundPosition || 'center'
+                                                 }">
                                         </template>
 
                                         <!-- Background Upload Area -->
@@ -399,6 +470,8 @@
                     this.pages = existingData.map(pageData => ({
                         ...pageData,
                         backgroundUrl: pageData.background_image_path ? `{{ Storage::url('') }}${pageData.background_image_path}` : null,
+                        backgroundSize: pageData.backgroundSize || 'cover',
+                        backgroundPosition: pageData.backgroundPosition || 'center',
                         elements: (pageData.elements || []).map(el => ({
                             ...el,
                             fontFamily: el.fontFamily || 'Arial',
@@ -462,6 +535,8 @@
                 this.pages.push({ 
                     backgroundUrl: null, 
                     background_image_path: null,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
                     elements: [] 
                 });
                 this.activePageIndex = this.pages.length - 1;
@@ -644,6 +719,55 @@
                     this.pages[pageIndex].backgroundUrl = URL.createObjectURL(file);
                 }
             },
+            
+            // Background Management
+            changeBackground(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    // Validate file size (5MB limit)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('File size must be less than 5MB');
+                        return;
+                    }
+                    
+                    // Validate file type
+                    if (!file.type.startsWith('image/')) {
+                        alert('Please select a valid image file');
+                        return;
+                    }
+                    
+                    // Create object URL for preview
+                    this.pages[this.activePageIndex].backgroundUrl = URL.createObjectURL(file);
+                    
+                    // Set default background properties if not set
+                    if (!this.pages[this.activePageIndex].backgroundSize) {
+                        this.pages[this.activePageIndex].backgroundSize = 'cover';
+                    }
+                    if (!this.pages[this.activePageIndex].backgroundPosition) {
+                        this.pages[this.activePageIndex].backgroundPosition = 'center';
+                    }
+                    
+                    // Trigger file input for form submission
+                    const hiddenInput = document.getElementById(`background_image_${this.activePageIndex}`);
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    hiddenInput.files = dt.files;
+                }
+                
+                // Reset input value to allow selecting same file again
+                event.target.value = '';
+            },
+            
+            removeBackground() {
+                if (confirm('Are you sure you want to remove the background for this page?')) {
+                    this.pages[this.activePageIndex].backgroundUrl = null;
+                    this.pages[this.activePageIndex].background_image_path = null;
+                    
+                    // Clear the hidden file input
+                    const hiddenInput = document.getElementById(`background_image_${this.activePageIndex}`);
+                    hiddenInput.value = '';
+                }
+            },
 
             // InteractJS Integration
             reinitInteract() {
@@ -748,7 +872,9 @@
             getSanitizedPages() {
                 return this.pages.map(page => ({
                     elements: page.elements,
-                    background_image_path: page.background_image_path
+                    background_image_path: page.background_image_path,
+                    backgroundSize: page.backgroundSize || 'cover',
+                    backgroundPosition: page.backgroundPosition || 'center'
                 }));
             },
 
