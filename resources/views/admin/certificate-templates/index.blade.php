@@ -25,9 +25,13 @@
                                         <div class="font-medium">Basic Editor</div>
                                         <div class="text-xs text-gray-500">Simple drag-and-drop interface</div>
                                     </a>
-                                    <a href="{{ route('admin.certificate-templates.create-enhanced') }}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
+                                    <a href="{{ route('admin.certificate-templates.create-enhanced') }}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100">
                                         <div class="font-medium">Enhanced Editor ✨</div>
                                         <div class="text-xs text-gray-500">Advanced tools, grid, zoom, and more controls</div>
+                                    </a>
+                                    <a href="{{ route('admin.certificate-templates.create-advanced') }}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
+                                        <div class="font-medium">Advanced Editor 🚀</div>
+                                        <div class="text-xs text-gray-500">Professional editor with layers, history, and templates</div>
                                     </a>
                                 </div>
                             </div>
@@ -82,6 +86,20 @@
                                                         <a href="{{ route('admin.certificate-templates.edit-enhanced', $template) }}" class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                             Enhanced Editor ✨
                                                         </a>
+                                                        <a href="{{ route('admin.certificate-templates.edit-advanced', $template) }}" class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                            Advanced Editor 🚀
+                                                        </a>
+                                                        <hr class="my-1">
+                                                        <a href="{{ route('admin.certificate-templates.preview', $template) }}" class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                            <i class="fas fa-eye mr-2"></i>Preview
+                                                        </a>
+                                                        <hr class="my-1">
+                                                        <form action="{{ route('admin.certificate-templates.duplicate', $template) }}" method="POST" class="block">
+                                                            @csrf
+                                                            <button type="submit" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100" onclick="return confirm('Are you sure you want to duplicate this template?');">
+                                                                <i class="fas fa-copy mr-2"></i>Duplicate
+                                                            </button>
+                                                        </form>
                                                     </div>
                                                 </div>
                                             </div>
