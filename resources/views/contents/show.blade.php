@@ -118,38 +118,46 @@
                 </div>
             </div>
 
-            <!-- Course Navigation -->
-            <nav class="flex-1 overflow-y-auto p-6">
+            <!-- Course Navigation with Custom Scroll -->
+            <nav class="flex-1 overflow-y-auto p-6 content-sidebar-scroll">
                 @foreach ($course->lessons->sortBy('order') as $lesson)
-                    <div class="mb-6">
-                        <!-- Lesson Header -->
-                        <div class="flex items-center mb-3 pb-2 border-b border-gray-100">
-                            <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                    <div class="mb-6 last:mb-2">
+                        <!-- Lesson Header - Redesigned -->
+                        <div class="flex items-center mb-3 pb-3 border-b-2 border-indigo-100">
+                            <div class="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl flex items-center justify-center text-sm font-bold mr-3 shadow-sm">
                                 {{ $loop->iteration }}
                             </div>
-                            <h4 class="font-semibold text-gray-900 flex-1 flex items-center">
-                                <span class="truncate">{{ $lesson->title }}</span>
-                                @if($lesson->is_optional ?? false)
-                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 uppercase tracking-wide">Opsional</span>
-                                @endif
-                            </h4>
-                            @php
-                                $lessonContentsCount = $lesson->contents->count();
-                                // Perbaikan: Calculate lesson completed count dengan logika essay yang konsisten
-                                $lessonCompletedCount = 0;
-                                foreach ($lesson->contents as $contentItem) {
-                                    if ($user->hasCompletedContent($contentItem)) {
-                                        $lessonCompletedCount++;
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-gray-900 text-sm leading-tight truncate">
+                                    {{ $lesson->title }}
+                                </h4>
+                                @php
+                                    $lessonContentsCount = $lesson->contents->count();
+                                    // Perbaikan: Calculate lesson completed count dengan logika essay yang konsisten
+                                    $lessonCompletedCount = 0;
+                                    foreach ($lesson->contents as $contentItem) {
+                                        if ($user->hasCompletedContent($contentItem)) {
+                                            $lessonCompletedCount++;
+                                        }
                                     }
-                                }
-                            @endphp
-                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                {{ $lessonCompletedCount }}/{{ $lessonContentsCount }}
-                            </span>
+                                    $lessonProgress = $lessonContentsCount > 0 ? round(($lessonCompletedCount / $lessonContentsCount) * 100) : 0;
+                                @endphp
+                                <div class="flex items-center mt-1 space-x-2">
+                                    <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+                                        <div class="bg-gradient-to-r from-green-400 to-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: {{ $lessonProgress }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-semibold text-gray-600 whitespace-nowrap">
+                                        {{ $lessonCompletedCount }}/{{ $lessonContentsCount }}
+                                    </span>
+                                </div>
+                            </div>
+                            @if($lesson->is_optional ?? false)
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500 text-white uppercase tracking-wide shadow-sm">OPS</span>
+                            @endif
                         </div>
 
-                        <!-- Content List -->
-                        <ul class="space-y-2">
+                        <!-- Content List - Redesigned -->
+                        <ul class="space-y-1.5">
                             @foreach ($lesson->contents->sortBy('order') as $c)
                                 @php
                                     $cIsTask = in_array($c->type, ['quiz', 'essay']);
@@ -175,52 +183,89 @@
                                 <li>
                                     @if($isUnlocked)
                                         <a href="{{ route('contents.show', $c) }}"
-                                           class="group block p-3 rounded-xl transition-all duration-200 hover:shadow-md
+                                           class="group block p-2.5 rounded-lg transition-all duration-200 border
                                                   {{ $isCurrent
-                                                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                                                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md border-indigo-400 scale-[1.02]'
                                                       : ($isCompleted
-                                                          ? 'bg-green-50 hover:bg-green-100 text-green-800'
-                                                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700') }}">
+                                                          ? 'bg-green-50 hover:bg-green-100 text-green-900 border-green-200 hover:border-green-300'
+                                                          : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm') }}">
 
-                                            <div class="flex items-center">
-                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0
-                                                            {{ $isCurrent ? 'bg-white/20 text-white' : ($isCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600') }}">
+                                            <div class="flex items-center space-x-2.5">
+                                                <!-- Icon -->
+                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-base
+                                                            {{ $isCurrent ? 'bg-white/20' : ($isCompleted ? 'bg-green-200/50' : 'bg-gray-100') }}">
                                                     @switch($c->type)
-                                                        @case('video') 🎥 @break @case('document') 📄 @break @case('image') 🖼️ @break
-                                                        @case('quiz') 🧠 @break @case('essay') ✍️ @break @default 📝
+                                                        @case('video') 🎥 @break
+                                                        @case('document') 📄 @break
+                                                        @case('image') 🖼️ @break
+                                                        @case('quiz') 🧠 @break
+                                                        @case('essay') ✍️ @break
+                                                        @default 📝
                                                     @endswitch
                                                 </div>
+
+                                                <!-- Content Info -->
                                                 <div class="flex-1 min-w-0">
-                                                    <p class="font-medium truncate flex items-center">
-                                                        <span class="truncate">{{ $c->title }}</span>
-                                                        @if($c->is_optional ?? false)
-                                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 uppercase tracking-wide">Opsional</span>
-                                                        @endif
+                                                    <p class="font-semibold text-sm truncate leading-tight">
+                                                        {{ $c->title }}
                                                     </p>
-                                                    <p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p>
+                                                    <div class="flex items-center mt-0.5 space-x-1.5">
+                                                        <span class="text-[10px] font-medium opacity-75 uppercase tracking-wide">
+                                                            {{ ucfirst($c->type) }}
+                                                        </span>
+                                                        @if($c->is_optional ?? false)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500 text-white uppercase">OPS</span>
+                                                        @endif
+                                                    </div>
                                                 </div>
-                                                <div class="ml-2 flex-shrink-0">
-                                                    @if($isCurrent)<div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 8.207a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 9.586z" clip-rule="evenodd"/></svg></div>
-                                                    @elseif($isCompleted)<div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
-                                                    @else<div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center"><div class="w-2 h-2 bg-gray-500 rounded-full"></div></div>
+
+                                                <!-- Status Icon -->
+                                                <div class="flex-shrink-0">
+                                                    @if($isCurrent)
+                                                        <div class="w-5 h-5 bg-white/30 rounded-full flex items-center justify-center">
+                                                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                                        </div>
+                                                    @elseif($isCompleted)
+                                                        <div class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center">
+                                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                        </div>
+                                                    @else
+                                                        <div class="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
                                                     @endif
                                                 </div>
                                             </div>
                                         </a>
                                     @else
-                                        <div class="group block p-3 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
-                                            <div class="flex items-center">
-                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gray-200 text-gray-500"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg></div>
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="font-medium truncate flex items-center">
-                                                        <span class="truncate">{{ $c->title }}</span>
-                                                        @if($c->is_optional ?? false)
-                                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 uppercase tracking-wide">Opsional</span>
-                                                        @endif
-                                                    </p>
-                                                    <p class="text-xs opacity-75 capitalize">{{ ucfirst($c->type) }}</p>
+                                        <div class="group block p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-400 cursor-not-allowed opacity-60">
+                                            <div class="flex items-center space-x-2.5">
+                                                <!-- Lock Icon -->
+                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-200">
+                                                    <svg class="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                                    </svg>
                                                 </div>
-                                                <div class="ml-2 flex-shrink-0"><div class="w-6 h-6 bg-gray-300 rounded-full"></div></div>
+
+                                                <!-- Content Info -->
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-semibold text-sm truncate leading-tight">
+                                                        {{ $c->title }}
+                                                    </p>
+                                                    <div class="flex items-center mt-0.5 space-x-1.5">
+                                                        <span class="text-[10px] font-medium opacity-75 uppercase tracking-wide">
+                                                            Terkunci
+                                                        </span>
+                                                        @if($c->is_optional ?? false)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-400 text-white uppercase">OPS</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                <!-- Lock Status -->
+                                                <div class="flex-shrink-0">
+                                                    <div class="w-5 h-5 border-2 border-gray-300 rounded-full bg-gray-100"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     @endif
@@ -231,8 +276,9 @@
                 @endforeach
             </nav>
 
-            <div class="p-6 border-t border-gray-200 bg-gray-50">
-                <a href="javascript:void(0)" onclick="window.history.back()" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl">
+            <!-- Sticky Back Button at Bottom -->
+            <div class="sticky bottom-0 p-4 border-t border-gray-200 bg-white shadow-2xl backdrop-blur-sm bg-white/95">
+                <a href="javascript:void(0)" onclick="window.history.back()" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     Kembali
                 </a>
@@ -1010,7 +1056,7 @@
                                 @else
                                     <a href="javascript:void(0)" onclick="window.history.back()"
                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
-                                        <span class="text-sm mr-2">Kembali</span>
+                                        <span class="text-sm mr-2">Kembali ke Dashboard</span>
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                                         </svg>
@@ -1265,7 +1311,41 @@
             font-weight: 600;
         }
 
-        /* Perbaikan: Custom scrollbar */
+        /* Custom Scrollbar for Content Sidebar */
+        .content-sidebar-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content-sidebar-scroll::-webkit-scrollbar-track {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 10px;
+            margin: 4px 0;
+        }
+
+        .content-sidebar-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #6366f1, #8b5cf6);
+            border-radius: 10px;
+            border: 2px solid #f1f5f9;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .content-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #4f46e5, #7c3aed);
+            box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        /* For Firefox */
+        .content-sidebar-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #6366f1 #f1f5f9;
+        }
+
+        /* Smooth scroll behavior */
+        .content-sidebar-scroll {
+            scroll-behavior: smooth;
+        }
+
+        /* General scrollbar for other elements */
         .overflow-y-auto::-webkit-scrollbar {
             width: 6px;
         }
