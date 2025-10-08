@@ -270,29 +270,35 @@ class QuizController extends Controller
         $quiz->load('lesson.course');
         $user = Auth::user();
 
-        if (!$user->hasRole('participant')) {
+        // Super-admin bypass semua check
+        $isSuperAdmin = $user->hasRole('super-admin');
+
+        if (!$isSuperAdmin && !$user->hasRole('participant')) {
             abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
         }
-        
+
         // =================================================================
         // PERUBAHAN DIMULAI DI SINI
         // =================================================================
         // Cek apakah pengguna sudah pernah lulus kuis ini dari percobaan sebelumnya.
-        $hasPassedQuizBefore = $user->quizAttempts()
-                                    ->where('quiz_id', $quiz->id)
-                                    ->where('passed', true)
-                                    ->exists();
+        // Super-admin bisa mengerjakan ulang untuk testing
+        if (!$isSuperAdmin) {
+            $hasPassedQuizBefore = $user->quizAttempts()
+                                        ->where('quiz_id', $quiz->id)
+                                        ->where('passed', true)
+                                        ->exists();
 
-        // Jika sudah pernah lulus, blokir dan arahkan ke halaman hasil.
-        if ($hasPassedQuizBefore) {
-            $lastPassedAttempt = $user->quizAttempts()
-                                      ->where('quiz_id', $quiz->id)
-                                      ->where('passed', true)
-                                      ->latest('completed_at')
-                                      ->first();
-            
-            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $lastPassedAttempt])
-                   ->with('info', 'Anda sudah lulus kuis ini dan tidak dapat mengerjakannya kembali.');
+            // Jika sudah pernah lulus, blokir dan arahkan ke halaman hasil.
+            if ($hasPassedQuizBefore) {
+                $lastPassedAttempt = $user->quizAttempts()
+                                          ->where('quiz_id', $quiz->id)
+                                          ->where('passed', true)
+                                          ->latest('completed_at')
+                                          ->first();
+
+                return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $lastPassedAttempt])
+                       ->with('info', 'Anda sudah lulus kuis ini dan tidak dapat mengerjakannya kembali.');
+            }
         }
         // =================================================================
         // PERUBAHAN SELESAI DI SINI
@@ -302,7 +308,8 @@ class QuizController extends Controller
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
         }
 
-        if (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course)) {
+        // Super-admin tidak perlu enrolled
+        if (!$isSuperAdmin && (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course))) {
             return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
         }
 
@@ -673,7 +680,13 @@ class QuizController extends Controller
 
     public function start(Quiz $quiz)
     {
-        $this->authorize('start', $quiz);
+        $user = Auth::user();
+
+        // Bypass authorization untuk super-admin
+        if (!$user->hasRole('super-admin')) {
+            $this->authorize('start', $quiz);
+        }
+
         return view('quizzes.start', compact('quiz'));
     }
 
@@ -695,31 +708,37 @@ class QuizController extends Controller
 
     public function attempt(Quiz $quiz)
     {
-        $this->authorize('start', $quiz);
-
         $user = Auth::user();
-        
-        // =================================================================
-        // PENAMBAHAN LOGIKA YANG SAMA DI SINI
-        // =================================================================
-        $hasPassedQuizBefore = $user->quizAttempts()
-                                    ->where('quiz_id', $quiz->id)
-                                    ->where('passed', true)
-                                    ->exists();
 
-        if ($hasPassedQuizBefore) {
-            $lastPassedAttempt = $user->quizAttempts()
-                                      ->where('quiz_id', $quiz->id)
-                                      ->where('passed', true)
-                                      ->latest('completed_at')
-                                      ->first();
-            
-            return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $lastPassedAttempt])
-                   ->with('info', 'Anda sudah lulus kuis ini dan tidak dapat mengerjakannya kembali.');
+        // Bypass authorization untuk super-admin
+        if (!$user->hasRole('super-admin')) {
+            $this->authorize('start', $quiz);
         }
-        // =================================================================
-        // AKHIR PENAMBAHAN
-        // =================================================================
+
+        // Super-admin bypass check lulus
+        if (!$user->hasRole('super-admin')) {
+            // =================================================================
+            // PENAMBAHAN LOGIKA YANG SAMA DI SINI
+            // =================================================================
+            $hasPassedQuizBefore = $user->quizAttempts()
+                                        ->where('quiz_id', $quiz->id)
+                                        ->where('passed', true)
+                                        ->exists();
+
+            if ($hasPassedQuizBefore) {
+                $lastPassedAttempt = $user->quizAttempts()
+                                          ->where('quiz_id', $quiz->id)
+                                          ->where('passed', true)
+                                          ->latest('completed_at')
+                                          ->first();
+
+                return redirect()->route('quizzes.result', ['quiz' => $quiz, 'attempt' => $lastPassedAttempt])
+                       ->with('info', 'Anda sudah lulus kuis ini dan tidak dapat mengerjakannya kembali.');
+            }
+            // =================================================================
+            // AKHIR PENAMBAHAN
+            // =================================================================
+        }
 
         if ($quiz->status !== 'published') {
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');

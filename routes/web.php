@@ -140,6 +140,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
 
     // Token Enrollment routes
+    Route::post('/enroll', [TokenEnrollmentController::class, 'enroll'])
+        ->name('enroll');
     Route::post('/enroll/course', [TokenEnrollmentController::class, 'enrollCourse'])
         ->name('enroll.course');
     Route::post('/enroll/class', [TokenEnrollmentController::class, 'enrollClass'])

@@ -16,7 +16,7 @@ class QuizPolicy
      */
     public function before(User $user, string $ability): bool|null
     {
-        if ($user->hasRole(['super-admin', 'admin'])) {
+        if ($user->hasRole('super-admin')) {
             return true;
         }
         return null;
@@ -31,6 +31,11 @@ class QuizPolicy
      */
     public function start(User $user, Quiz $quiz): bool
     {
+        // Super-Admin bisa mengerjakan quiz apapun (untuk testing/review)
+        if ($user->hasRole('super-admin')) {
+            return true;
+        }
+
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             return false;
@@ -40,7 +45,7 @@ class QuizPolicy
 
         // PERBAIKAN: Izinkan instruktur yang assigned ke course ini atau pemilik quiz
         if ($user->hasRole('instructor')) {
-            return $quiz->user_id === $user->id || 
+            return $quiz->user_id === $user->id ||
                    $course->instructors()->where('user_id', $user->id)->exists();
         }
 

@@ -131,17 +131,14 @@
                             @endif
 
                             <div class="grid grid-cols-2 gap-3">
-                                <form action="{{ route('courses.token.regenerate', $course) }}" method="POST">
-                                    @csrf
-                                    <button type="submit"
-                                            onclick="return confirm('Generate token baru? Token lama akan tidak valid lagi.')"
-                                            class="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors shadow-sm">
-                                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                        </svg>
-                                        Regenerate Token
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        @click="$dispatch('open-modal', 'regenerate-course-token')"
+                                        class="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors shadow-sm">
+                                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Regenerate Token
+                                </button>
                                 <form action="{{ route('courses.token.toggle', $course) }}" method="POST">
                                     @csrf
                                     <button type="submit"
@@ -168,16 +165,14 @@
                             </svg>
                             <h4 class="text-lg font-medium text-gray-700 mb-2">Belum Ada Token Course</h4>
                             <p class="text-gray-500 mb-6">Generate token untuk self-enrollment course</p>
-                            <form action="{{ route('courses.token.generate', $course) }}" method="POST">
-                                @csrf
-                                <button type="submit"
-                                        class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-md">
-                                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    Generate Token Course
-                                </button>
-                            </form>
+                            <button type="button"
+                                    @click="$dispatch('open-modal', 'generate-course-token')"
+                                    class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-md">
+                                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Generate Token Course
+                            </button>
                         </div>
                     @endif
                 </div>
@@ -268,14 +263,11 @@
                                         </div>
 
                                         <div class="grid grid-cols-2 gap-2">
-                                            <form action="{{ route('course-periods.token.regenerate', [$course, $class]) }}" method="POST">
-                                                @csrf
-                                                <button type="submit"
-                                                        onclick="return confirm('Generate token baru untuk {{ $class->name }}?')"
-                                                        class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors">
-                                                    🔄 Regenerate
-                                                </button>
-                                            </form>
+                                            <button type="button"
+                                                    @click="$dispatch('open-modal', 'regenerate-class-token-{{ $class->id }}')"
+                                                    class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors">
+                                                🔄 Regenerate
+                                            </button>
                                             <form action="{{ route('course-periods.token.toggle', [$course, $class]) }}" method="POST">
                                                 @csrf
                                                 <button type="submit"
@@ -285,16 +277,14 @@
                                             </form>
                                         </div>
                                     @else
-                                        <form action="{{ route('course-periods.token.generate', [$course, $class]) }}" method="POST">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                                </svg>
-                                                Generate Token
-                                            </button>
-                                        </form>
+                                        <button type="button"
+                                                @click="$dispatch('open-modal', 'generate-class-token-{{ $class->id }}')"
+                                                class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Generate Token
+                                        </button>
                                     @endif
                                 </div>
                             @endforeach
@@ -320,4 +310,311 @@
 
         </div>
     </div>
+
+    <!-- Modal Generate Course Token -->
+    <x-modal name="generate-course-token" :show="false" maxWidth="2xl">
+        <form action="{{ route('courses.token.generate', $course) }}" method="POST" class="p-6" x-data="{ tokenType: 'random' }">
+            @csrf
+            <h2 class="text-lg font-bold text-gray-900 mb-4">Generate Token Course</h2>
+
+            <div class="space-y-4">
+                <!-- Token Type Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Token</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                               :class="tokenType === 'random' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'">
+                            <input type="radio" name="token_type" value="random" x-model="tokenType" class="sr-only">
+                            <div class="flex-1">
+                                <span class="block font-medium text-gray-900">🎲 Random</span>
+                                <span class="block text-xs text-gray-500">Generate otomatis</span>
+                            </div>
+                        </label>
+                        <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                               :class="tokenType === 'custom' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'">
+                            <input type="radio" name="token_type" value="custom" x-model="tokenType" class="sr-only">
+                            <div class="flex-1">
+                                <span class="block font-medium text-gray-900">✏️ Custom</span>
+                                <span class="block text-xs text-gray-500">Buat sendiri</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Random Token Options -->
+                <div x-show="tokenType === 'random'" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Panjang Token</label>
+                        <select name="token_length" class="w-full border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                            <option value="6">6 karakter</option>
+                            <option value="8" selected>8 karakter</option>
+                            <option value="10">10 karakter</option>
+                            <option value="12">12 karakter</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Format Token</label>
+                        <select name="token_format" class="w-full border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                            <option value="alphanumeric">Huruf & Angka</option>
+                            <option value="alpha">Huruf Saja</option>
+                            <option value="numeric">Angka Saja</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Token Input -->
+                <div x-show="tokenType === 'custom'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Token Custom</label>
+                    <input type="text" name="custom_token"
+                           class="w-full border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 uppercase"
+                           placeholder="Contoh: COURSE2024"
+                           maxlength="20"
+                           x-bind:required="tokenType === 'custom'">
+                    <p class="text-xs text-gray-500 mt-1">4-20 karakter, hanya huruf, angka, dan dash (-)</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" @click="$dispatch('close')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    Generate Token
+                </button>
+            </div>
+        </form>
+    </x-modal>
+
+    <!-- Modal Regenerate Course Token -->
+    <x-modal name="regenerate-course-token" :show="false" maxWidth="2xl">
+        <form action="{{ route('courses.token.regenerate', $course) }}" method="POST" class="p-6" x-data="{ tokenType: 'random' }">
+            @csrf
+            <h2 class="text-lg font-bold text-gray-900 mb-4">Regenerate Token Course</h2>
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4">
+                <p class="text-sm text-yellow-700">⚠️ Token lama akan tidak valid setelah regenerate</p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Token Type Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Token</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                               :class="tokenType === 'random' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'">
+                            <input type="radio" name="token_type" value="random" x-model="tokenType" class="sr-only">
+                            <div class="flex-1">
+                                <span class="block font-medium text-gray-900">🎲 Random</span>
+                                <span class="block text-xs text-gray-500">Generate otomatis</span>
+                            </div>
+                        </label>
+                        <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                               :class="tokenType === 'custom' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'">
+                            <input type="radio" name="token_type" value="custom" x-model="tokenType" class="sr-only">
+                            <div class="flex-1">
+                                <span class="block font-medium text-gray-900">✏️ Custom</span>
+                                <span class="block text-xs text-gray-500">Buat sendiri</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Random Token Options -->
+                <div x-show="tokenType === 'random'" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Panjang Token</label>
+                        <select name="token_length" class="w-full border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                            <option value="6">6 karakter</option>
+                            <option value="8" selected>8 karakter</option>
+                            <option value="10">10 karakter</option>
+                            <option value="12">12 karakter</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Format Token</label>
+                        <select name="token_format" class="w-full border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                            <option value="alphanumeric">Huruf & Angka</option>
+                            <option value="alpha">Huruf Saja</option>
+                            <option value="numeric">Angka Saja</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Token Input -->
+                <div x-show="tokenType === 'custom'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Token Custom</label>
+                    <input type="text" name="custom_token"
+                           class="w-full border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 uppercase"
+                           placeholder="Contoh: COURSE2024"
+                           maxlength="20"
+                           x-bind:required="tokenType === 'custom'">
+                    <p class="text-xs text-gray-500 mt-1">4-20 karakter, hanya huruf, angka, dan dash (-)</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" @click="$dispatch('close')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    Regenerate Token
+                </button>
+            </div>
+        </form>
+    </x-modal>
+
+    <!-- Modals for Class Tokens -->
+    @foreach($course->classes as $class)
+        <!-- Modal Generate Class Token -->
+        <x-modal name="generate-class-token-{{ $class->id }}" :show="false" maxWidth="2xl">
+            <form action="{{ route('course-periods.token.generate', [$course, $class]) }}" method="POST" class="p-6" x-data="{ tokenType: 'random' }">
+                @csrf
+                <h2 class="text-lg font-bold text-gray-900 mb-2">Generate Token Kelas</h2>
+                <p class="text-sm text-gray-600 mb-4">{{ $class->name }}</p>
+
+                <div class="space-y-4">
+                    <!-- Token Type Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Token</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                                   :class="tokenType === 'random' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'">
+                                <input type="radio" name="token_type" value="random" x-model="tokenType" class="sr-only">
+                                <div class="flex-1">
+                                    <span class="block font-medium text-gray-900">🎲 Random</span>
+                                    <span class="block text-xs text-gray-500">Generate otomatis</span>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                                   :class="tokenType === 'custom' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'">
+                                <input type="radio" name="token_type" value="custom" x-model="tokenType" class="sr-only">
+                                <div class="flex-1">
+                                    <span class="block font-medium text-gray-900">✏️ Custom</span>
+                                    <span class="block text-xs text-gray-500">Buat sendiri</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Random Token Options -->
+                    <div x-show="tokenType === 'random'" class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Panjang Token</label>
+                            <select name="token_length" class="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="6">6 karakter</option>
+                                <option value="8" selected>8 karakter</option>
+                                <option value="10">10 karakter</option>
+                                <option value="12">12 karakter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Format Token</label>
+                            <select name="token_format" class="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="alphanumeric">Huruf & Angka</option>
+                                <option value="alpha">Huruf Saja</option>
+                                <option value="numeric">Angka Saja</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Custom Token Input -->
+                    <div x-show="tokenType === 'custom'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token Custom</label>
+                        <input type="text" name="custom_token"
+                               class="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 uppercase"
+                               placeholder="Contoh: CLASS-A-2024"
+                               maxlength="20"
+                               x-bind:required="tokenType === 'custom'">
+                        <p class="text-xs text-gray-500 mt-1">4-20 karakter, hanya huruf, angka, dan dash (-)</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" @click="$dispatch('close')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                        Generate Token
+                    </button>
+                </div>
+            </form>
+        </x-modal>
+
+        <!-- Modal Regenerate Class Token -->
+        <x-modal name="regenerate-class-token-{{ $class->id }}" :show="false" maxWidth="2xl">
+            <form action="{{ route('course-periods.token.regenerate', [$course, $class]) }}" method="POST" class="p-6" x-data="{ tokenType: 'random' }">
+                @csrf
+                <h2 class="text-lg font-bold text-gray-900 mb-2">Regenerate Token Kelas</h2>
+                <p class="text-sm text-gray-600 mb-2">{{ $class->name }}</p>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4">
+                    <p class="text-sm text-yellow-700">⚠️ Token lama akan tidak valid setelah regenerate</p>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Token Type Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Token</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                                   :class="tokenType === 'random' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'">
+                                <input type="radio" name="token_type" value="random" x-model="tokenType" class="sr-only">
+                                <div class="flex-1">
+                                    <span class="block font-medium text-gray-900">🎲 Random</span>
+                                    <span class="block text-xs text-gray-500">Generate otomatis</span>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all"
+                                   :class="tokenType === 'custom' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'">
+                                <input type="radio" name="token_type" value="custom" x-model="tokenType" class="sr-only">
+                                <div class="flex-1">
+                                    <span class="block font-medium text-gray-900">✏️ Custom</span>
+                                    <span class="block text-xs text-gray-500">Buat sendiri</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Random Token Options -->
+                    <div x-show="tokenType === 'random'" class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Panjang Token</label>
+                            <select name="token_length" class="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="6">6 karakter</option>
+                                <option value="8" selected>8 karakter</option>
+                                <option value="10">10 karakter</option>
+                                <option value="12">12 karakter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Format Token</label>
+                            <select name="token_format" class="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="alphanumeric">Huruf & Angka</option>
+                                <option value="alpha">Huruf Saja</option>
+                                <option value="numeric">Angka Saja</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Custom Token Input -->
+                    <div x-show="tokenType === 'custom'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token Custom</label>
+                        <input type="text" name="custom_token"
+                               class="w-full border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 uppercase"
+                               placeholder="Contoh: CLASS-A-2024"
+                               maxlength="20"
+                               x-bind:required="tokenType === 'custom'">
+                        <p class="text-xs text-gray-500 mt-1">4-20 karakter, hanya huruf, angka, dan dash (-)</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" @click="$dispatch('close')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                        Regenerate Token
+                    </button>
+                </div>
+            </form>
+        </x-modal>
+    @endforeach
 </x-app-layout>
