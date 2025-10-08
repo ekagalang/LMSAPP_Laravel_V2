@@ -506,7 +506,7 @@ class CourseClassController extends Controller
     /**
      * Generate enrollment token for class
      */
-    public function generateToken(Course $course, CourseClass $period)
+    public function generateToken(Request $request, Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -514,19 +514,31 @@ class CourseClassController extends Controller
             abort(404);
         }
 
-        try {
-            $token = $period->generateEnrollmentToken();
+        $request->validate([
+            'token_type' => 'required|in:random,custom',
+            'custom_token' => 'required_if:token_type,custom|nullable|string|max:20',
+            'token_length' => 'nullable|integer|min:4|max:20',
+            'token_format' => 'nullable|in:alphanumeric,numeric,alpha'
+        ]);
 
-            return back()->with('success', "Token kelas berhasil dibuat: {$token}");
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Gagal generate token: ' . $e->getMessage()]);
+        $type = $request->token_type;
+        $customToken = $request->custom_token;
+        $length = $request->token_length ?? 8;
+        $format = $request->token_format ?? 'alphanumeric';
+
+        $result = $period->generateEnrollmentToken($type, $customToken, $length, $format);
+
+        if ($result['success']) {
+            return back()->with('success', "Token kelas berhasil dibuat: {$result['token']}");
+        } else {
+            return back()->withErrors(['token' => $result['message']]);
         }
     }
 
     /**
      * Regenerate enrollment token for class
      */
-    public function regenerateToken(Course $course, CourseClass $period)
+    public function regenerateToken(Request $request, Course $course, CourseClass $period)
     {
         $this->authorize('update', $course);
 
@@ -534,12 +546,24 @@ class CourseClassController extends Controller
             abort(404);
         }
 
-        try {
-            $token = $period->generateEnrollmentToken();
+        $request->validate([
+            'token_type' => 'required|in:random,custom',
+            'custom_token' => 'required_if:token_type,custom|nullable|string|max:20',
+            'token_length' => 'nullable|integer|min:4|max:20',
+            'token_format' => 'nullable|in:alphanumeric,numeric,alpha'
+        ]);
 
-            return back()->with('success', "Token kelas baru berhasil dibuat: {$token}");
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Gagal regenerate token: ' . $e->getMessage()]);
+        $type = $request->token_type;
+        $customToken = $request->custom_token;
+        $length = $request->token_length ?? 8;
+        $format = $request->token_format ?? 'alphanumeric';
+
+        $result = $period->generateEnrollmentToken($type, $customToken, $length, $format);
+
+        if ($result['success']) {
+            return back()->with('success', "Token kelas baru berhasil dibuat: {$result['token']}");
+        } else {
+            return back()->withErrors(['token' => $result['message']]);
         }
     }
 

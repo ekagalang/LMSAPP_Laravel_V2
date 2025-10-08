@@ -100,16 +100,20 @@ class Quiz extends Model
                 ->first();
         })->values();
 
+        // Get total questions count for this quiz
+        $totalQuestions = $this->questions()->count();
+
         // Sort and rank
         $ranked = $bestAttempts->sortByDesc('score')
             ->sortBy('completed_at')
             ->values()
             ->take($limit ?? $bestAttempts->count())
-            ->map(function ($attempt, $index) {
+            ->map(function ($attempt, $index) use ($totalQuestions) {
                 return [
                     'rank' => $index + 1,
                     'user' => $attempt->user,
                     'score' => $attempt->score,
+                    'total_marks' => $totalQuestions,
                     'percentage' => $attempt->percentage,
                     'passed' => $attempt->passed,
                     'completed_at' => $attempt->completed_at,

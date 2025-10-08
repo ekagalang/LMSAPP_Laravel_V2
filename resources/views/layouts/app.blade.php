@@ -180,6 +180,10 @@
                                                    class="dropdown-item-custom">
                                                     {{ __('Manajemen Pengumuman') }}
                                                 </a>
+                                                <a href="{{ route('admin.participants.index') }}" 
+                                                   class="dropdown-item-custom">
+                                                    {{ __('Analitik Peserta') }}
+                                                </a>
                                                 <div class="border-t my-1"></div>
                                                 <a href="{{ route('admin.certificate-templates.index') }}" 
                                                    class="dropdown-item-custom">

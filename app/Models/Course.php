@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\Duplicateable; // Import Trait
+use App\Services\TokenGenerator;
 
 class Course extends Model
 {
@@ -20,6 +21,7 @@ class Course extends Model
         'enrollment_token',
         'token_enabled',
         'token_expires_at',
+        'token_type',
     ];
 
     protected $casts = [
@@ -325,20 +327,74 @@ class Course extends Model
     // TOKEN METHODS
     // ========================================
 
-    public function generateEnrollmentToken($length = 8): string
-    {
-        $token = strtoupper(\Illuminate\Support\Str::random($length));
+    /**
+     * Generate enrollment token (random or custom)
+     *
+     * @param string $type 'random' or 'custom'
+     * @param string|null $customToken Token kustom jika type = 'custom'
+     * @param int $length Panjang token jika type = 'random'
+     * @param string $format Format token: 'alphanumeric', 'numeric', 'alpha'
+     * @return array ['success' => bool, 'token' => string, 'message' => string]
+     */
+    public function generateEnrollmentToken(
+        string $type = 'random',
+        ?string $customToken = null,
+        int $length = 8,
+        string $format = 'alphanumeric'
+    ): array {
+        try {
+            if ($type === 'custom') {
+                if (empty($customToken)) {
+                    return [
+                        'success' => false,
+                        'token' => '',
+                        'message' => 'Custom token tidak boleh kosong'
+                    ];
+                }
 
-        // Ensure uniqueness
-        while (static::where('enrollment_token', $token)->exists()) {
-            $token = strtoupper(\Illuminate\Support\Str::random($length));
+                $validation = TokenGenerator::validateUniqueCustomToken(
+                    static::class,
+                    $customToken,
+                    'enrollment_token',
+                    $this->id
+                );
+
+                if (!$validation['valid']) {
+                    return [
+                        'success' => false,
+                        'token' => $validation['token'],
+                        'message' => $validation['message']
+                    ];
+                }
+
+                $token = $validation['token'];
+            } else {
+                // Generate random token
+                $token = TokenGenerator::generateUniqueRandom(
+                    static::class,
+                    $length,
+                    $format,
+                    'enrollment_token'
+                );
+            }
+
+            $this->enrollment_token = $token;
+            $this->token_type = $type;
+            $this->token_enabled = true;
+            $this->save();
+
+            return [
+                'success' => true,
+                'token' => $token,
+                'message' => 'Token berhasil dibuat'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'token' => '',
+                'message' => 'Gagal membuat token: ' . $e->getMessage()
+            ];
         }
-
-        $this->enrollment_token = $token;
-        $this->token_enabled = true;
-        $this->save();
-
-        return $token;
     }
 
     public function disableToken(): void
@@ -363,5 +419,17 @@ class Course extends Model
     public function validateToken(string $token): bool
     {
         return $this->enrollment_token === strtoupper($token) && $this->isTokenValid();
+    }
+
+    /**
+     * Get token type label
+     */
+    public function getTokenTypeLabel(): string
+    {
+        return match($this->token_type) {
+            'custom' => 'Custom',
+            'random' => 'Random',
+            default => 'Random',
+        };
     }
 }
