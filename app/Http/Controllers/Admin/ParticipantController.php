@@ -73,13 +73,14 @@ class ParticipantController extends Controller
 
         $participants = User::role('participant')->get();
 
-        // Gender Distribution
+        // Gender Distribution (termasuk yang belum mengisi)
         $genderData = [
             'male' => $participants->where('gender', 'male')->count(),
             'female' => $participants->where('gender', 'female')->count(),
+            'not_specified' => $participants->whereNull('gender')->count(),
         ];
 
-        // Age Distribution
+        // Age Distribution (termasuk yang belum mengisi)
         $ageGroups = [
             '< 20' => 0,
             '20-25' => 0,
@@ -87,6 +88,7 @@ class ParticipantController extends Controller
             '31-35' => 0,
             '36-40' => 0,
             '> 40' => 0,
+            'Tidak Diketahui' => 0,
         ];
 
         foreach ($participants as $participant) {
@@ -98,24 +100,30 @@ class ParticipantController extends Controller
                 elseif ($age <= 35) $ageGroups['31-35']++;
                 elseif ($age <= 40) $ageGroups['36-40']++;
                 else $ageGroups['> 40']++;
+            } else {
+                $ageGroups['Tidak Diketahui']++;
             }
         }
 
-        // Institution Distribution (Top 10)
-        $institutionData = $participants
-            ->whereNotNull('institution_name')
-            ->groupBy('institution_name')
+        // Institution Distribution (Top 10, termasuk yang belum mengisi)
+        $institutionDataRaw = $participants
+            ->groupBy(function($item) {
+                return $item->institution_name ?? 'Belum Diisi';
+            })
             ->map->count()
-            ->sortDesc()
-            ->take(10);
+            ->sortDesc();
 
-        // Occupation Distribution (Top 10)
-        $occupationData = $participants
-            ->whereNotNull('occupation')
-            ->groupBy('occupation')
+        $institutionData = $institutionDataRaw->take(10);
+
+        // Occupation Distribution (Top 10, termasuk yang belum mengisi)
+        $occupationDataRaw = $participants
+            ->groupBy(function($item) {
+                return $item->occupation ?? 'Belum Diisi';
+            })
             ->map->count()
-            ->sortDesc()
-            ->take(10);
+            ->sortDesc();
+
+        $occupationData = $occupationDataRaw->take(10);
 
         // Registration Trend (Last 12 months)
         $registrationTrend = [];
@@ -133,6 +141,12 @@ class ParticipantController extends Controller
             'total' => $participants->count(),
             'male' => $genderData['male'],
             'female' => $genderData['female'],
+            'not_specified' => $genderData['not_specified'],
+            'with_complete_data' => $participants->whereNotNull('gender')
+                ->whereNotNull('date_of_birth')
+                ->whereNotNull('institution_name')
+                ->whereNotNull('occupation')
+                ->count(),
             'this_month' => User::role('participant')
                 ->whereYear('created_at', now()->year)
                 ->whereMonth('created_at', now()->month)
