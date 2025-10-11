@@ -361,23 +361,26 @@
                             </h3>
                         </div>
 
+                        {{-- ✅ FIX: Untuk TEXT type only - jangan render untuk essay type --}}
+                        @if(!$content->exists || $content->type !== 'essay')
                         <div x-show="isType('text')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                                 <label for="body_editor" class="block text-sm font-semibold text-gray-700 mb-3">
                                     📝 Isi Konten
                                 </label>
                                 <p class="text-xs text-gray-600 mb-4">Gunakan editor untuk memformat teks dengan rich content</p>
-                                
-                                <x-forms.summernote-editor 
-                                    id="body_editor" 
-                                    name="body_text" 
-                                    :value="old('body_text', $content->body ?? '')" 
+
+                                <x-forms.summernote-editor
+                                    id="body_editor"
+                                    name="body_text"
+                                    :value="old('body_text', $content->body ?? '')"
                                 />
                                 @error('body_text')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
+                        @endif
 
                         <div x-show="isType('essay')" x-cloak class="animate-fadeIn" x-data="essayQuestionsManager()">
                             <div class="space-y-6">
@@ -396,9 +399,9 @@
                                     </div>
                                 </div>
 
-                                {{-- Existing Questions (hanya tampil info, belum bisa edit) --}}
+                                {{-- Existing Questions with Edit/Delete functionality --}}
                                 @if($content->exists && $content->essayQuestions && $content->essayQuestions->count() > 0)
-                                    <div class="space-y-4">
+                                    <div class="space-y-4" id="existing-questions-list">
                                         <h4 class="font-semibold text-gray-900 flex items-center">
                                             <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-2 text-xs">
                                                 {{ $content->essayQuestions->count() }}
@@ -406,137 +409,431 @@
                                             Pertanyaan yang Sudah Ada
                                         </h4>
                                         @foreach($content->essayQuestions as $index => $question)
-                                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                                                <div class="flex justify-between items-start mb-2">
-                                                    <span class="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
-                                                        Soal {{ $index + 1 }}
-                                                    </span>
-                                                    {{-- 🆕 Tampilkan score hanya jika scoring enabled --}}
-                                                    @if($content->scoring_enabled)
-                                                        <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                            {{ $question->max_score }} poin
-                                                        </span>
-                                                    @else
-                                                        <span class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
-                                                            Tanpa Penilaian
-                                                        </span>
-                                                    @endif
+                                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm" id="existing-question-{{ $question->id }}">
+                                                {{-- View Mode --}}
+                                                <div class="view-mode-existing">
+                                                    <div class="flex justify-between items-start mb-2">
+                                                        <div class="flex-1">
+                                                            <span class="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full mb-2">
+                                                                Soal {{ $index + 1 }}
+                                                            </span>
+                                                            <div class="text-sm text-gray-700 leading-relaxed mt-2">
+                                                                {!! nl2br(e($question->question)) !!}
+                                                            </div>
+                                                            {{-- 🆕 Tampilkan score hanya jika scoring enabled --}}
+                                                            @if($content->scoring_enabled)
+                                                                <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full mt-2">
+                                                                    {{ $question->max_score }} poin
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="flex items-center gap-2 ml-4">
+                                                            <button type="button"
+                                                                    class="edit-existing-question-btn text-indigo-600 hover:text-indigo-800 p-2 rounded-lg hover:bg-indigo-50 transition-colors"
+                                                                    data-question-id="{{ $question->id }}"
+                                                                    title="Edit pertanyaan">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                                </svg>
+                                                            </button>
+                                                            {{-- ✅ FIX: Use button instead of nested form --}}
+                                                            <button type="button"
+                                                                    class="delete-question-btn text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                                                    data-question-id="{{ $question->id }}"
+                                                                    data-delete-url="{{ route('essay.questions.destroy', $question) }}"
+                                                                    title="Hapus pertanyaan">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="text-sm text-gray-700 leading-relaxed">
-                                                    {!! nl2br(e($question->question)) !!}
+
+                                                {{-- Edit Mode (Initially Hidden) - ✅ FIX: No nested form --}}
+                                                <div class="edit-mode-existing hidden" data-update-url="{{ route('essay.questions.update', $question) }}">
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                                Edit Soal {{ $index + 1 }}:
+                                                            </label>
+                                                            <textarea
+                                                                class="question-text-input block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                                rows="4"
+                                                                required>{{ $question->question }}</textarea>
+                                                        </div>
+
+                                                        @if ($content->scoring_enabled)
+                                                            <div>
+                                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Skor Maksimal:
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    class="max-score-input block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                                    min="1"
+                                                                    value="{{ $question->max_score }}"
+                                                                    required>
+                                                            </div>
+                                                        @else
+                                                            <input type="hidden" class="max-score-input" value="0">
+                                                        @endif
+
+                                                        <div class="flex items-center gap-2">
+                                                            <button type="button"
+                                                                    class="save-edit-existing-btn inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors"
+                                                                    data-question-id="{{ $question->id }}">
+                                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                                </svg>
+                                                                Simpan Perubahan
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="cancel-edit-existing-btn inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md transition-colors"
+                                                                    data-question-id="{{ $question->id }}">
+                                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                                </svg>
+                                                                Batal
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         @endforeach
-                                        
+
                                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                             <p class="text-sm text-blue-800">
-                                                <strong>💡 Info:</strong> Pertanyaan di atas sudah tersimpan. 
-                                                Gunakan form di bawah untuk menambah pertanyaan baru.
+                                                <strong>💡 Info:</strong> Klik tombol <strong>Edit</strong> untuk mengubah pertanyaan yang sudah ada,
+                                                atau gunakan form di bawah untuk menambah pertanyaan baru.
                                             </p>
                                         </div>
                                     </div>
+
+                                    {{-- ✅ FIX: Updated JavaScript with DELETE and UPDATE handlers --}}
+                                    <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            // ===== CSRF Token Helper =====
+                                            function getCsrfToken() {
+                                                return document.querySelector('meta[name="csrf-token"]')?.content ||
+                                                       document.querySelector('input[name="_token"]')?.value || '';
+                                            }
+
+                                            // ===== EDIT TOGGLE =====
+                                            document.querySelectorAll('.edit-existing-question-btn').forEach(btn => {
+                                                btn.addEventListener('click', function() {
+                                                    const questionId = this.dataset.questionId;
+                                                    const container = document.getElementById(`existing-question-${questionId}`);
+                                                    container.querySelector('.view-mode-existing').classList.add('hidden');
+                                                    container.querySelector('.edit-mode-existing').classList.remove('hidden');
+                                                });
+                                            });
+
+                                            // ===== CANCEL EDIT =====
+                                            document.querySelectorAll('.cancel-edit-existing-btn').forEach(btn => {
+                                                btn.addEventListener('click', function() {
+                                                    const questionId = this.dataset.questionId;
+                                                    const container = document.getElementById(`existing-question-${questionId}`);
+                                                    container.querySelector('.view-mode-existing').classList.remove('hidden');
+                                                    container.querySelector('.edit-mode-existing').classList.add('hidden');
+                                                });
+                                            });
+
+                                            // ===== DELETE QUESTION =====
+                                            document.querySelectorAll('.delete-question-btn').forEach(btn => {
+                                                btn.addEventListener('click', function() {
+                                                    if (!confirm('Hapus pertanyaan ini? Jawaban participant untuk pertanyaan ini juga akan terhapus.')) {
+                                                        return;
+                                                    }
+
+                                                    const deleteUrl = this.dataset.deleteUrl;
+                                                    const questionId = this.dataset.questionId;
+
+                                                    // Create temporary form and submit
+                                                    const form = document.createElement('form');
+                                                    form.method = 'POST';
+                                                    form.action = deleteUrl;
+                                                    form.style.display = 'none';
+
+                                                    // CSRF token
+                                                    const csrfInput = document.createElement('input');
+                                                    csrfInput.type = 'hidden';
+                                                    csrfInput.name = '_token';
+                                                    csrfInput.value = getCsrfToken();
+                                                    form.appendChild(csrfInput);
+
+                                                    // Method spoofing for DELETE
+                                                    const methodInput = document.createElement('input');
+                                                    methodInput.type = 'hidden';
+                                                    methodInput.name = '_method';
+                                                    methodInput.value = 'DELETE';
+                                                    form.appendChild(methodInput);
+
+                                                    document.body.appendChild(form);
+                                                    form.submit();
+                                                });
+                                            });
+
+                                            // ===== SAVE EDIT =====
+                                            document.querySelectorAll('.save-edit-existing-btn').forEach(btn => {
+                                                btn.addEventListener('click', function() {
+                                                    const questionId = this.dataset.questionId;
+                                                    const container = document.getElementById(`existing-question-${questionId}`);
+                                                    const editMode = container.querySelector('.edit-mode-existing');
+                                                    const updateUrl = editMode.dataset.updateUrl;
+
+                                                    const questionText = editMode.querySelector('.question-text-input').value;
+                                                    const maxScore = editMode.querySelector('.max-score-input').value;
+
+                                                    if (!questionText.trim()) {
+                                                        alert('Pertanyaan tidak boleh kosong!');
+                                                        return;
+                                                    }
+
+                                                    // Create temporary form and submit
+                                                    const form = document.createElement('form');
+                                                    form.method = 'POST';
+                                                    form.action = updateUrl;
+                                                    form.style.display = 'none';
+
+                                                    // CSRF token
+                                                    const csrfInput = document.createElement('input');
+                                                    csrfInput.type = 'hidden';
+                                                    csrfInput.name = '_token';
+                                                    csrfInput.value = getCsrfToken();
+                                                    form.appendChild(csrfInput);
+
+                                                    // Method spoofing for PUT
+                                                    const methodInput = document.createElement('input');
+                                                    methodInput.type = 'hidden';
+                                                    methodInput.name = '_method';
+                                                    methodInput.value = 'PUT';
+                                                    form.appendChild(methodInput);
+
+                                                    // Question text
+                                                    const questionInput = document.createElement('input');
+                                                    questionInput.type = 'hidden';
+                                                    questionInput.name = 'question';
+                                                    questionInput.value = questionText;
+                                                    form.appendChild(questionInput);
+
+                                                    // Max score
+                                                    const scoreInput = document.createElement('input');
+                                                    scoreInput.type = 'hidden';
+                                                    scoreInput.name = 'max_score';
+                                                    scoreInput.value = maxScore;
+                                                    form.appendChild(scoreInput);
+
+                                                    document.body.appendChild(form);
+                                                    form.submit();
+                                                });
+                                            });
+
+                                            // ===== ADD NEW QUESTION =====
+                                            const addNewQuestionBtn = document.getElementById('submit-new-question-btn');
+                                            if (addNewQuestionBtn) {
+                                                addNewQuestionBtn.addEventListener('click', function() {
+                                                    const formContainer = document.getElementById('add-new-question-form');
+                                                    const storeUrl = formContainer.dataset.storeUrl;
+                                                    const scoringEnabled = formContainer.dataset.scoringEnabled === '1';
+
+                                                    const questionText = document.getElementById('new-question-text').value;
+                                                    const maxScore = document.getElementById('new-question-score').value;
+
+                                                    if (!questionText.trim()) {
+                                                        alert('Pertanyaan tidak boleh kosong!');
+                                                        return;
+                                                    }
+
+                                                    if (scoringEnabled && (!maxScore || maxScore < 1)) {
+                                                        alert('Skor maksimal harus diisi dan lebih dari 0!');
+                                                        return;
+                                                    }
+
+                                                    // Create temporary form and submit
+                                                    const form = document.createElement('form');
+                                                    form.method = 'POST';
+                                                    form.action = storeUrl;
+                                                    form.style.display = 'none';
+
+                                                    // CSRF token
+                                                    const csrfInput = document.createElement('input');
+                                                    csrfInput.type = 'hidden';
+                                                    csrfInput.name = '_token';
+                                                    csrfInput.value = getCsrfToken();
+                                                    form.appendChild(csrfInput);
+
+                                                    // Question text
+                                                    const questionInput = document.createElement('input');
+                                                    questionInput.type = 'hidden';
+                                                    questionInput.name = 'question';
+                                                    questionInput.value = questionText;
+                                                    form.appendChild(questionInput);
+
+                                                    // Max score
+                                                    const scoreInput = document.createElement('input');
+                                                    scoreInput.type = 'hidden';
+                                                    scoreInput.name = 'max_score';
+                                                    scoreInput.value = maxScore;
+                                                    form.appendChild(scoreInput);
+
+                                                    document.body.appendChild(form);
+                                                    form.submit();
+                                                });
+                                            }
+                                        });
+                                    </script>
                                 @endif
 
-                                {{-- Form untuk menambah questions baru --}}
-                                <div class="border border-gray-200 rounded-lg">
-                                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                                        <h4 class="font-semibold text-gray-900 flex items-center">
-                                            <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                            </svg>
-                                            @if($content->exists && $content->essayQuestions && $content->essayQuestions->count() > 0)
-                                                Tambah Pertanyaan Baru
-                                            @else  
-                                                Pertanyaan Essay
-                                            @endif
-                                        </h4>
-                                    </div>
-
-                                    <div class="p-6 space-y-6">
-                                        {{-- Questions Container --}}
-                                        <template x-for="(question, index) in questions" :key="index">
-                                            <div class="question-item border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                                <div class="flex justify-between items-center mb-4">
-                                                    <h5 class="font-medium text-gray-700 flex items-center">
-                                                        <span class="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs mr-2" 
-                                                            x-text="index + 1"></span>
-                                                        <span x-text="'Pertanyaan ' + (index + 1)"></span>
-                                                    </h5>
-                                                    <button type="button" 
-                                                            @click="removeQuestion(index)"
-                                                            x-show="questions.length > 1"
-                                                            class="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded hover:bg-red-50">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                                
-                                                <div class="space-y-4">
-                                                    <div>
-                                                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                            Pertanyaan <span class="text-red-500">*</span>
-                                                        </label>
-                                                        <textarea 
-                                                            x-model="question.text"
-                                                            :name="'questions[' + index + '][text]'"
-                                                            rows="4"
-                                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                                            placeholder="Tulis pertanyaan essay yang akan dijawab oleh peserta..."
-                                                            required
-                                                        ></textarea>
-                                                    </div>
-                                                    
-                                                    {{-- 🆕 Max score input - hanya tampil jika scoring enabled --}}
-                                                    <div x-show="$root.content.scoring_enabled" class="w-40">
-                                                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                            Skor Maksimal <span class="text-red-500">*</span>
-                                                        </label>
-                                                        <input 
-                                                            type="number" 
-                                                            x-model="question.max_score"
-                                                            :name="'questions[' + index + '][max_score]'"
-                                                            min="1" 
-                                                            max="1000"
-                                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                                            :required="$root.content.scoring_enabled"
-                                                        />
-                                                    </div>
-                                                    
-                                                    {{-- 🆕 Hidden input untuk max_score jika scoring disabled --}}
-                                                    <template x-if="!$root.content.scoring_enabled">
-                                                        <input type="hidden" :name="'questions[' + index + '][max_score]'" value="0">
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        {{-- Add Question & Summary --}}
-                                        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                                            <button type="button" 
-                                                    @click="addQuestion()"
-                                                    class="inline-flex items-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {{-- ✅ FIX: No nested form - use button with JS handler --}}
+                                @if($content->exists)
+                                    <div class="border border-gray-200 rounded-lg" id="add-new-question-form" data-store-url="{{ route('essay.questions.store', $content) }}" data-scoring-enabled="{{ $content->scoring_enabled ? '1' : '0' }}">
+                                        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                            <h4 class="font-semibold text-gray-900 flex items-center">
+                                                <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                                                 </svg>
-                                                Tambah Pertanyaan
-                                            </button>
-                                            
-                                            <div class="text-right">
-                                                <p class="text-sm text-gray-600">
-                                                    Pertanyaan Baru: <span x-text="questions.length" class="font-semibold"></span>
-                                                </p>
-                                                {{-- 🆕 Total score hanya tampil jika scoring enabled --}}
-                                                <p x-show="$root.content.scoring_enabled" class="text-sm text-gray-600">
-                                                    Total Skor Baru: <span x-text="totalScore" class="font-semibold text-green-600"></span> poin
-                                                </p>
-                                                <p x-show="!$root.content.scoring_enabled" class="text-sm text-blue-600">
-                                                    Mode: <span class="font-semibold">Tanpa Penilaian</span>
+                                                Tambah Pertanyaan Baru
+                                            </h4>
+                                        </div>
+
+                                        <div class="p-6 space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    Pertanyaan <span class="text-red-500">*</span>
+                                                </label>
+                                                <textarea
+                                                    id="new-question-text"
+                                                    rows="4"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                    placeholder="Tulis pertanyaan essay yang akan dijawab oleh peserta..."
+                                                    required></textarea>
+                                            </div>
+
+                                            @if($content->scoring_enabled)
+                                                <div class="w-40">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        Skor Maksimal <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        id="new-question-score"
+                                                        min="1"
+                                                        max="1000"
+                                                        value="100"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                        required />
+                                                </div>
+                                            @else
+                                                <input type="hidden" id="new-question-score" value="0">
+                                            @endif
+
+                                            <div class="flex justify-end pt-4 border-t border-gray-200">
+                                                <button type="button" id="submit-new-question-btn" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                    </svg>
+                                                    Tambah Pertanyaan
+                                                </button>
+                                            </div>
+
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                <p class="text-xs text-blue-700">
+                                                    <strong>💡 Tip:</strong> Tombol ini akan menambahkan pertanyaan baru tanpa mengubah konten lain.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                @else
+                                    {{-- Form untuk CREATE mode (bagian dari main form) --}}
+                                    <div class="border border-gray-200 rounded-lg">
+                                        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                            <h4 class="font-semibold text-gray-900 flex items-center">
+                                                <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                </svg>
+                                                Pertanyaan Essay
+                                            </h4>
+                                        </div>
+
+                                        <div class="p-6 space-y-6">
+                                            <template x-for="(question, index) in questions" :key="index">
+                                                <div class="question-item border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                    <div class="flex justify-between items-center mb-4">
+                                                        <h5 class="font-medium text-gray-700 flex items-center">
+                                                            <span class="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs mr-2"
+                                                                x-text="index + 1"></span>
+                                                            <span x-text="'Pertanyaan ' + (index + 1)"></span>
+                                                        </h5>
+                                                        <button type="button"
+                                                                @click="removeQuestion(index)"
+                                                                x-show="questions.length > 1"
+                                                                class="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded hover:bg-red-50">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                                Pertanyaan <span class="text-red-500">*</span>
+                                                            </label>
+                                                            <textarea
+                                                                x-model="question.text"
+                                                                :name="'questions[' + index + '][text]'"
+                                                                rows="4"
+                                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                                placeholder="Tulis pertanyaan essay yang akan dijawab oleh peserta..."
+                                                                required
+                                                            ></textarea>
+                                                        </div>
+
+                                                        <div x-show="$root.content.scoring_enabled" class="w-40">
+                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                                Skor Maksimal <span class="text-red-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                x-model="question.max_score"
+                                                                :name="'questions[' + index + '][max_score]'"
+                                                                min="1"
+                                                                max="1000"
+                                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                                :required="$root.content.scoring_enabled"
+                                                            />
+                                                        </div>
+
+                                                        <template x-if="!$root.content.scoring_enabled">
+                                                            <input type="hidden" :name="'questions[' + index + '][max_score]'" value="0">
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                                                <button type="button"
+                                                        @click="addQuestion()"
+                                                        class="inline-flex items-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                    </svg>
+                                                    Tambah Pertanyaan
+                                                </button>
+
+                                                <div class="text-right">
+                                                    <p class="text-sm text-gray-600">
+                                                        Pertanyaan: <span x-text="questions.length" class="font-semibold"></span>
+                                                    </p>
+                                                    <p x-show="$root.content.scoring_enabled" class="text-sm text-gray-600">
+                                                        Total Skor: <span x-text="totalScore" class="font-semibold text-green-600"></span> poin
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
 
                                 {{-- Legacy Support --}}
                                 @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
@@ -561,6 +858,8 @@
                             </div>
                         </div>
 
+                        {{-- ✅ FIX: Untuk VIDEO type - skip render kalau existing essay --}}
+                        @if(!$content->exists || $content->type !== 'essay')
                         <div x-show="isType('video')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
                                 <label for="video_url" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -586,6 +885,7 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
                         <div x-show="isType('document') || isType('image')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
@@ -979,8 +1279,26 @@
                 },
 
                 submitForm() {
+                    // ✅ DEBUG: Log state sebelum submit
+                    console.log('=== SUBMIT FORM DEBUG ===');
+                    console.log('Content ID:', this.content.id);
+                    console.log('Form Action:', this.formAction);
+                    console.log('Content Object:', this.content);
+
                     if (this.validate()) {
-                        document.getElementById('contentForm').submit();
+                        // ✅ CRITICAL FIX: Pastikan form action benar sebelum submit
+                        const form = document.getElementById('contentForm');
+                        const actualAction = form.getAttribute('action');
+                        console.log('Actual Form Action:', actualAction);
+
+                        if (!this.content.id && actualAction && actualAction.includes('/contents/')) {
+                            console.error('ERROR: Content ID is missing but form action suggests UPDATE!');
+                            console.error('This will cause CREATE instead of UPDATE!');
+                            alert('ERROR: Form state corrupted. Please reload the page and try again.');
+                            return;
+                        }
+
+                        form.submit();
                     } else {
                         this.formHasErrors = true;
                         setTimeout(() => { this.formHasErrors = false; }, 820);

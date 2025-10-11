@@ -8,6 +8,7 @@ use App\Models\EssayAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EssaySubmissionController extends Controller
 {
@@ -95,6 +96,97 @@ class EssaySubmissionController extends Controller
 
             return back()->withInput()->with('error', 'Failed to submit essay. Please try again.');
         }
+    }
+
+    /**
+     * Autosave draft answer (called via AJAX)
+     */
+    public function autosave(Request $request, Content $content)
+    {
+        if ($content->type !== 'essay') {
+            return response()->json(['error' => 'Invalid content type'], 400);
+        }
+
+        $user = Auth::user();
+
+        // Validate input
+        $request->validate([
+            'question_id' => 'required|exists:essay_questions,id',
+            'answer' => 'nullable|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $content, $user) {
+                // Get or create submission as draft
+                $submission = EssaySubmission::firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'content_id' => $content->id,
+                    ],
+                    [
+                        'status' => 'draft',
+                    ]
+                );
+
+                // Update or create the answer for this question
+                EssayAnswer::updateOrCreate(
+                    [
+                        'submission_id' => $submission->id,
+                        'question_id' => $request->question_id,
+                    ],
+                    [
+                        'answer' => $request->answer ?? '',
+                    ]
+                );
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Draft saved',
+                'saved_at' => now()->format('H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Autosave error: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'content_id' => $content->id,
+                'question_id' => $request->question_id
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to save draft'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get draft answers for the current user
+     */
+    public function getDrafts(Content $content)
+    {
+        if ($content->type !== 'essay') {
+            return response()->json(['error' => 'Invalid content type'], 400);
+        }
+
+        $user = Auth::user();
+
+        $submission = EssaySubmission::where('user_id', $user->id)
+            ->where('content_id', $content->id)
+            ->with('answers')
+            ->first();
+
+        if (!$submission) {
+            return response()->json(['drafts' => []]);
+        }
+
+        $drafts = [];
+        foreach ($submission->answers as $answer) {
+            $drafts[$answer->question_id] = $answer->answer;
+        }
+
+        return response()->json([
+            'drafts' => $drafts,
+            'status' => $submission->status
+        ]);
     }
 
     /**

@@ -351,7 +351,21 @@ class ContentController extends Controller
 
     public function update(Request $request, Lesson $lesson, Content $content)
     {
+        // ✅ LOG PALING AWAL - Sebelum authorize
+        Log::info('=== UPDATE METHOD CALLED ===', [
+            'content_id' => $content->id,
+            'content_type' => $content->type,
+            'lesson_id' => $lesson->id,
+            'request_method' => $request->method(),
+            'request_type' => $request->input('type')
+        ]);
+
         $this->authorize('update', $lesson->course);
+
+        Log::info('=== AUTHORIZATION PASSED ===', [
+            'content_id' => $content->id
+        ]);
+
         return $this->save($request, $lesson, $content);
     }
 
@@ -424,10 +438,43 @@ class ContentController extends Controller
 
         $validated = $request->validate($rules);
 
+        // ✅ DEBUG: Log semua input yang diterima untuk essay type
+        if ($request->input('type') === 'essay') {
+            Log::info('=== ESSAY SAVE REQUEST START ===', [
+                'content_id' => $content->id ?? 'NEW',
+                'content_exists' => $content->exists,
+                'request_all' => $request->except(['_token', '_method']),
+                'has_body_text' => $request->has('body_text'),
+                'body_text_value' => $request->input('body_text'),
+                'has_questions' => $request->has('questions'),
+                'questions_data' => $request->input('questions')
+            ]);
+        }
+
         DB::beginTransaction();
         try {
             $content->lesson_id = $lesson->id;
-            $content->fill($validated);
+
+            // ✅ FIX: Remove 'body' from validated for existing essay content
+            // Ini mencegah fill() overwrite body untuk essay yang sudah ada
+            if ($validated['type'] === 'essay' && $content->exists) {
+                // Backup old body sebelum fill()
+                $preservedBody = $content->body;
+
+                $content->fill($validated);
+
+                // Restore body yang di-preserve
+                $content->body = $preservedBody;
+
+                Log::info('Essay body preserved during fill()', [
+                    'content_id' => $content->id,
+                    'preserved_body' => $preservedBody
+                ]);
+            } else {
+                // Normal fill untuk tipe lain atau essay baru
+                $content->fill($validated);
+            }
+
             // Pastikan flag opsional terset sesuai input (default false)
             $content->is_optional = (bool) ($request->boolean('is_optional'));
 
@@ -467,9 +514,26 @@ class ContentController extends Controller
                 ]);
             }
 
-            // PERBAIKAN: Secara eksplisit atur kolom 'body' dari sumber yang benar
+            // ✅ REFACTOR: Simplified body handling - NEVER touch body for existing essay content
             if ($bodySource) {
-                $content->body = $request->input($bodySource);
+                // 🚨 CRITICAL: Untuk essay type yang sudah exist, JANGAN PERNAH TOUCH BODY!
+                // Essay content disimpan di essay_questions table, bukan di body column
+                if ($validated['type'] === 'essay' && $content->exists) {
+                    // SKIP - Jangan touch body sama sekali untuk existing essay
+                    Log::info('=== ESSAY EDIT - SKIPPING BODY ===', [
+                        'content_id' => $content->id,
+                        'current_body' => $content->body,
+                        'action' => 'PRESERVED - No changes to body column'
+                    ]);
+                    // Body akan tetap dengan nilai yang sudah ada di database
+                } else {
+                    // Untuk tipe lain (text, video) ATAU essay baru, set body seperti biasa
+                    $content->body = $request->input($bodySource);
+
+                    if ($validated['type'] === 'essay' && !$content->exists) {
+                        Log::info('New essay - setting initial body', ['body' => $content->body]);
+                    }
+                }
             } elseif ($validated['type'] === 'zoom') {
                 $zoomData = [
                     'link' => $validated['zoom_link'],
@@ -494,7 +558,10 @@ class ContentController extends Controller
 
                 $content->body = json_encode($zoomData);
             } else {
-                $content->body = null;
+                // ✅ GUARD: Jangan set body = null untuk existing essay
+                if (!($validated['type'] === 'essay' && $content->exists)) {
+                    $content->body = null;
+                }
             }
 
             if ($request->hasFile('file_upload')) {
@@ -520,18 +587,59 @@ class ContentController extends Controller
                 $content->quiz_id = null;
             }
 
+            // Log body sebelum save pertama
+            if ($validated['type'] === 'essay' && $content->exists) {
+                Log::info('BEFORE FIRST SAVE', ['body' => $content->body]);
+            }
+
             $content->save();
 
-            // PERBAIKAN: Handle essay questions HANYA jika ada questions data
-            if ($validated['type'] === 'essay' && $request->has('questions') && !empty($validated['questions'])) {
-                $this->saveEssayQuestions($content, $validated['questions']);
-                $content->body = null;
-                $content->save();
+            // Log body setelah save pertama
+            if ($validated['type'] === 'essay' && $content->wasRecentlyCreated === false) {
+                Log::info('AFTER FIRST SAVE', ['body' => $content->fresh()->body]);
+            }
+
+            // ✅ FIX: Handle essay questions HANYA untuk CREATE mode (content baru tanpa existing questions)
+            // Untuk EDIT mode, pertanyaan baru ditambahkan via form terpisah (EssayQuestionController)
+            if ($validated['type'] === 'essay' && $request->has('questions')) {
+                // Cek apakah ada pertanyaan yang valid (tidak kosong)
+                $hasValidQuestions = false;
+                foreach ($validated['questions'] as $questionData) {
+                    if (!empty($questionData['text']) && trim($questionData['text']) !== '') {
+                        $hasValidQuestions = true;
+                        break;
+                    }
+                }
+
+                // HANYA proses jika:
+                // 1. Ada pertanyaan valid DI REQUEST
+                // 2. Content BELUM punya existing questions (CREATE mode)
+                if ($hasValidQuestions && !$content->essayQuestions()->exists()) {
+                    $this->saveEssayQuestions($content, $validated['questions']);
+                    // ❌ TIDAK perlu set body = null atau save lagi
+                    // Body handling sudah dilakukan di line 470-514 dengan logic yang benar
+                }
             }
 
             DB::commit();
+
+            // ✅ DEBUG: Log hasil akhir setelah commit untuk essay
+            if ($validated['type'] === 'essay') {
+                $finalContent = $content->fresh(); // Reload from DB
+                Log::info('=== ESSAY SAVE REQUEST END ===', [
+                    'content_id' => $finalContent->id,
+                    'final_body' => $finalContent->body,
+                    'body_is_null' => is_null($finalContent->body),
+                    'body_is_empty' => empty($finalContent->body),
+                    'essay_questions_count' => $finalContent->essayQuestions()->count()
+                ]);
+            }
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Essay save failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
 
@@ -540,50 +648,36 @@ class ContentController extends Controller
 
     private function saveEssayQuestions($content, $questionsData)
     {
-        $existingQuestions = $content->allEssayQuestions()->orderBy('order')->get();
+        // ✅ FIX: Method ini sekarang HANYA untuk menambah pertanyaan BARU
+        // Update existing questions di-handle oleh EssayQuestionController::update()
+
+        $existingQuestionsCount = $content->essayQuestions()->count();
         $newQuestionsData = array_values($questionsData);
-        
-        DB::transaction(function() use ($content, $existingQuestions, $newQuestionsData) {
+
+        DB::transaction(function() use ($content, $existingQuestionsCount, $newQuestionsData) {
+            // ✅ Tambahkan pertanyaan baru mulai dari order setelah existing questions
             foreach ($newQuestionsData as $index => $questionData) {
-                $order = $index + 1;
+                // Skip empty questions
+                if (empty($questionData['text'])) {
+                    continue;
+                }
+
+                $order = $existingQuestionsCount + $index + 1;
                 $maxScore = $content->scoring_enabled ? ($questionData['max_score'] ?? 100) : 0;
-                
-                if (isset($existingQuestions[$index])) {
-                    // Update existing question
-                    $existingQuestions[$index]->update([
-                        'question' => $questionData['text'],
-                        'order' => $order,
-                        'max_score' => $maxScore,
-                        'is_active' => true
-                    ]);
-                } else {
-                    // Create new question
-                    $content->essayQuestions()->create([
-                        'question' => $questionData['text'],
-                        'order' => $order,
-                        'max_score' => $maxScore,
-                        'is_active' => true
-                    ]);
-                }
-            }
-            
-            // Soft delete questions yang berlebih
-            if ($existingQuestions->count() > count($newQuestionsData)) {
-                $questionsToDeactivate = $existingQuestions->slice(count($newQuestionsData));
-                
-                foreach ($questionsToDeactivate as $question) {
-                    $hasAnswers = \App\Models\EssayAnswer::where('question_id', $question->id)->exists();
-                    
-                    if ($hasAnswers) {
-                        // Soft delete - preserve data
-                        $question->update(['is_active' => false]);
-                        Log::info("Deactivated question {$question->id} - has existing answers");
-                    } else {
-                        // Hard delete - no answers
-                        $question->delete();
-                        Log::info("Deleted unused question {$question->id}");
-                    }
-                }
+
+                // ✅ Selalu CREATE baru, jangan UPDATE existing
+                $content->essayQuestions()->create([
+                    'question' => $questionData['text'],
+                    'order' => $order,
+                    'max_score' => $maxScore,
+                    'is_active' => true
+                ]);
+
+                Log::info("Created new essay question", [
+                    'content_id' => $content->id,
+                    'order' => $order,
+                    'question' => substr($questionData['text'], 0, 50)
+                ]);
             }
         });
     }
