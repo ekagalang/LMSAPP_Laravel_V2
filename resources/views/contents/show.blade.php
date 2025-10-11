@@ -1,6 +1,5 @@
 <x-app-layout>
     <div x-data="{
-        sidebarOpen: window.innerWidth >= 768,
         sidebarOpen: false,
         showProgress: false,
         // [LOGIKA BARU] Menentukan apakah konten ini dianggap selesai.
@@ -35,7 +34,7 @@
             @endif
         }
     }"
-    class="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    class="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
 
         <!-- [BARU] Form tersembunyi untuk menandai selesai (hanya untuk konten non-tugas) -->
         @if(!$isTask)
@@ -44,8 +43,21 @@
         </form>
         @endif
 
+        <!-- Sidebar Backdrop Overlay -->
+        <div x-show="sidebarOpen"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="sidebarOpen = false"
+             class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+             style="display: none;">
+        </div>
+
         <!-- Mobile Header -->
-        <div class="lg:hidden bg-white shadow-sm border-b p-4 flex items-center justify-between sticky top-0 z-40">
+        <div class="lg:hidden bg-white shadow-sm border-b p-4 flex items-center justify-between sticky top-0 z-30">
             <button @click="toggleSidebar()" class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -75,7 +87,12 @@
             x-transition:leave="transition ease-in duration-300 transform"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
-            class="fixed lg:sticky inset-y-0 lg:top-0 left-0 w-full sm:w-96 lg:h-screen bg-white shadow-2xl lg:shadow-xl border-r border-gray-200 flex-shrink-0 z-50 lg:z-20 flex flex-col">
+            class="fixed inset-y-0 top-0 left-0 w-full sm:w-96 h-screen bg-white flex-shrink-0 z-50 flex flex-col"
+            style="box-shadow:
+                0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                0 4px 6px -4px rgba(0, 0, 0, 0.1),
+                8px 0 30px -5px rgba(99, 102, 241, 0.15),
+                12px 0 40px -10px rgba(139, 92, 246, 0.1);">
 
             <!-- Sidebar Header -->
             <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
@@ -84,7 +101,7 @@
                         <h3 class="text-xl font-bold truncate">{{ $course->title }}</h3>
                         <p class="text-indigo-100 text-sm mt-1">Pembelajaran Interaktif</p>
                     </div>
-                    <button @click="sidebarOpen = false" class="lg:hidden p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
+                    <button @click="sidebarOpen = false" class="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -119,7 +136,7 @@
             </div>
 
             <!-- Course Navigation with Custom Scroll -->
-            <nav class="flex-1 overflow-y-auto p-6 content-sidebar-scroll">
+            <nav class="flex-1 overflow-y-auto p-6 pb-24 content-sidebar-scroll">
                 @foreach ($course->lessons->sortBy('order') as $lesson)
                     <div class="mb-6 last:mb-2">
                         <!-- Lesson Header - Redesigned -->
@@ -361,7 +378,7 @@
 
             <!-- PERBAIKAN: Content Container dengan padding bottom yang cukup untuk bottom bar -->
             <div class="flex-1 overflow-y-auto pb-32">
-                <div class="max-w-4xl mx-auto p-6 lg:p-8">
+                <div class="{{ $content->type === 'essay' ? 'max-w-6xl' : 'max-w-4xl' }} mx-auto p-6 lg:p-8">
                     <!-- Content Card -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
                         <!-- Content Header (Mobile) -->
@@ -687,8 +704,10 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Discussion Section -->
+                <!-- Discussion Section - Always max-w-4xl -->
+                <div class="max-w-4xl mx-auto px-6 lg:px-8 pb-6">
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
                         <div class="bg-gradient-to-r from-purple-500 to-pink-600 p-6 text-white">
                             <h3 class="text-xl font-bold flex items-center">
@@ -708,11 +727,14 @@
         </main>
 
         <!-- PERBAIKAN UTAMA: Bottom Navigation dengan positioning yang lebih robust -->
-        <div class="fixed bottom-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300 ease-in-out"
-             :style="{
-                'left': sidebarOpen && window.innerWidth >= 1024 ? '384px' : '0px',
-                'right': '0px'
-             }">
+        <div x-show="!sidebarOpen"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-full"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-full"
+             class="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300 ease-in-out">
             @php
                 // Perbaikan: Mendapatkan konten dalam urutan yang benar
                 $allContents = $orderedContents; // Gunakan data yang sudah diurutkan dari controller
@@ -1160,21 +1182,7 @@
             Alpine.store('sidebarWidth', 384); // 24rem = 384px
         });
 
-        // Perbaikan: Auto-hide mobile sidebar when scrolling
-        let lastScrollTop = 0;
-
-        window.addEventListener('scroll', function() {
-            if (window.innerWidth < 1024) {
-                let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                if (scrollTop > lastScrollTop && scrollTop > 100) {
-                    // Check if Alpine.js is available before using it
-                    if (window.Alpine && window.Alpine.store) {
-                        window.Alpine.store('sidebarOpen', false);
-                    }
-                }
-                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-            }
-        }, false);
+        // Sidebar is now a floating overlay, no need for auto-hide on scroll
 
         // Perbaikan: Enhanced keyboard shortcuts
         document.addEventListener('keydown', function(e) {
@@ -1208,7 +1216,7 @@
             }
         });
 
-        // Perbaikan: Prevent page scroll when modal is open
+        // Perbaikan: Prevent page scroll when modal or sidebar is open
         document.addEventListener('alpine:init', () => {
             Alpine.data('contentData', () => ({
                 showProgress: false,
@@ -1224,23 +1232,23 @@
             }));
         });
 
-        // Perbaikan: Handle window resize for bottom bar
-        window.addEventListener('resize', function() {
-            // Force re-calculation of bottom bar position
-            if (window.innerWidth >= 1024) {
-                // Desktop view - adjust bottom bar based on sidebar state
-                const bottomBar = document.querySelector('.fixed.bottom-0');
-                if (bottomBar) {
-                    const sidebarOpen = document.querySelector('[x-data]').__x_component?.sidebarOpen;
-                    bottomBar.style.left = sidebarOpen ? '384px' : '0px';
-                }
-            } else {
-                // Mobile view - reset bottom bar
-                const bottomBar = document.querySelector('.fixed.bottom-0');
-                if (bottomBar) {
-                    bottomBar.style.left = '0px';
-                }
+        // Watch for sidebar state changes to prevent body scroll
+        document.addEventListener('alpine:initialized', () => {
+            const alpineComponent = document.querySelector('[x-data]').__x;
+            if (alpineComponent) {
+                alpineComponent.$watch('sidebarOpen', (value) => {
+                    if (value) {
+                        document.body.style.overflow = 'hidden';
+                    } else {
+                        document.body.style.overflow = '';
+                    }
+                });
             }
+        });
+
+        // Perbaikan: Handle window resize - sidebar is now always floating, no need to adjust bottom bar
+        window.addEventListener('resize', function() {
+            // Sidebar is now floating overlay, no layout adjustments needed
         });
     </script>
 </x-app-layout>
