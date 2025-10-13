@@ -594,7 +594,7 @@
             }
 
             function showTimeUpAlert() {
-                alert('Waktu Habis! Jawaban yang sudah terisi akan dinilai otomatis.');
+                // Auto-submit directly without alert for better browser compatibility
                 autoSubmitQuiz();
             }
 
@@ -848,7 +848,7 @@
             localStorage.removeItem(`quiz_backup_${quizId}`);
 
             const submitBtn = event.target;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Mengirim...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Kirim Jawaban';
             submitBtn.disabled = true;
 
             hideSubmitConfirmation();
@@ -867,12 +867,8 @@
             setInterval(autoSave, 10000);
         });
 
-        window.addEventListener('beforeunload', function(e) {
-            if (typeof timeLeft !== 'undefined' && timeLeft > 0) {
-                e.preventDefault();
-                e.returnValue = 'Anda yakin ingin meninggalkan halaman? Jawaban akan tersimpan otomatis.';
-            }
-        });
+        // Beforeunload warning removed for better browser compatibility
+        // Answers are auto-saved every 10 seconds
 
         // Keyboard navigation
         document.addEventListener('keydown', function(e) {

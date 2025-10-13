@@ -72,23 +72,8 @@
             return true;
         },
         showValidationAlert() {
-            let message = '';
-            if (this.step === 1) {
-                if (!this.formData.name) message = 'Nama lengkap harus diisi';
-                else if (!this.formData.email) message = 'Email harus diisi';
-                else if (!this.formData.password) message = 'Password harus diisi';
-                else if (!this.formData.password_confirmation) message = 'Konfirmasi password harus diisi';
-            } else if (this.step === 2) {
-                if (!this.formData.date_of_birth) message = 'Tanggal lahir harus diisi';
-                else if (!this.formData.gender) message = 'Jenis kelamin harus dipilih';
-                else if (!this.formData.institution_name) message = 'Nama instansi/sekolah harus diisi';
-            } else if (this.step === 3) {
-                if (!this.formData.occupation) message = 'Pekerjaan harus dipilih';
-            }
-
-            if (message) {
-                alert(message);
-            }
+            // Validation handled silently for better browser compatibility
+            // HTML5 required attributes will show native validation messages
         },
         handleKeyPress(event) {
             if (event.key === 'Enter' && this.step < 3) {

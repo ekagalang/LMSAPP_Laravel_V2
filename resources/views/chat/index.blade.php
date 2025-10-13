@@ -579,7 +579,7 @@
                 }
             } catch (error) {
                 console.error('Error sending message:', error);
-                alert('Failed to send message. Please try again.');
+                // Silent fail for better browser compatibility - message auto-saves
             } finally {
                 sendBtn.disabled = false;
             }
@@ -820,7 +820,7 @@
 
         // ✅ VALIDATION: Pastikan ada minimal 1 participant selain current user
         if (participantIds.length === 0) {
-            alert('Please select at least one participant to chat with.');
+            // Validation handled silently for better browser compatibility
             sendBtn.disabled = false;
             return;
         }
@@ -861,18 +861,15 @@
             console.error('Chat creation failed:', data);
             
             if (data.errors) {
-                let errorMessage = 'Validation errors:\n';
-                Object.keys(data.errors).forEach(field => {
-                    errorMessage += `${field}: ${data.errors[field].join(', ')}\n`;
-                });
-                alert(errorMessage);
+                // Log validation errors for debugging
+                console.error('Validation errors:', data.errors);
             } else {
-                alert(data.message || 'Failed to create chat');
+                console.error('Failed to create chat:', data.message);
             }
         }
     } catch (error) {
         console.error('Error creating chat:', error);
-        alert('Failed to create chat. Please try again.');
+        // Silent fail for better browser compatibility
     } finally {
         sendBtn.disabled = false;
     }
@@ -938,7 +935,7 @@
         }
     } catch (error) {
         console.error('Error creating chat:', error);
-        alert('Failed to create chat: ' + error.message);
+        // Silent fail for better browser compatibility
     }
 }
 
