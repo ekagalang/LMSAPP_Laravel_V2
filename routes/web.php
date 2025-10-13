@@ -116,6 +116,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     Route::get('/quizzes/{quiz}/leaderboard', [QuizController::class, 'leaderboard'])->name('quizzes.leaderboard');
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
+    Route::post('/essays/{content}/autosave', [EssaySubmissionController::class, 'autosave'])->name('essays.autosave');
+    Route::get('/essays/{content}/drafts', [EssaySubmissionController::class, 'getDrafts'])->name('essays.get_drafts');
     Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
 
     Route::post('/contents/{content}/essay-questions', [EssayQuestionController::class, 'store'])
