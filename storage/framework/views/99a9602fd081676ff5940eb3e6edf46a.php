@@ -1,5 +1,14 @@
-<x-app-layout>
-    <x-slot name="header">
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+     <?php $__env->slot('header', null, []); ?> 
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             <div class="space-y-2">
                 <a href="javascript:void(0)" onclick="window.history.back()"
@@ -11,34 +20,38 @@
                     Kembali
                 </a>
                 <h1 class="text-3xl font-bold text-gray-900">
-                    {{ $content->exists ? '✏️ Edit Konten' : '✨ Buat Konten Baru' }}
+                    <?php echo e($content->exists ? '✏️ Edit Konten' : '✨ Buat Konten Baru'); ?>
+
                 </h1>
                 <div class="flex items-center space-x-2 text-sm text-gray-600">
                     <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-medium">
-                        {{ $lesson->title }}
+                        <?php echo e($lesson->title); ?>
+
                     </span>
                     <span class="text-gray-400">•</span>
-                    <span>{{ $lesson->course->title }}</span>
-                    @if($content->exists)
+                    <span><?php echo e($lesson->course->title); ?></span>
+                    <?php if($content->exists): ?>
                         <span class="text-gray-400">•</span>
                         <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                            {{ ucfirst($content->type) }}
+                            <?php echo e(ucfirst($content->type)); ?>
+
                         </span>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
-            @if($content->exists)
+            <?php if($content->exists): ?>
                 <div class="flex items-center space-x-2">
                     <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
                         Mode Edit
                     </span>
                     <div class="text-xs text-gray-500">
-                        Terakhir diubah: {{ $content->updated_at->format('d M Y, H:i') }}
+                        Terakhir diubah: <?php echo e($content->updated_at->format('d M Y, H:i')); ?>
+
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
         </div>
-    </x-slot>
+     <?php $__env->endSlot(); ?>
 
     <style>
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
@@ -49,7 +62,7 @@
 
     <div class="py-8">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            @if ($errors->any())
+            <?php if($errors->any()): ?>
                 <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
                     <div class="flex">
                         <div class="flex-shrink-0">
@@ -61,23 +74,23 @@
                             <h3 class="text-sm font-medium text-red-800">Ada beberapa kesalahan:</h3>
                             <div class="mt-2 text-sm text-red-700">
                                 <ul class="list-disc list-inside space-y-1">
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
+                                    <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <li><?php echo e($error); ?></li>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </ul>
                             </div>
                         </div>
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
 
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden"
                  x-data="contentFormManager({
-                     content: @js(array_merge($content->toArray(), [
+                     content: <?php echo \Illuminate\Support\Js::from(array_merge($content->toArray(), [
                          'scoring_enabled' => old('scoring_enabled', $content->scoring_enabled ?? true)
-                     ])),
-                     createUrl: '{{ route('lessons.contents.store', $lesson) }}',
-                     updateUrl: '{{ $content->exists ? route('lessons.contents.update', [$lesson, $content]) : '' }}'
+                     ]))->toHtml() ?>,
+                     createUrl: '<?php echo e(route('lessons.contents.store', $lesson)); ?>',
+                     updateUrl: '<?php echo e($content->exists ? route('lessons.contents.update', [$lesson, $content]) : ''); ?>'
                  })"
                  x-init="initForm()">
 
@@ -85,27 +98,30 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h2 class="text-2xl font-bold text-white">
-                                {{ $content->exists ? 'Edit Konten' : 'Buat Konten Baru' }}
+                                <?php echo e($content->exists ? 'Edit Konten' : 'Buat Konten Baru'); ?>
+
                             </h2>
                             <p class="text-indigo-100 mt-1">
-                                {{ $content->exists ? 'Perbarui informasi konten pembelajaran' : 'Isi detail konten pembelajaran yang akan dibuat' }}
+                                <?php echo e($content->exists ? 'Perbarui informasi konten pembelajaran' : 'Isi detail konten pembelajaran yang akan dibuat'); ?>
+
                             </p>
                         </div>
-                        @if($content->exists)
+                        <?php if($content->exists): ?>
                             <div class="text-indigo-100 text-sm">
                                 <div class="flex items-center">
                                     <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
                                     </svg>
-                                    ID: {{ $content->id }}
+                                    ID: <?php echo e($content->id); ?>
+
                                 </div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <form id="contentForm" :action="formAction" method="POST" enctype="multipart/form-data" class="p-8">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     <template x-if="content.id">
                         <input type="hidden" name="_method" value="PUT">
                     </template>
@@ -126,11 +142,11 @@
                                    name="title"
                                    id="title"
                                    x-model="content.title"
-                                   {{-- ✅ TAMBAHKAN :class untuk error --}}
+                                   
                                    :class="{ 'form-input-error': errors.title }"
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 text-lg"
                                    placeholder="Masukkan judul konten yang menarik...">
-                            {{-- ✅ TAMBAHKAN pesan error --}}
+                            
                             <p x-show="errors.title" x-text="errors.title" class="text-sm text-red-600 mt-1"></p>
                         </div>
 
@@ -219,7 +235,7 @@
                                 <label class="inline-flex items-center">
                                     <input type="checkbox" name="is_optional" value="1"
                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
-                                           @checked(old('is_optional', $content->is_optional ?? false))>
+                                           <?php if(old('is_optional', $content->is_optional ?? false)): echo 'checked'; endif; ?>>
                                     <span class="ml-2 text-sm text-gray-700">Boleh dilewati (opsional)</span>
                                 </label>
                                 <p class="mt-1 text-xs text-gray-500">Jika dicentang, konten ini tidak akan mengunci konten berikutnya.</p>
@@ -238,7 +254,8 @@
                                                 <input type="radio" 
                                                     name="grading_mode" 
                                                     value="individual" 
-                                                    {{ old('grading_mode', $content->grading_mode ?? 'individual') === 'individual' ? 'checked' : '' }}
+                                                    <?php echo e(old('grading_mode', $content->grading_mode ?? 'individual') === 'individual' ? 'checked' : ''); ?>
+
                                                     x-model="content.grading_mode"
                                                     class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
                                                 <div class="ml-3">
@@ -251,7 +268,8 @@
                                                 <input type="radio" 
                                                     name="grading_mode" 
                                                     value="overall" 
-                                                    {{ old('grading_mode', $content->grading_mode ?? 'individual') === 'overall' ? 'checked' : '' }}
+                                                    <?php echo e(old('grading_mode', $content->grading_mode ?? 'individual') === 'overall' ? 'checked' : ''); ?>
+
                                                     x-model="content.grading_mode"
                                                     class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
                                                 <div class="ml-3">
@@ -280,7 +298,7 @@
                                             <p class="text-xs text-blue-700">Pilih mode essay berdasarkan kebutuhan pembelajaran</p>
                                         </div>
                                         
-                                        @php
+                                        <?php
                                             // Tentukan review mode berdasarkan existing data
                                             $currentReviewMode = 'scoring'; // default
                                             if (isset($content)) {
@@ -292,14 +310,15 @@
                                                     $currentReviewMode = 'scoring';
                                                 }
                                             }
-                                        @endphp
+                                        ?>
 
                                         <div class="space-y-2">
                                             <label class="flex items-start p-3 border border-gray-200 rounded-lg hover:border-indigo-300 transition-colors cursor-pointer">
                                                 <input type="radio" 
                                                     name="review_mode" 
                                                     value="scoring" 
-                                                    {{ old('review_mode', $currentReviewMode) == 'scoring' ? 'checked' : '' }}
+                                                    <?php echo e(old('review_mode', $currentReviewMode) == 'scoring' ? 'checked' : ''); ?>
+
                                                     class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
                                                 <div class="ml-3">
                                                     <span class="text-sm font-medium text-gray-900">🏆 Dengan Penilaian</span>
@@ -311,7 +330,8 @@
                                                 <input type="radio" 
                                                     name="review_mode" 
                                                     value="feedback_only" 
-                                                    {{ old('review_mode', $currentReviewMode) == 'feedback_only' ? 'checked' : '' }}
+                                                    <?php echo e(old('review_mode', $currentReviewMode) == 'feedback_only' ? 'checked' : ''); ?>
+
                                                     class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
                                                 <div class="ml-3">
                                                     <span class="text-sm font-medium text-gray-900">📝 Tanpa Penilaian</span>
@@ -323,7 +343,8 @@
                                                 <input type="radio" 
                                                     name="review_mode" 
                                                     value="no_review" 
-                                                    {{ old('review_mode', $currentReviewMode) == 'no_review' ? 'checked' : '' }}
+                                                    <?php echo e(old('review_mode', $currentReviewMode) == 'no_review' ? 'checked' : ''); ?>
+
                                                     class="form-radio h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 mt-0.5">
                                                 <div class="ml-3">
                                                     <span class="text-sm font-medium text-gray-900">✅ Latihan Mandiri</span>
@@ -361,8 +382,8 @@
                             </h3>
                         </div>
 
-                        {{-- ✅ FIX: Untuk TEXT type only - jangan render untuk essay type --}}
-                        @if(!$content->exists || $content->type !== 'essay')
+                        
+                        <?php if(!$content->exists || $content->type !== 'essay'): ?>
                         <div x-show="isType('text')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                                 <label for="body_editor" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -370,21 +391,43 @@
                                 </label>
                                 <p class="text-xs text-gray-600 mb-4">Gunakan editor untuk memformat teks dengan rich content</p>
 
-                                <x-forms.summernote-editor
-                                    id="body_editor"
-                                    name="body_text"
-                                    :value="old('body_text', $content->body ?? '')"
-                                />
-                                @error('body_text')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                <?php if (isset($component)) { $__componentOriginaldcd8a0f134e5f515db6936655ffc11d7 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginaldcd8a0f134e5f515db6936655ffc11d7 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.forms.summernote-editor','data' => ['id' => 'body_editor','name' => 'body_text','value' => old('body_text', $content->body ?? '')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('forms.summernote-editor'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['id' => 'body_editor','name' => 'body_text','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(old('body_text', $content->body ?? ''))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginaldcd8a0f134e5f515db6936655ffc11d7)): ?>
+<?php $attributes = $__attributesOriginaldcd8a0f134e5f515db6936655ffc11d7; ?>
+<?php unset($__attributesOriginaldcd8a0f134e5f515db6936655ffc11d7); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginaldcd8a0f134e5f515db6936655ffc11d7)): ?>
+<?php $component = $__componentOriginaldcd8a0f134e5f515db6936655ffc11d7; ?>
+<?php unset($__componentOriginaldcd8a0f134e5f515db6936655ffc11d7); ?>
+<?php endif; ?>
+                                <?php $__errorArgs = ['body_text'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                    <p class="mt-1 text-sm text-red-600"><?php echo e($message); ?></p>
+                                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                             </div>
                         </div>
-                        @endif
+                        <?php endif; ?>
 
                         <div x-show="isType('essay')" x-cloak class="animate-fadeIn" x-data="essayQuestionsManager()">
                             <div class="space-y-6">
-                                {{-- Info Box --}}
+                                
                                 <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
                                     <div class="flex items-start">
                                         <div class="flex-shrink-0">
@@ -399,48 +442,51 @@
                                     </div>
                                 </div>
 
-                                {{-- Existing Questions with Edit/Delete functionality --}}
-                                @if($content->exists && $content->essayQuestions && $content->essayQuestions->count() > 0)
+                                
+                                <?php if($content->exists && $content->essayQuestions && $content->essayQuestions->count() > 0): ?>
                                     <div class="space-y-4" id="existing-questions-list">
                                         <h4 class="font-semibold text-gray-900 flex items-center">
                                             <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-2 text-xs">
-                                                {{ $content->essayQuestions->count() }}
+                                                <?php echo e($content->essayQuestions->count()); ?>
+
                                             </div>
                                             Pertanyaan yang Sudah Ada
                                         </h4>
-                                        @foreach($content->essayQuestions as $index => $question)
-                                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm" id="existing-question-{{ $question->id }}">
-                                                {{-- View Mode --}}
+                                        <?php $__currentLoopData = $content->essayQuestions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $question): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm" id="existing-question-<?php echo e($question->id); ?>">
+                                                
                                                 <div class="view-mode-existing">
                                                     <div class="flex justify-between items-start mb-2">
                                                         <div class="flex-1">
                                                             <span class="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full mb-2">
-                                                                Soal {{ $index + 1 }}
+                                                                Soal <?php echo e($index + 1); ?>
+
                                                             </span>
                                                             <div class="text-sm text-gray-700 leading-relaxed mt-2">
-                                                                {!! nl2br(e($question->question)) !!}
+                                                                <?php echo nl2br(e($question->question)); ?>
+
                                                             </div>
-                                                            {{-- 🆕 Tampilkan score hanya jika scoring enabled --}}
-                                                            @if($content->scoring_enabled)
+                                                            
+                                                            <?php if($content->scoring_enabled): ?>
                                                                 <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full mt-2">
-                                                                    {{ $question->max_score }} poin
+                                                                    <?php echo e($question->max_score); ?> poin
                                                                 </span>
-                                                            @endif
+                                                            <?php endif; ?>
                                                         </div>
                                                         <div class="flex items-center gap-2 ml-4">
                                                             <button type="button"
                                                                     class="edit-existing-question-btn text-indigo-600 hover:text-indigo-800 p-2 rounded-lg hover:bg-indigo-50 transition-colors"
-                                                                    data-question-id="{{ $question->id }}"
+                                                                    data-question-id="<?php echo e($question->id); ?>"
                                                                     title="Edit pertanyaan">
                                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                                 </svg>
                                                             </button>
-                                                            {{-- ✅ FIX: Use button instead of nested form --}}
+                                                            
                                                             <button type="button"
                                                                     class="delete-question-btn text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                                                                    data-question-id="{{ $question->id }}"
-                                                                    data-delete-url="{{ route('essay.questions.destroy', $question) }}"
+                                                                    data-question-id="<?php echo e($question->id); ?>"
+                                                                    data-delete-url="<?php echo e(route('essay.questions.destroy', $question)); ?>"
                                                                     title="Hapus pertanyaan">
                                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -450,20 +496,20 @@
                                                     </div>
                                                 </div>
 
-                                                {{-- Edit Mode (Initially Hidden) - ✅ FIX: No nested form --}}
-                                                <div class="edit-mode-existing hidden" data-update-url="{{ route('essay.questions.update', $question) }}">
+                                                
+                                                <div class="edit-mode-existing hidden" data-update-url="<?php echo e(route('essay.questions.update', $question)); ?>">
                                                     <div class="space-y-4">
                                                         <div>
                                                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Edit Soal {{ $index + 1 }}:
+                                                                Edit Soal <?php echo e($index + 1); ?>:
                                                             </label>
                                                             <textarea
                                                                 class="question-text-input block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                                                 rows="4"
-                                                                required>{{ $question->question }}</textarea>
+                                                                required><?php echo e($question->question); ?></textarea>
                                                         </div>
 
-                                                        @if ($content->scoring_enabled)
+                                                        <?php if($content->scoring_enabled): ?>
                                                             <div>
                                                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                                                     Skor Maksimal:
@@ -472,17 +518,17 @@
                                                                     type="number"
                                                                     class="max-score-input block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                                                     min="1"
-                                                                    value="{{ $question->max_score }}"
+                                                                    value="<?php echo e($question->max_score); ?>"
                                                                     required>
                                                             </div>
-                                                        @else
+                                                        <?php else: ?>
                                                             <input type="hidden" class="max-score-input" value="0">
-                                                        @endif
+                                                        <?php endif; ?>
 
                                                         <div class="flex items-center gap-2">
                                                             <button type="button"
                                                                     class="save-edit-existing-btn inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors"
-                                                                    data-question-id="{{ $question->id }}">
+                                                                    data-question-id="<?php echo e($question->id); ?>">
                                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                                                 </svg>
@@ -490,7 +536,7 @@
                                                             </button>
                                                             <button type="button"
                                                                     class="cancel-edit-existing-btn inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md transition-colors"
-                                                                    data-question-id="{{ $question->id }}">
+                                                                    data-question-id="<?php echo e($question->id); ?>">
                                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                                                 </svg>
@@ -500,7 +546,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        @endforeach
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                             <p class="text-sm text-blue-800">
@@ -510,7 +556,7 @@
                                         </div>
                                     </div>
 
-                                    {{-- ✅ FIX: Updated JavaScript with DELETE and UPDATE handlers --}}
+                                    
                                     <script>
                                         document.addEventListener('DOMContentLoaded', function() {
                                             // ===== CSRF Token Helper =====
@@ -683,11 +729,11 @@
                                             }
                                         });
                                     </script>
-                                @endif
+                                <?php endif; ?>
 
-                                {{-- ✅ FIX: No nested form - use button with JS handler --}}
-                                @if($content->exists)
-                                    <div class="border border-gray-200 rounded-lg" id="add-new-question-form" data-store-url="{{ route('essay.questions.store', $content) }}" data-scoring-enabled="{{ $content->scoring_enabled ? '1' : '0' }}">
+                                
+                                <?php if($content->exists): ?>
+                                    <div class="border border-gray-200 rounded-lg" id="add-new-question-form" data-store-url="<?php echo e(route('essay.questions.store', $content)); ?>" data-scoring-enabled="<?php echo e($content->scoring_enabled ? '1' : '0'); ?>">
                                         <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
                                             <h4 class="font-semibold text-gray-900 flex items-center">
                                                 <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -710,7 +756,7 @@
                                                     required></textarea>
                                             </div>
 
-                                            @if($content->scoring_enabled)
+                                            <?php if($content->scoring_enabled): ?>
                                                 <div class="w-40">
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         Skor Maksimal <span class="text-red-500">*</span>
@@ -724,9 +770,9 @@
                                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                                                         required />
                                                 </div>
-                                            @else
+                                            <?php else: ?>
                                                 <input type="hidden" id="new-question-score" value="0">
-                                            @endif
+                                            <?php endif; ?>
 
                                             <div class="flex justify-end pt-4 border-t border-gray-200">
                                                 <button type="button" id="submit-new-question-btn" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
@@ -744,8 +790,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                @else
-                                    {{-- Form untuk CREATE mode (bagian dari main form) --}}
+                                <?php else: ?>
+                                    
                                     <div class="border border-gray-200 rounded-lg">
                                         <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
                                             <h4 class="font-semibold text-gray-900 flex items-center">
@@ -833,10 +879,10 @@
                                             </div>
                                         </div>
                                     </div>
-                                @endif
+                                <?php endif; ?>
 
-                                {{-- Legacy Support --}}
-                                @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
+                                
+                                <?php if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0)): ?>
                                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                         <div class="flex items-start">
                                             <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
@@ -846,7 +892,7 @@
                                                 <h4 class="font-medium text-yellow-800 mb-1">Essay Lama Terdeteksi</h4>
                                                 <p class="text-sm text-yellow-700 mb-3">
                                                     Content ini masih menggunakan sistem essay lama. 
-                                                    Pertanyaan lama: "{{ Str::limit(strip_tags($content->body), 100) }}"
+                                                    Pertanyaan lama: "<?php echo e(Str::limit(strip_tags($content->body), 100)); ?>"
                                                 </p>
                                                 <p class="text-xs text-yellow-600">
                                                     Gunakan form di atas untuk membuat multiple questions. Sistem akan menggunakan yang baru.
@@ -854,12 +900,12 @@
                                             </div>
                                         </div>
                                     </div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
 
-                        {{-- ✅ FIX: Untuk VIDEO type - skip render kalau existing essay --}}
-                        @if(!$content->exists || $content->type !== 'essay')
+                        
+                        <?php if(!$content->exists || $content->type !== 'essay'): ?>
                         <div x-show="isType('video')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
                                 <label for="video_url" class="block text-sm font-semibold text-gray-700 mb-3">
@@ -871,9 +917,16 @@
                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all duration-300"
                                        placeholder="https://www.youtube.com/watch?v=...">
                                 <p class="text-sm text-gray-500 mt-2">Masukkan URL lengkap video dari YouTube atau Vimeo</p>
-                                @error('body_video')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                <?php $__errorArgs = ['body_video'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                    <p class="mt-1 text-sm text-red-600"><?php echo e($message); ?></p>
+                                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
 
                                 <div x-show="content.body && content.body.includes('youtube')" class="mt-4">
                                     <div class="bg-white rounded-lg p-4 border">
@@ -885,7 +938,7 @@
                                 </div>
                             </div>
                         </div>
-                        @endif
+                        <?php endif; ?>
 
                         <div x-show="isType('document') || isType('image')" x-cloak class="animate-fadeIn">
                             <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
@@ -893,9 +946,9 @@
                                     📁 <span x-text="isType('image') ? 'Unggah Gambar' : 'Unggah Dokumen'"></span>
                                 </label>
 
-                                {{-- Opsi Kontrol Akses untuk Dokumen --}}
+                                
                                 <div x-show="isType('document')"
-                                     x-data="{ selectedAccessType: '{{ old('document_access_type', $content->document_access_type ?? 'both') }}' }"
+                                     x-data="{ selectedAccessType: '<?php echo e(old('document_access_type', $content->document_access_type ?? 'both')); ?>' }"
                                      class="mb-6">
                                     <label class="block text-sm font-semibold text-gray-700 mb-3">
                                         🔐 Kontrol Akses Dokumen
@@ -981,7 +1034,7 @@
                                         </div>
                                         <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs">Baru</span>
                                     </div>
-                                    {{-- Preview untuk gambar --}}
+                                    
                                     <div x-show="isType('image') && uploadedImagePreviewUrl" class="mt-4">
                                         <img :src="uploadedImagePreviewUrl" class="max-h-48 rounded-lg mx-auto">
                                     </div>
@@ -1013,15 +1066,15 @@
                                     <div id="images_preview" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
                                 </div>
 
-                                @if($content->images->count())
+                                <?php if($content->images->count()): ?>
                                     <div class="mt-6" x-data>
                                         <p class="text-sm font-semibold text-gray-700 mb-2">Kelola Galeri</p>
-                                        <input type="hidden" name="image_order" id="image_order" value="{{ $content->images->pluck('id')->implode(',') }}">
+                                        <input type="hidden" name="image_order" id="image_order" value="<?php echo e($content->images->pluck('id')->implode(',')); ?>">
                                         <div id="delete_images_container"></div>
                                         <div id="current_images_list" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                            @foreach($content->images as $img)
-                                                <div class="group relative rounded-lg overflow-hidden border bg-white cursor-move" draggable="true" data-id="{{ $img->id }}">
-                                                    <img src="{{ Storage::url($img->file_path) }}" class="w-full h-32 object-cover select-none pointer-events-none" alt="Gambar {{ $loop->iteration }}">
+                                            <?php $__currentLoopData = $content->images; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $img): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <div class="group relative rounded-lg overflow-hidden border bg-white cursor-move" draggable="true" data-id="<?php echo e($img->id); ?>">
+                                                    <img src="<?php echo e(Storage::url($img->file_path)); ?>" class="w-full h-32 object-cover select-none pointer-events-none" alt="Gambar <?php echo e($loop->iteration); ?>">
                                                     <div class="absolute inset-0 bg-red-500/0 group-[.to-delete]:bg-red-500/20 transition-colors"></div>
                                                     <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button type="button" class="toggle-delete p-1 rounded bg-white/80 text-red-600 hover:bg-white shadow ring-1 ring-black/5" title="Hapus gambar">
@@ -1029,11 +1082,11 @@
                                                         </button>
                                                     </div>
                                                 </div>
-                                            @endforeach
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-2">Tip: Drag untuk mengubah urutan. Klik ikon tempat sampah untuk menandai penghapusan.</p>
                                     </div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -1051,19 +1104,19 @@
                                         ⏱️ Durasi Pengerjaan (Menit)
                                     </label>
                                     <input 
-                                        type="text"  {{-- 1. Ubah tipe menjadi text --}}
-                                        inputmode="numeric" {{-- Menampilkan keyboard numerik di perangkat mobile --}}
+                                        type="text"  
+                                        inputmode="numeric" 
                                         name="time_limit"
                                         id="quiz_time_limit"
                                         x-model.number="content.quiz.time_limit"
-                                        {{-- 2. Tambahkan event listener untuk hanya mengizinkan angka --}}
+                                        
                                         @input="$event.target.value = $event.target.value.replace(/[^0-9]/g, '')"
                                         class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
                                         placeholder="Contoh: 60">
                                     <p class="text-sm text-gray-500 mt-1">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
                                 </div>
 
-                                @include('quizzes.partials.full-quiz-form')
+                                <?php echo $__env->make('quizzes.partials.full-quiz-form', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                             </div>
                         </div>
                     </div>
@@ -1188,7 +1241,7 @@
 
                     <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-gray-200 space-y-4 sm:space-y-0">
                         <div class="flex items-center space-x-4">
-                            <a href="{{ route('courses.show', $lesson->course) }}"
+                            <a href="<?php echo e(route('courses.show', $lesson->course)); ?>"
                                class="inline-flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -1199,7 +1252,7 @@
 
                         <button type="button"
                                 @click="submitForm()"
-                                {{-- ✅ TAMBAHKAN :class untuk animasi goyang --}}
+                                
                                 :class="{ 'shake': formHasErrors }"
                                 class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1213,7 +1266,7 @@
         </div>
     </div>
 
-    @push('scripts')
+    <?php $__env->startPush('scripts'); ?>
     <style>
         .animate-fadeIn {
             animation: fadeIn 0.5s ease-in-out;
@@ -1318,11 +1371,11 @@
 
                 initForm() {
                     if (!this.content.hasOwnProperty('grading_mode')) {
-                        this.content.grading_mode = '{{ old('grading_mode', $content->grading_mode ?? 'individual') }}';
+                        this.content.grading_mode = '<?php echo e(old('grading_mode', $content->grading_mode ?? 'individual')); ?>';
                     }
                     
                     if (!this.content.hasOwnProperty('scoring_enabled')) {
-                        this.content.scoring_enabled = {{ old('scoring_enabled', $content->scoring_enabled ?? true) ? 'true' : 'false' }};
+                        this.content.scoring_enabled = <?php echo e(old('scoring_enabled', $content->scoring_enabled ?? true) ? 'true' : 'false'); ?>;
                     }
 
                     this.$watch('content.type', (newType) => this.handleTypeChange(newType));
@@ -1358,13 +1411,13 @@
                     }
 
                     if (!this.content.hasOwnProperty('is_scheduled')) {
-                        this.content.is_scheduled = @json($content->is_scheduled ?? false);
+                        this.content.is_scheduled = <?php echo json_encode($content->is_scheduled ?? false, 15, 512) ?>;
                     }
                     if (!this.content.hasOwnProperty('scheduled_start')) {
-                        this.content.scheduled_start = @json($content->scheduled_start ? $content->scheduled_start->format('Y-m-d\TH:i') : '');
+                        this.content.scheduled_start = <?php echo json_encode($content->scheduled_start ? $content->scheduled_start->format('Y-m-d\TH:i') : '', 15, 512) ?>;
                     }
                     if (!this.content.hasOwnProperty('scheduled_end')) {
-                        this.content.scheduled_end = @json($content->scheduled_end ? $content->scheduled_end->format('Y-m-d\TH:i') : '');
+                        this.content.scheduled_end = <?php echo json_encode($content->scheduled_end ? $content->scheduled_end->format('Y-m-d\TH:i') : '', 15, 512) ?>;
                     }
                     if (!this.content.hasOwnProperty('timezone')) {
                         this.content.timezone = 'Asia/Jakarta';
@@ -1683,16 +1736,26 @@
                     console.log('Essay Questions Manager initialized');
                     
                     // Jika edit content lama tanpa questions, load dari body
-                    @if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0))
-                        this.questions = [{ text: @json(strip_tags($content->body)), max_score: 100 }];
+                    <?php if($content->exists && $content->body && (!$content->essayQuestions || $content->essayQuestions->count() === 0)): ?>
+                        this.questions = [{ text: <?php echo json_encode(strip_tags($content->body), 15, 512) ?>, max_score: 100 }];
                         console.log('Loaded legacy question from body');
-                    @else
+                    <?php else: ?>
                         this.questions = [{ text: '', max_score: 100 }];
                         console.log('Started with empty question');
-                    @endif
+                    <?php endif; ?>
                 }
             }
         }
     </script>
-    @endpush
-</x-app-layout>
+    <?php $__env->stopPush(); ?>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php /**PATH C:\Users\PC2\Videos\IT\Code\LMSCOK\ABC\Cok\LMSAPP_Laravel_V2\resources\views/contents/edit.blade.php ENDPATH**/ ?>

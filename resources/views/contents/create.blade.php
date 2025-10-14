@@ -351,6 +351,16 @@
                                         </button>
                                     </div>
                                 </div>
+
+                                <!-- Multiple Images Uploader (untuk tipe image) -->
+                                <div class="mt-6">
+                                    <label for="images" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        🖼️ Unggah Beberapa Gambar (opsional)
+                                    </label>
+                                    <input type="file" name="images[]" id="images" accept="image/*" multiple class="block w-full text-sm text-gray-600">
+                                    <p class="text-xs text-gray-500 mt-1">Anda dapat memilih lebih dari satu gambar. Setiap gambar maksimal 10MB.</p>
+                                    <div id="images_preview" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -436,6 +446,65 @@
     </style>
 
     <script>
+        // Util: compress image using Canvas
+        async function compressImageFile(file, { maxWidth = 1600, quality = 0.8 } = {}) {
+            if (!(file && file.type && file.type.startsWith('image/'))) return file;
+
+            // Skip tiny files (< 300KB) to save time
+            if (file.size < 300 * 1024) return file;
+
+            const bitmap = await createImageBitmap(file).catch(() => null);
+            if (!bitmap) return file;
+
+            let { width, height } = bitmap;
+            if (width > maxWidth) {
+                const ratio = maxWidth / width;
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(bitmap, 0, 0, width, height);
+
+            // Prefer JPEG for photos; keep PNG to preserve transparency
+            const targetType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, targetType, quality));
+            if (!blob) return file;
+            const newName = file.name.replace(/\.(png|jpg|jpeg|webp)$/i, targetType === 'image/png' ? '.png' : '.jpg');
+            return new File([blob], newName, { type: targetType, lastModified: Date.now() });
+        }
+
+        async function compressImageInputsIfNeeded(form) {
+            try {
+                const selectedType = (form.querySelector('input[name="type"]:checked') || {}).value;
+                if (selectedType !== 'image') return; // only for image content
+
+                // Handle single file_upload if it's an image
+                const single = form.querySelector('#file_upload');
+                if (single && single.files && single.files[0] && single.files[0].type.startsWith('image/')) {
+                    const compressed = await compressImageFile(single.files[0]);
+                    const dt = new DataTransfer();
+                    dt.items.add(compressed);
+                    single.files = dt.files;
+                }
+
+                // Handle multiple images[]
+                const multi = form.querySelector('#images');
+                if (multi && multi.files && multi.files.length) {
+                    const dt = new DataTransfer();
+                    for (const f of Array.from(multi.files)) {
+                        const cf = await compressImageFile(f);
+                        dt.items.add(cf);
+                    }
+                    multi.files = dt.files;
+                }
+            } catch (e) {
+                console.warn('Compression skipped due to error:', e);
+            }
+        }
         function submitCreateForm() {
             document.getElementById('contentForm').submit();
         }
@@ -527,6 +596,26 @@
             preview.classList.add('hidden');
         }
 
+        // Preview untuk multiple images
+        (function(){
+            const input = document.getElementById('images');
+            const container = document.getElementById('images_preview');
+            if (input && container) {
+                input.addEventListener('change', function() {
+                    container.innerHTML = '';
+                    const files = Array.from(this.files || []);
+                    files.slice(0, 20).forEach(file => {
+                        if (!file.type.startsWith('image/')) return;
+                        const url = URL.createObjectURL(file);
+                        const el = document.createElement('img');
+                        el.src = url;
+                        el.className = 'w-full h-32 object-cover rounded-lg border';
+                        container.appendChild(el);
+                    });
+                });
+            }
+        })();
+
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -543,6 +632,16 @@
                 document.querySelector('input[name="type"][value="text"]').checked = true;
             }
             toggleContentTypeFields();
+
+            // Hook form submit for client-side compression
+            const form = document.getElementById('contentForm');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    await compressImageInputsIfNeeded(form);
+                    form.submit();
+                });
+            }
         });
 
         // Add event listeners for radio buttons
