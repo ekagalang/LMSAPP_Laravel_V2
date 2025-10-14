@@ -1,4 +1,19 @@
 <x-app-layout>
+    @push('styles')
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .chart-container-lg {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+    @endpush
+
     <x-slot name="header">
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 -mx-4 -my-2 px-4 py-8 sm:px-6 lg:px-8 rounded-2xl shadow-lg">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -11,7 +26,7 @@
                     </p>
                 </div>
                 <div class="flex space-x-4">
-                    <a href="{{ route('certificate-management.index') }}" 
+                    <a href="{{ route('certificate-management.index') }}"
                        class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
                         ← Kembali
                     </a>
@@ -149,20 +164,8 @@
                 </div>
                 <div class="p-6">
                     @if($monthlyStats->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($monthlyStats as $stat)
-                                <div class="flex items-center justify-between">
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {{ \Carbon\Carbon::createFromDate($stat->year, $stat->month, 1)->format('M Y') }}
-                                    </div>
-                                    <div class="flex items-center">
-                                        <div class="w-24 bg-gray-200 rounded-full h-2 mr-3">
-                                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ ($stat->count / $monthlyStats->max('count')) * 100 }}%"></div>
-                                        </div>
-                                        <span class="text-sm font-semibold text-gray-900">{{ $stat->count }}</span>
-                                    </div>
-                                </div>
-                            @endforeach
+                        <div class="chart-container-lg">
+                            <canvas id="monthlyChart"></canvas>
                         </div>
                     @else
                         <div class="text-center text-gray-500 py-8">
@@ -181,24 +184,8 @@
                 </div>
                 <div class="p-6">
                     @if($courseStats->count() > 0)
-                        <div class="space-y-4">
-                            @foreach($courseStats as $index => $course)
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                                        <span class="text-white text-sm font-bold">{{ $index + 1 }}</span>
-                                    </div>
-                                    <div class="ml-4 flex-1">
-                                        <div class="text-sm font-medium text-gray-900 truncate">{{ $course->title }}</div>
-                                        <div class="text-xs text-gray-500">{{ $course->certificates_count }} sertifikat</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <a href="{{ route('certificate-management.by-course', $course) }}" 
-                                           class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                            Lihat →
-                                        </a>
-                                    </div>
-                                </div>
-                            @endforeach
+                        <div class="chart-container-lg">
+                            <canvas id="courseChart"></canvas>
                         </div>
                     @else
                         <div class="text-center text-gray-500 py-8">
@@ -211,33 +198,15 @@
         </div>
 
         <!-- Template Usage Statistics -->
-        <div class="bg-white shadow rounded-lg">
+        <div class="bg-white shadow rounded-lg mb-8">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-medium text-gray-900">Penggunaan Template</h3>
                 <p class="text-sm text-gray-500 mt-1">Statistik penggunaan template sertifikat</p>
             </div>
             <div class="p-6">
                 @if($templateStats->count() > 0)
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        @foreach($templateStats as $template)
-                            <div class="border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="text-sm font-medium text-gray-900 truncate">
-                                        {{ $template->name }}
-                                    </div>
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ $template->certificates_count }}
-                                    </span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" 
-                                         style="width: {{ ($template->certificates_count / $templateStats->max('certificates_count')) * 100 }}%"></div>
-                                </div>
-                                <div class="text-xs text-gray-500 mt-2">
-                                    {{ number_format(($template->certificates_count / $analytics['total_certificates']) * 100, 1) }}% dari total
-                                </div>
-                            </div>
-                        @endforeach
+                    <div class="chart-container-lg">
+                        <canvas id="templateChart"></canvas>
                     </div>
                 @else
                     <div class="text-center text-gray-500 py-12">
@@ -264,25 +233,13 @@
                             <h4 class="text-sm font-semibold text-gray-900">Jenis Kelamin</h4>
                             <span class="text-xs text-gray-500">Total: {{ number_format($analytics['total_certificates']) }}</span>
                         </div>
-                        @php
-                            $total = max(1, $analytics['total_certificates']);
-                        @endphp
-                        <div class="space-y-2">
-                            @forelse($genderStats as $gender => $count)
-                                @php $pct = round(($count / $total) * 100, 1); @endphp
-                                <div>
-                                    <div class="flex justify-between text-sm">
-                                        <span class="capitalize text-gray-700">{{ $gender }}</span>
-                                        <span class="text-gray-600">{{ $count }} ({{ $pct }}%)</span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="h-2 rounded-full bg-indigo-600" style="width: {{ $pct }}%"></div>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="text-gray-500 text-sm">Belum ada data gender</div>
-                            @endforelse
-                        </div>
+                        @if(!empty($genderStats) && count($genderStats) > 0)
+                            <div class="chart-container">
+                                <canvas id="genderChart"></canvas>
+                            </div>
+                        @else
+                            <div class="text-gray-500 text-sm text-center py-8">Belum ada data gender</div>
+                        @endif
                     </div>
 
                     <!-- Age Groups -->
@@ -290,21 +247,14 @@
                         <div class="flex items-center justify-between mb-3">
                             <h4 class="text-sm font-semibold text-gray-900">Kelompok Usia</h4>
                         </div>
-                        <div class="space-y-2">
-                            @php $ageTotal = max(1, array_sum($ageGroups)); @endphp
-                            @foreach($ageGroups as $label => $count)
-                                @php $pct = round(($count / $ageTotal) * 100, 1); @endphp
-                                <div>
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-700">{{ $label }}</span>
-                                        <span class="text-gray-600">{{ $count }} ({{ $pct }}%)</span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="h-2 rounded-full bg-green-600" style="width: {{ $pct }}%"></div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
+                        @php $ageTotal = array_sum($ageGroups); @endphp
+                        @if($ageTotal > 0)
+                            <div class="chart-container">
+                                <canvas id="ageChart"></canvas>
+                            </div>
+                        @else
+                            <div class="text-gray-500 text-sm text-center py-8">Belum ada data usia</div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -319,56 +269,534 @@
                     <!-- Occupations -->
                     <div>
                         <h4 class="text-sm font-semibold text-gray-900 mb-3">Profesi Teratas</h4>
-                        <div class="space-y-3">
-                            @forelse($topOccupations as $row)
-                                @php $pct = round(($row->total / max(1, $analytics['total_certificates'])) * 100, 1); @endphp
-                                <div>
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-700 truncate">{{ $row->occupation }}</span>
-                                        <span class="text-gray-600">{{ $row->total }} ({{ $pct }}%)</span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="h-2 rounded-full bg-purple-600" style="width: {{ $pct }}%"></div>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="text-gray-500 text-sm">Belum ada data profesi</div>
-                            @endforelse
-                        </div>
+                        @if(count($topOccupations) > 0)
+                            <div class="chart-container">
+                                <canvas id="occupationChart"></canvas>
+                            </div>
+                        @else
+                            <div class="text-gray-500 text-sm text-center py-8">Belum ada data profesi</div>
+                        @endif
                     </div>
 
                     <!-- Institutions -->
                     <div>
                         <h4 class="text-sm font-semibold text-gray-900 mb-3">Institusi Teratas</h4>
-                        <div class="space-y-2 max-h-56 overflow-auto pr-1">
-                            @forelse($topInstitutions as $row)
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-700 truncate" title="{{ $row->institution_name }}">{{ $row->institution_name }}</span>
-                                    <span class="text-gray-600">{{ $row->total }}</span>
-                                </div>
-                            @empty
-                                <div class="text-gray-500 text-sm">Belum ada data institusi</div>
-                            @endforelse
-                        </div>
+                        @if(count($topInstitutions) > 0)
+                            <div class="chart-container">
+                                <canvas id="institutionChart"></canvas>
+                            </div>
+                        @else
+                            <div class="text-gray-500 text-sm text-center py-8">Belum ada data institusi</div>
+                        @endif
                     </div>
 
                     <!-- Email Domains -->
                     <div>
                         <h4 class="text-sm font-semibold text-gray-900 mb-3">Domain Email Teratas</h4>
-                        <div class="space-y-2 max-h-56 overflow-auto pr-1">
-                            @forelse($topEmailDomains as $row)
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-700">{{ $row['domain'] }}</span>
-                                    <span class="text-gray-600">{{ $row['total'] }}</span>
-                                </div>
-                            @empty
-                                <div class="text-gray-500 text-sm">Belum ada data email</div>
-                            @endforelse
-                        </div>
+                        @if(count($topEmailDomains) > 0)
+                            <div class="chart-container">
+                                <canvas id="emailChart"></canvas>
+                            </div>
+                        @else
+                            <div class="text-gray-500 text-sm text-center py-8">Belum ada data email</div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // Chart.js Global Config
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#6B7280';
+
+    // Color Palettes
+    const colorPalette = {
+        blue: ['#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', '#DBEAFE'],
+        purple: ['#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE', '#EDE9FE'],
+        green: ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'],
+        gradient: ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#6366F1', '#8B5CF6'],
+    };
+
+    // Monthly Statistics Chart
+    @if($monthlyStats->count() > 0)
+    const monthlyCtx = document.getElementById('monthlyChart');
+    if (monthlyCtx) {
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: [
+                    @foreach($monthlyStats as $stat)
+                        '{{ \Carbon\Carbon::createFromDate($stat->year, $stat->month, 1)->format('M Y') }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    label: 'Sertifikat Dibuat',
+                    data: [
+                        @foreach($monthlyStats as $stat)
+                            {{ $stat->count }},
+                        @endforeach
+                    ],
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#3B82F6',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Course Statistics Chart
+    @if($courseStats->count() > 0)
+    const courseCtx = document.getElementById('courseChart');
+    if (courseCtx) {
+        new Chart(courseCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    @foreach($courseStats as $course)
+                        '{{ Str::limit($course->title, 30) }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    label: 'Jumlah Sertifikat',
+                    data: [
+                        @foreach($courseStats as $course)
+                            {{ $course->certificates_count }},
+                        @endforeach
+                    ],
+                    backgroundColor: colorPalette.gradient,
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Template Usage Chart
+    @if($templateStats->count() > 0)
+    const templateCtx = document.getElementById('templateChart');
+    if (templateCtx) {
+        new Chart(templateCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    @foreach($templateStats as $template)
+                        '{{ $template->name }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    data: [
+                        @foreach($templateStats as $template)
+                            {{ $template->certificates_count }},
+                        @endforeach
+                    ],
+                    backgroundColor: colorPalette.gradient,
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12 },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Gender Distribution Chart
+    @if(!empty($genderStats) && count($genderStats) > 0)
+    const genderCtx = document.getElementById('genderChart');
+    if (genderCtx) {
+        new Chart(genderCtx, {
+            type: 'pie',
+            data: {
+                labels: [
+                    @foreach($genderStats as $gender => $count)
+                        '{{ ucfirst($gender) }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    data: [
+                        @foreach($genderStats as $gender => $count)
+                            {{ $count }},
+                        @endforeach
+                    ],
+                    backgroundColor: ['#3B82F6', '#EC4899', '#8B5CF6'],
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12 },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Age Distribution Chart
+    @php $ageTotal = array_sum($ageGroups); @endphp
+    @if($ageTotal > 0)
+    const ageCtx = document.getElementById('ageChart');
+    if (ageCtx) {
+        new Chart(ageCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    @foreach($ageGroups as $label => $count)
+                        '{{ $label }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    label: 'Jumlah Peserta',
+                    data: [
+                        @foreach($ageGroups as $label => $count)
+                            {{ $count }},
+                        @endforeach
+                    ],
+                    backgroundColor: '#10B981',
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Occupation Chart
+    @if(count($topOccupations) > 0)
+    const occupationCtx = document.getElementById('occupationChart');
+    if (occupationCtx) {
+        new Chart(occupationCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    @foreach($topOccupations as $row)
+                        '{{ Str::limit($row->occupation, 25) }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    label: 'Jumlah',
+                    data: [
+                        @foreach($topOccupations as $row)
+                            {{ $row->total }},
+                        @endforeach
+                    ],
+                    backgroundColor: '#8B5CF6',
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Institution Chart
+    @if(count($topInstitutions) > 0)
+    const institutionCtx = document.getElementById('institutionChart');
+    if (institutionCtx) {
+        new Chart(institutionCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    @foreach($topInstitutions as $row)
+                        '{{ Str::limit($row->institution_name, 25) }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    label: 'Jumlah',
+                    data: [
+                        @foreach($topInstitutions as $row)
+                            {{ $row->total }},
+                        @endforeach
+                    ],
+                    backgroundColor: '#F59E0B',
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+
+    // Email Domains Chart
+    @if(count($topEmailDomains) > 0)
+    const emailCtx = document.getElementById('emailChart');
+    if (emailCtx) {
+        new Chart(emailCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    @foreach($topEmailDomains as $row)
+                        '{{ $row['domain'] }}',
+                    @endforeach
+                ],
+                datasets: [{
+                    data: [
+                        @foreach($topEmailDomains as $row)
+                            {{ $row['total'] }},
+                        @endforeach
+                    ],
+                    backgroundColor: colorPalette.gradient,
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: { size: 11 },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    @endif
+</script>
+@endpush
 </x-app-layout>

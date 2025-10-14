@@ -410,19 +410,56 @@ class CourseController extends Controller
             abort(404, 'Peserta tidak terdaftar pada kursus ini.');
         }
 
-        $course->load(['lessons.contents' => function ($query) {
-            $query->orderBy('order');
-        }]);
+        // ✅ OPTIMASI: Eager load semua relasi yang dibutuhkan sekaligus untuk menghindari N+1
+        $course->load([
+            'lessons' => function ($query) {
+                $query->orderBy('order');
+            },
+            'lessons.contents' => function ($query) {
+                $query->orderBy('order');
+            },
+            'lessons.contents.essayQuestions',
+            'lessons.contents.quiz'
+        ]);
 
-        // ✅ PERBAIKAN: Buat peta penyelesaian yang akurat untuk SEMUA jenis konten.
-        // Kita akan iterasi semua konten dan menggunakan method hasCompletedContent dari model User.
-        $completedContentsMap = collect();
+        // ✅ OPTIMASI: Load semua data user yang dibutuhkan sekaligus
+        $user->load([
+            'completedContents' => function ($query) use ($course) {
+                $query->whereHas('lesson', function ($q) use ($course) {
+                    $q->where('course_id', $course->id);
+                })->wherePivot('completed', true);
+            },
+            'quizAttempts' => function ($query) use ($course) {
+                $query->whereHas('quiz.lesson', function ($q) use ($course) {
+                    $q->where('course_id', $course->id);
+                });
+            },
+            'essaySubmissions' => function ($query) use ($course) {
+                $query->whereHas('content.lesson', function ($q) use ($course) {
+                    $q->where('course_id', $course->id);
+                })->with(['answers' => function ($q) {
+                    $q->select('id', 'submission_id', 'question_id', 'score', 'feedback');
+                }]);
+            }
+        ]);
+
+        // ✅ OPTIMASI: Buat map untuk akses cepat O(1)
+        $completedContentsMap = $user->completedContents->pluck('id')->flip();
+        $quizAttemptsMap = $user->quizAttempts->groupBy('quiz_id');
+        $essaySubmissionsMap = $user->essaySubmissions->keyBy('content_id');
+
+        // ✅ OPTIMASI: Pre-calculate status untuk semua content sekaligus
+        $contentStatusData = collect();
         foreach ($course->lessons as $lesson) {
             foreach ($lesson->contents as $content) {
-                // Gunakan method 'hasCompletedContent' dari model User yang sudah ada
-                if ($user->hasCompletedContent($content)) {
-                    $completedContentsMap->put($content->id, true);
-                }
+                $statusData = $this->calculateContentStatus(
+                    $content,
+                    $user,
+                    $completedContentsMap,
+                    $quizAttemptsMap,
+                    $essaySubmissionsMap
+                );
+                $contentStatusData->put($content->id, $statusData);
             }
         }
 
@@ -430,8 +467,154 @@ class CourseController extends Controller
             'course' => $course,
             'participant' => $user,
             'lessons' => $course->lessons,
-            'completedContentsMap' => $completedContentsMap
+            'completedContentsMap' => $completedContentsMap,
+            'contentStatusData' => $contentStatusData,
+            'essaySubmissionsMap' => $essaySubmissionsMap
         ]);
+    }
+
+    /**
+     * ✅ OPTIMASI: Helper method untuk menghitung status content tanpa query tambahan
+     */
+    private function calculateContentStatus($content, $user, $completedContentsMap, $quizAttemptsMap, $essaySubmissionsMap)
+    {
+        $status = 'not_started';
+        $statusText = 'Belum Dimulai';
+        $badgeClass = 'bg-gray-100 text-gray-800';
+        $isCompleted = false;
+
+        // Handle optional content
+        if ($content->is_optional ?? false) {
+            $isCompleted = $completedContentsMap->has($content->id);
+            if ($isCompleted) {
+                $status = 'completed';
+                $statusText = 'Selesai';
+                $badgeClass = 'bg-green-100 text-green-800';
+            }
+            return compact('status', 'statusText', 'badgeClass', 'isCompleted');
+        }
+
+        // Handle quiz content
+        if ($content->type === 'quiz' && $content->quiz_id) {
+            $passedAttempt = $quizAttemptsMap->has($content->quiz_id) &&
+                             $quizAttemptsMap->get($content->quiz_id)->where('passed', true)->isNotEmpty();
+
+            if ($passedAttempt) {
+                $status = 'completed';
+                $statusText = 'Selesai';
+                $badgeClass = 'bg-green-100 text-green-800';
+                $isCompleted = true;
+            } else {
+                $hasAttempt = $quizAttemptsMap->has($content->quiz_id);
+                if ($hasAttempt) {
+                    $status = 'failed';
+                    $statusText = 'Belum Lulus';
+                    $badgeClass = 'bg-red-100 text-red-800';
+                }
+            }
+            return compact('status', 'statusText', 'badgeClass', 'isCompleted');
+        }
+
+        // Handle essay content
+        if ($content->type === 'essay') {
+            $submission = $essaySubmissionsMap->get($content->id);
+
+            if (!$submission) {
+                return compact('status', 'statusText', 'badgeClass', 'isCompleted');
+            }
+
+            $totalQuestions = $content->essayQuestions->count();
+
+            // Legacy system (no questions)
+            if ($totalQuestions === 0) {
+                if ($submission->answers->count() > 0) {
+                    $status = 'completed';
+                    $statusText = 'Selesai';
+                    $badgeClass = 'bg-green-100 text-green-800';
+                    $isCompleted = true;
+                }
+                return compact('status', 'statusText', 'badgeClass', 'isCompleted');
+            }
+
+            // Check if requires review
+            if (!($content->requires_review ?? true)) {
+                if ($submission->answers->count() > 0) {
+                    $status = 'completed';
+                    $statusText = 'Selesai';
+                    $badgeClass = 'bg-green-100 text-green-800';
+                    $isCompleted = true;
+                }
+                return compact('status', 'statusText', 'badgeClass', 'isCompleted');
+            }
+
+            // New system - check based on scoring and grading mode
+            if (!$content->scoring_enabled) {
+                // Without scoring
+                if ($content->grading_mode === 'overall') {
+                    $answersWithFeedback = $submission->answers->whereNotNull('feedback')->count();
+                    if ($answersWithFeedback > 0) {
+                        $status = 'completed';
+                        $statusText = 'Selesai';
+                        $badgeClass = 'bg-green-100 text-green-800';
+                        $isCompleted = true;
+                    } elseif ($submission->answers->count() > 0) {
+                        $status = 'pending_grade';
+                        $statusText = 'Menunggu Penilaian';
+                        $badgeClass = 'bg-yellow-100 text-yellow-800';
+                    }
+                } else {
+                    $answersWithFeedback = $submission->answers->whereNotNull('feedback')->count();
+                    if ($answersWithFeedback >= $totalQuestions) {
+                        $status = 'completed';
+                        $statusText = 'Selesai';
+                        $badgeClass = 'bg-green-100 text-green-800';
+                        $isCompleted = true;
+                    } elseif ($submission->answers->count() > 0) {
+                        $status = 'pending_grade';
+                        $statusText = 'Menunggu Penilaian';
+                        $badgeClass = 'bg-yellow-100 text-yellow-800';
+                    }
+                }
+            } else {
+                // With scoring
+                if ($content->grading_mode === 'overall') {
+                    $answersWithScore = $submission->answers->whereNotNull('score')->count();
+                    if ($answersWithScore > 0) {
+                        $status = 'completed';
+                        $statusText = 'Selesai';
+                        $badgeClass = 'bg-green-100 text-green-800';
+                        $isCompleted = true;
+                    } elseif ($submission->answers->count() > 0) {
+                        $status = 'pending_grade';
+                        $statusText = 'Menunggu Penilaian';
+                        $badgeClass = 'bg-yellow-100 text-yellow-800';
+                    }
+                } else {
+                    $gradedAnswers = $submission->answers->whereNotNull('score')->count();
+                    if ($gradedAnswers >= $totalQuestions) {
+                        $status = 'completed';
+                        $statusText = 'Selesai';
+                        $badgeClass = 'bg-green-100 text-green-800';
+                        $isCompleted = true;
+                    } elseif ($submission->answers->count() > 0) {
+                        $status = 'pending_grade';
+                        $statusText = 'Menunggu Penilaian';
+                        $badgeClass = 'bg-yellow-100 text-yellow-800';
+                    }
+                }
+            }
+            return compact('status', 'statusText', 'badgeClass', 'isCompleted');
+        }
+
+        // Handle other content types (video, document, etc)
+        $isCompleted = $completedContentsMap->has($content->id);
+        if ($isCompleted) {
+            $status = 'completed';
+            $statusText = 'Selesai';
+            $badgeClass = 'bg-green-100 text-green-800';
+        }
+
+        return compact('status', 'statusText', 'badgeClass', 'isCompleted');
     }
 
     public function addInstructor(Request $request, Course $course)

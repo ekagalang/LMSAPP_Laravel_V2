@@ -119,18 +119,25 @@
                         <div class="p-8">
                             @forelse ($lesson->contents as $content)
                                 @php
-                                    // Enhanced status logic
-                                    $contentStatus = $participant->getContentStatus($content);
-                                    $statusText = $participant->getContentStatusText($content);
-                                    $badgeClass = $participant->getContentStatusBadgeClass($content);
-                                    $isCompleted = ($contentStatus === 'completed');
+                                    // ✅ OPTIMASI: Gunakan data yang sudah di-pre-calculate
+                                    $statusData = $contentStatusData->get($content->id, [
+                                        'status' => 'not_started',
+                                        'statusText' => 'Belum Dimulai',
+                                        'badgeClass' => 'bg-gray-100 text-gray-800',
+                                        'isCompleted' => false
+                                    ]);
+
+                                    $contentStatus = $statusData['status'];
+                                    $statusText = $statusData['statusText'];
+                                    $badgeClass = $statusData['badgeClass'];
+                                    $isCompleted = $statusData['isCompleted'];
                                 @endphp
-                                
+
                                 <div class="flex items-center justify-between p-4 rounded-xl mb-3 last:mb-0 border-2 transition-all duration-200 hover:shadow-md {{ $isCompleted ?
-                                    'bg-green-50 border-green-200 hover:bg-green-100' : 
-                                    ($contentStatus === 'pending_grade' ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100') 
+                                    'bg-green-50 border-green-200 hover:bg-green-100' :
+                                    ($contentStatus === 'pending_grade' ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100')
                                 }}">
-                                    
+
                                     <div class="flex items-center space-x-4">
                                         {{-- Content Type Icon --}}
                                         <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ $isCompleted ? 'bg-green-100 text-green-600' : ($contentStatus === 'pending_grade' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-600') }}">
@@ -142,18 +149,19 @@
                                                 @default 📝
                                             @endswitch
                                         </div>
-                                        
+
                                         {{-- Content Info --}}
                                         <div class="flex-1">
                                             <h4 class="font-semibold text-gray-900">{{ $content->title }}</h4>
                                             <p class="text-sm text-gray-600 capitalize">{{ ucfirst($content->type) }}</p>
-                                            
+
                                             {{-- Enhanced Essay Progress Info --}}
                                             @if($content->type === 'essay' && $contentStatus === 'pending_grade')
                                                 @php
-                                                    $submission = $participant->essaySubmissions()->where('content_id', $content->id)->first();
-                                                    $totalQuestions = $content->essayQuestions()->count();
-                                                    $gradedAnswers = $submission ? $submission->answers()->whereNotNull('score')->count() : 0;
+                                                    // ✅ OPTIMASI: Gunakan data submission yang sudah di-load
+                                                    $submission = $essaySubmissionsMap->get($content->id);
+                                                    $totalQuestions = $content->essayQuestions->count();
+                                                    $gradedAnswers = $submission ? $submission->answers->whereNotNull('score')->count() : 0;
                                                 @endphp
                                                 <p class="text-xs text-yellow-600 mt-1">
                                                     Dinilai: {{ $gradedAnswers }}/{{ $totalQuestions }} pertanyaan
@@ -161,15 +169,15 @@
                                             @endif
                                         </div>
                                     </div>
-                                    
+
                                     {{-- Enhanced Status Badge --}}
                                     <div class="flex items-center space-x-3">
                                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $badgeClass }}">
                                             {{ $statusText }}
                                         </span>
-                                        
+
                                         {{-- Action Button --}}
-                                        <a href="{{ route('contents.show', $content) }}" 
+                                        <a href="{{ route('contents.show', $content) }}"
                                         class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                                             @if($contentStatus === 'completed')
                                                 Review
