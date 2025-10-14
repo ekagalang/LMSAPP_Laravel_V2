@@ -5,7 +5,7 @@
                 📊 Pemantauan Progres Kursus
             </h2>
             <div class="text-sm text-gray-600">
-                Total: {{ $courses->count() }} Kursus
+                Total: {{ $courses->total() }} Kursus
             </div>
         </div>
     </x-slot>
@@ -23,7 +23,7 @@
                         </div>
                         <div>
                             <p class="text-blue-100 text-sm">Total Kursus</p>
-                            <p class="text-2xl font-bold">{{ $courses->count() }}</p>
+                            <p class="text-2xl font-bold">{{ $courses->total() }}</p>
                         </div>
                     </div>
                 </div>
@@ -37,7 +37,7 @@
                         </div>
                         <div>
                             <p class="text-green-100 text-sm">Aktif</p>
-                            <p class="text-2xl font-bold">{{ $courses->where('status', 'published')->count() }}</p>
+                            <p class="text-2xl font-bold">{{ $courses->total() }}</p>
                         </div>
                     </div>
                 </div>
@@ -171,6 +171,13 @@
                             </div>
                         @endforelse
                     </div>
+
+                    <!-- Pagination Links -->
+                    @if($courses->hasPages())
+                        <div class="mt-8 flex justify-center">
+                            {{ $courses->links() }}
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
