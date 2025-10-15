@@ -608,14 +608,83 @@
                                                         </div>
                                                     </div>
 
-                                                    {{-- PDF Preview (native) --}}
+                                                    {{-- PDF Preview using PDF.js to avoid iframe blocking in production --}}
                                                     @if($fileExtension === 'pdf')
-                                                        <iframe
-                                                            src="{{ $fileUrl }}#toolbar=0&navpanes=0&scrollbar=0"
-                                                            class="w-full h-full"
-                                                            x-on:load="loading = false"
-                                                            x-on:error="error = true; loading = false">
-                                                        </iframe>
+                                                        <div id="doc-pdf-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-100">
+                                                            <div class="w-12 h-12 border-4 border-gray-300 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                                            <p class="text-sm text-gray-600">Memuat preview dokumen...</p>
+                                                        </div>
+                                                        <div id="doc-pdf-viewer" class="hidden absolute inset-0 overflow-auto">
+                                                            <div class="min-h-full p-4 md:p-6">
+                                                                <div class="bg-white rounded-xl shadow-xl overflow-hidden flex justify-center">
+                                                                    <canvas id="doc-pdf-canvas" class="max-w-full h-auto"></canvas>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div id="doc-pdf-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-yellow-50">
+                                                            <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+                                                                <svg class="w-10 h-10 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                                </svg>
+                                                            </div>
+                                                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Preview tidak tersedia</h3>
+                                                            <p class="text-sm text-gray-600 mb-4">Browser memblokir tampilan tersemat. Anda masih dapat membuka di tab baru atau mengunduhnya.</p>
+                                                            <div class="flex flex-col sm:flex-row gap-3">
+                                                                <a href="{{ $fileUrl }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                                                    </svg>
+                                                                    Buka di Tab Baru
+                                                                </a>
+                                                                <a href="{{ $fileUrl }}" download class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                                    </svg>
+                                                                    Unduh PDF
+                                                                </a>
+                                                            </div>
+                                                        </div>
+
+                                                        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+                                                        <script>
+                                                            (function() {
+                                                                try {
+                                                                    if (window.pdfjsLib) {
+                                                                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                                                                    }
+                                                                    const pdfUrl = "{{ $fileUrl }}";
+                                                                    const canvas = document.getElementById('doc-pdf-canvas');
+                                                                    const ctx = canvas.getContext('2d');
+                                                                    const loadingEl = document.getElementById('doc-pdf-loading');
+                                                                    const viewerEl = document.getElementById('doc-pdf-viewer');
+                                                                    const fallbackEl = document.getElementById('doc-pdf-fallback');
+
+                                                                    const showViewer = () => { if (loadingEl) loadingEl.classList.add('hidden'); if (viewerEl) viewerEl.classList.remove('hidden'); };
+                                                                    const showFallback = () => { if (loadingEl) loadingEl.classList.add('hidden'); if (viewerEl) viewerEl.classList.add('hidden'); if (fallbackEl) fallbackEl.classList.remove('hidden'); };
+
+                                                                    if (!window.pdfjsLib) { showFallback(); return; }
+
+                                                                    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                                                                        return pdf.getPage(1).then(function(page) {
+                                                                            const viewport = page.getViewport({ scale: 1.2 });
+                                                                            canvas.width = viewport.width;
+                                                                            canvas.height = viewport.height;
+                                                                            const renderContext = { canvasContext: ctx, viewport: viewport };
+                                                                            return page.render(renderContext).promise;
+                                                                        });
+                                                                    }).then(function() {
+                                                                        showViewer();
+                                                                    }).catch(function() {
+                                                                        showFallback();
+                                                                    });
+                                                                } catch (e) {
+                                                                    const fb = document.getElementById('doc-pdf-fallback');
+                                                                    if (fb) { fb.classList.remove('hidden'); }
+                                                                    const ld = document.getElementById('doc-pdf-loading');
+                                                                    if (ld) { ld.classList.add('hidden'); }
+                                                                }
+                                                            })();
+                                                        </script>
                                                     @else
                                                         {{-- Google Docs Viewer untuk Office files --}}
                                                         <iframe
