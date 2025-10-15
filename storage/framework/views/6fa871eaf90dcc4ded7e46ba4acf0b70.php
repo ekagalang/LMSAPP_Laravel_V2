@@ -507,9 +507,9 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Overlay controls (appear on hover/touch only) -->
-                                                <div class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 z-20 transition-opacity"
-                                                     :class="showUI ? 'opacity-100' : 'opacity-0'">
+                                                <!-- Overlay controls (mobile always visible; desktop on hover) -->
+                                                <div class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 z-50 transition-opacity"
+                                                     :class="showUI ? 'opacity-100' : 'opacity-100 md:opacity-0'">
                                                     <button @click.prevent="prev()" class="pointer-events-auto p-2 rounded-full bg-white/70 backdrop-blur-sm text-gray-800 shadow ring-1 ring-black/5 hover:bg-white">
                                                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                                                     </button>
@@ -518,9 +518,9 @@
                                                     </button>
                                                 </div>
 
-                                                <!-- Overlay dots (small, subtle) -->
-                                                <div class="absolute bottom-2 left-0 right-0 flex items-center justify-center z-20 transition-opacity"
-                                                     :class="showUI ? 'opacity-100' : 'opacity-0'">
+                                                <!-- Overlay dots (mobile always visible; desktop on hover) -->
+                                                <div class="absolute bottom-2 left-0 right-0 flex items-center justify-center z-50 transition-opacity"
+                                                     :class="showUI ? 'opacity-100' : 'opacity-100 md:opacity-0'">
                                                     <div class="px-2 py-1 rounded-full bg-white/70 backdrop-blur-sm shadow ring-1 ring-black/5 flex items-center gap-1.5">
                                                         <template x-for="(src, i) in slides" :key="'dot-'+i">
                                                             <button @click="setSlide(i)" class="w-2.5 h-2.5 rounded-full"
@@ -627,12 +627,108 @@
 
                                                     
                                                     <?php if($fileExtension === 'pdf'): ?>
-                                                        <iframe
-                                                            src="<?php echo e($fileUrl); ?>#toolbar=0&navpanes=0&scrollbar=0"
-                                                            class="w-full h-full"
-                                                            x-on:load="loading = false"
-                                                            x-on:error="error = true; loading = false">
-                                                        </iframe>
+                                                        <div id="doc-pdf-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-100">
+                                                            <div class="w-12 h-12 border-4 border-gray-300 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                                            <p class="text-sm text-gray-600">Memuat preview dokumen...</p>
+                                                        </div>
+                                                        <div id="doc-pdf-viewer" class="hidden absolute inset-0 overflow-auto">
+                                                            <div class="min-h-full p-4 md:p-6">
+                                                                <div id="doc-pdf-pages" class="mx-auto space-y-6" style="max-width: 1000px;"></div>
+                                                            </div>
+                                                        </div>
+                                                        <div id="doc-pdf-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-yellow-50">
+                                                            <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+                                                                <svg class="w-10 h-10 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                                </svg>
+                                                            </div>
+                                                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Preview tidak tersedia</h3>
+                                                            <p class="text-sm text-gray-600 mb-4">Browser memblokir tampilan tersemat. Anda masih dapat membuka di tab baru atau mengunduhnya.</p>
+                                                            <div class="flex flex-col sm:flex-row gap-3">
+                                                                <a href="<?php echo e($fileUrl); ?>" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                                                    </svg>
+                                                                    Buka di Tab Baru
+                                                                </a>
+                                                                <a href="<?php echo e($fileUrl); ?>" download class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                                    </svg>
+                                                                    Unduh PDF
+                                                                </a>
+                                                            </div>
+                                                        </div>
+
+                                                        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+                                                        <script>
+                                                            (function() {
+                                                                try {
+                                                                    if (window.pdfjsLib) {
+                                                                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                                                                    }
+                                                                    const pdfUrl = "<?php echo e($fileUrl); ?>";
+                                                                    const pagesEl = document.getElementById('doc-pdf-pages');
+                                                                    const loadingEl = document.getElementById('doc-pdf-loading');
+                                                                    const viewerEl = document.getElementById('doc-pdf-viewer');
+                                                                    const fallbackEl = document.getElementById('doc-pdf-fallback');
+
+                                                                    const showViewer = () => { if (loadingEl) loadingEl.classList.add('hidden'); if (viewerEl) viewerEl.classList.remove('hidden'); };
+                                                                    const showFallback = () => { if (loadingEl) loadingEl.classList.add('hidden'); if (viewerEl) viewerEl.classList.add('hidden'); if (fallbackEl) fallbackEl.classList.remove('hidden'); };
+
+                                                                    if (!window.pdfjsLib) { showFallback(); return; }
+
+                                                                    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                                                                        if (!pagesEl) { throw new Error('No pages container'); }
+                                                                        const total = pdf.numPages;
+
+                                                                        let firstRendered = false;
+
+                                                                        const renderPage = function(num) {
+                                                                            return pdf.getPage(num).then(function(page) {
+                                                                                const containerWidth = pagesEl.clientWidth || 800;
+                                                                                const initialViewport = page.getViewport({ scale: 1.0 });
+                                                                                const scale = Math.min(2.0, containerWidth / initialViewport.width);
+                                                                                const viewport = page.getViewport({ scale: scale });
+
+                                                                                const wrapper = document.createElement('div');
+                                                                                wrapper.className = 'bg-white rounded-xl shadow-xl overflow-hidden flex justify-center';
+
+                                                                                const canvas = document.createElement('canvas');
+                                                                                canvas.className = 'max-w-full h-auto';
+                                                                                const ctx = canvas.getContext('2d');
+                                                                                canvas.width = Math.floor(viewport.width);
+                                                                                canvas.height = Math.floor(viewport.height);
+                                                                                wrapper.appendChild(canvas);
+                                                                                pagesEl.appendChild(wrapper);
+
+                                                                                const renderContext = { canvasContext: ctx, viewport: viewport };
+                                                                                return page.render(renderContext).promise.then(function() {
+                                                                                    if (!firstRendered) {
+                                                                                        firstRendered = true;
+                                                                                        showViewer();
+                                                                                    }
+                                                                                });
+                                                                            });
+                                                                        };
+
+                                                                        // Render pages sequentially to avoid heavy CPU spikes
+                                                                        let chain = Promise.resolve();
+                                                                        for (let i = 1; i <= total; i++) {
+                                                                            chain = chain.then(() => renderPage(i));
+                                                                        }
+                                                                        return chain;
+                                                                    }).catch(function() {
+                                                                        showFallback();
+                                                                    });
+                                                                } catch (e) {
+                                                                    const fb = document.getElementById('doc-pdf-fallback');
+                                                                    if (fb) { fb.classList.remove('hidden'); }
+                                                                    const ld = document.getElementById('doc-pdf-loading');
+                                                                    if (ld) { ld.classList.add('hidden'); }
+                                                                }
+                                                            })();
+                                                        </script>
                                                     <?php else: ?>
                                                         
                                                         <iframe
