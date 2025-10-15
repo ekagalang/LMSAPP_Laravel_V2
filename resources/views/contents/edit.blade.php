@@ -1003,6 +1003,47 @@
                                     <p class="text-sm text-gray-500 mt-2">Maksimal 100MB</p>
                                 </div>
 
+                                <!-- Multiple Documents Uploader (tambahan untuk tipe document) -->
+                                <div x-show="isType('document')" class="mt-6">
+                                    <label for="documents" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Lampirkan Beberapa Dokumen (opsional)
+                                    </label>
+                                    <input type="file" name="documents[]" id="documents" multiple
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,application/rtf"
+                                           class="block w-full text-sm text-gray-600">
+                                    <p class="text-xs text-gray-500 mt-1">Maks 20 file, masing-masing hingga 100MB.</p>
+                                    <div id="documents_preview" class="mt-3 space-y-2"></div>
+                                </div>
+
+                                @if($content->documents && $content->documents->count())
+                                    <div class="mt-6" x-data>
+                                        <p class="text-sm font-semibold text-gray-700 mb-2">Lampiran Dokumen</p>
+                                        <input type="hidden" name="document_order" id="document_order" value="{{ $content->documents->pluck('id')->implode(',') }}">
+                                        <div id="delete_documents_container"></div>
+                                        <div id="current_documents_list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            @foreach($content->documents as $doc)
+                                                <div class="group relative rounded-lg overflow-hidden border bg-white p-3 flex items-center justify-between cursor-move" draggable="true" data-id="{{ $doc->id }}">
+                                                    <div class="flex items-center gap-3">
+                                                        <div class="w-10 h-10 bg-gray-100 text-gray-600 rounded-lg flex items-center justify-center">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m4-4H8"/></svg>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <p class="text-sm font-medium text-gray-900 truncate">{{ $doc->original_name ?? basename($doc->file_path) }}</p>
+                                                            <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="text-xs text-indigo-600 hover:underline">Buka</a>
+                                                        </div>
+                                                    </div>
+                                                    <div class="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button type="button" class="toggle-delete-doc p-1.5 rounded bg-white/80 text-red-600 hover:bg-white shadow ring-1 ring-black/5" title="Hapus dokumen">
+                                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m1 0v12a2 2 0 01-2 2H8a2 2 0 01-2-2V7z"/></svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-2">Tip: Drag untuk mengubah urutan. Klik ikon tempat sampah untuk menandai penghapusan.</p>
+                                    </div>
+                                @endif
+
                                 <!-- Multiple Images Uploader (tambahan untuk tipe image) -->
                                 <div x-show="isType('image')" class="mt-6">
                                     <label for="images" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -1287,6 +1328,78 @@
                 // Initial set
                 updateOrderInput();
             });
+        })();
+        // Drag & delete manager for existing documents
+        (function(){
+            document.addEventListener('DOMContentLoaded', function(){
+                const list = document.getElementById('current_documents_list');
+                const orderInput = document.getElementById('document_order');
+                const delContainer = document.getElementById('delete_documents_container');
+                if (!list || !orderInput || !delContainer) return;
+
+                function updateOrderInput(){
+                    const ids = Array.from(list.querySelectorAll('[data-id]')).map(el => el.getAttribute('data-id'));
+                    orderInput.value = ids.join(',');
+                }
+
+                // Initialize deletion toggles
+                list.querySelectorAll('.toggle-delete-doc').forEach(btn => {
+                    btn.addEventListener('click', function(e){
+                        e.preventDefault();
+                        const card = this.closest('[data-id]');
+                        const id = card.getAttribute('data-id');
+                        const isDel = card.classList.toggle('to-delete');
+                        if (isDel) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden'; input.name = 'delete_documents[]'; input.value = id; input.dataset.ref = `del-doc-${id}`;
+                            delContainer.appendChild(input);
+                        } else {
+                            const sel = delContainer.querySelector(`[data-ref="del-doc-${id}"]`);
+                            if (sel) sel.remove();
+                        }
+                    });
+                });
+
+                // DnD reorder
+                let draggingEl = null;
+                list.addEventListener('dragstart', e => {
+                    const el = e.target.closest('[data-id]');
+                    if (!el) return; draggingEl = el; e.dataTransfer.effectAllowed = 'move';
+                });
+                list.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    const target = e.target.closest('[data-id]');
+                    if (!target || target === draggingEl) return;
+                    const rect = target.getBoundingClientRect();
+                    const before = (e.clientY - rect.top) / rect.height < 0.5;
+                    target.parentNode.insertBefore(draggingEl, before ? target : target.nextSibling);
+                });
+                list.addEventListener('drop', e => { e.preventDefault(); updateOrderInput(); });
+                list.addEventListener('dragend', () => { draggingEl = null; updateOrderInput(); });
+
+                // Initial set
+                updateOrderInput();
+            });
+        })();
+        // Preview for multiple documents (filenames)
+        (function(){
+            const input = document.getElementById('documents');
+            const container = document.getElementById('documents_preview');
+            if (input && container) {
+                input.addEventListener('change', function() {
+                    container.innerHTML = '';
+                    const files = Array.from(this.files || []);
+                    files.slice(0, 20).forEach(file => {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center justify-between p-2 rounded border';
+                        const name = document.createElement('span');
+                        name.className = 'text-sm text-gray-700 truncate';
+                        name.textContent = file.name + ` (${Math.round(file.size/1024)} KB)`;
+                        row.appendChild(name);
+                        container.appendChild(row);
+                    });
+                });
+            }
         })();
         // Preview untuk multiple images (edit)
         (function(){

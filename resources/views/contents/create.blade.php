@@ -352,6 +352,18 @@
                                     </div>
                                 </div>
 
+                                <!-- Multiple Documents Uploader (untuk tipe document) -->
+                                <div class="mt-6" x-show="document.querySelector('input[name=\"type\"]:checked')?.value === 'document'">
+                                    <label for="documents" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Lampirkan Beberapa Dokumen (opsional)
+                                    </label>
+                                    <input type="file" name="documents[]" id="documents" multiple
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,application/rtf"
+                                           class="block w-full text-sm text-gray-600">
+                                    <p class="text-xs text-gray-500 mt-1">Maks 20 file, masing-masing hingga 100MB.</p>
+                                    <div id="documents_preview" class="mt-3 space-y-2"></div>
+                                </div>
+
                                 <!-- Multiple Images Uploader (untuk tipe image) -->
                                 <div class="mt-6">
                                     <label for="images" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -611,6 +623,26 @@
                         el.src = url;
                         el.className = 'w-full h-32 object-cover rounded-lg border';
                         container.appendChild(el);
+                    });
+                });
+            }
+        })();
+        // Preview untuk multiple documents (tampilkan nama file)
+        (function(){
+            const input = document.getElementById('documents');
+            const container = document.getElementById('documents_preview');
+            if (input && container) {
+                input.addEventListener('change', function() {
+                    container.innerHTML = '';
+                    const files = Array.from(this.files || []);
+                    files.slice(0, 20).forEach(file => {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center justify-between p-2 rounded border';
+                        const name = document.createElement('span');
+                        name.className = 'text-sm text-gray-700 truncate';
+                        name.textContent = file.name + ` (${Math.round(file.size/1024)} KB)`;
+                        row.appendChild(name);
+                        container.appendChild(row);
                     });
                 });
             }
