@@ -39,7 +39,7 @@ class ContentController extends Controller
         }
 
         // TAMBAH load untuk essayQuestions
-        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions');
+        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions', 'images');
 
         if ($user->hasRole(['super-admin', 'instructor'])) {
             $unlockedContents = $orderedContents;
@@ -345,7 +345,7 @@ class ContentController extends Controller
     {
         $this->authorize('update', $lesson->course);
         // TAMBAH load essayQuestions
-        $content->load(['quiz.questions.options', 'essayQuestions']);
+        $content->load(['quiz.questions.options', 'essayQuestions', 'images']);
         return view('contents.edit', compact('lesson', 'content'));
     }
 
@@ -376,9 +376,35 @@ class ContentController extends Controller
             'description' => 'nullable|string',
             'type' => ['required', Rule::in(['text', 'video', 'document', 'image', 'quiz', 'essay', 'zoom'])],
             'order' => 'nullable|integer',
-            'file_upload' => 'nullable|file|max:102400',
             'is_optional' => 'sometimes|boolean',
+            'document_access_type' => ['nullable', Rule::in(['both', 'download_only', 'preview_only'])],
         ];
+
+        // Validasi file upload berdasarkan tipe konten
+        if ($request->input('type') === 'document') {
+            // Untuk content baru, file wajib. Untuk edit, file opsional (kecuali mau ganti)
+            if (!$content->exists || $request->hasFile('file_upload')) {
+                $rules['file_upload'] = [
+                    $content->exists ? 'nullable' : 'required',
+                    'file',
+                    'max:102400', // 100MB - lebih realistis untuk dokumen
+                    'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,rtf'
+                ];
+            }
+        } elseif ($request->input('type') === 'image') {
+            // Izinkan baik single image (file_upload) maupun multiple (images[])
+            if ($request->hasFile('file_upload')) {
+                $rules['file_upload'] = [
+                    'file',
+                    'max:10240',
+                    'mimes:jpg,jpeg,png,gif,svg,webp'
+                ];
+            }
+            if ($request->hasFile('images')) {
+                $rules['images'] = ['array', 'max:20'];
+                $rules['images.*'] = ['file', 'image', 'max:10240', 'mimes:jpg,jpeg,png,gif,svg,webp'];
+            }
+        }
 
         // 🆕 TAMBAHAN: Validasi untuk scoring_enabled pada essay
         if ($request->has('questions') && !empty($request->input('questions'))) {
@@ -569,6 +595,19 @@ class ContentController extends Controller
                 $content->file_path = $request->file('file_upload')->store('content_files', 'public');
             }
 
+            // 🆕 Multiple images handling for image content (defer create until after $content->save())
+            $deferredImagePaths = [];
+            if ($validated['type'] === 'image' && $request->hasFile('images')) {
+                foreach ($request->file('images') as $imgFile) {
+                    if (!$imgFile->isValid()) continue;
+                    $deferredImagePaths[] = $imgFile->store('content_files', 'public');
+                }
+                // Set file_path ke gambar pertama jika belum ada (backward compat)
+                if (!$content->file_path && !empty($deferredImagePaths)) {
+                    $content->file_path = $deferredImagePaths[0];
+                }
+            }
+
             // Set order dengan lebih hati-hati
             if (!$content->exists) {
                 $lastOrder = $lesson->contents()->max('order') ?? 0;
@@ -593,6 +632,60 @@ class ContentController extends Controller
             }
 
             $content->save();
+
+            // Create related images after content has an ID
+            if ($validated['type'] === 'image' && !empty($deferredImagePaths)) {
+                $orderBase = (int) ($content->images()->max('order') ?? 0);
+                foreach (array_values($deferredImagePaths) as $idx => $path) {
+                    $content->images()->create([
+                        'file_path' => $path,
+                        'order' => $orderBase + $idx + 1,
+                    ]);
+                }
+            }
+
+            // 🆕 Manage deletions and reorder for existing images
+            if ($validated['type'] === 'image') {
+                // Deletions
+                $deleteIds = collect($request->input('delete_images', []))
+                    ->filter(fn($v) => is_numeric($v))
+                    ->map(fn($v) => (int) $v)
+                    ->values();
+                if ($deleteIds->isNotEmpty()) {
+                    $toDelete = $content->images()->whereIn('id', $deleteIds)->get();
+                    foreach ($toDelete as $img) {
+                        if ($img->file_path) { try { Storage::disk('public')->delete($img->file_path); } catch (\Throwable $e) {} }
+                        $img->delete();
+                    }
+                }
+
+                // Reorder (expects comma-separated IDs in desired order)
+                $orderStr = (string) $request->input('image_order', '');
+                if ($orderStr !== '') {
+                    $ids = collect(explode(',', $orderStr))
+                        ->filter(fn($v) => trim($v) !== '')
+                        ->map(fn($v) => (int) $v)
+                        ->values();
+                    $pos = 1;
+                    foreach ($ids as $id) {
+                        // Only reorder images that still belong to this content
+                        $content->images()->where('id', $id)->update(['order' => $pos]);
+                        $pos++;
+                    }
+                }
+
+                // Ensure file_path points to first image if missing or deleted
+                $firstImage = $content->images()->orderBy('order')->first();
+                $content->file_path = $firstImage ? $firstImage->file_path : $content->file_path;
+                if (!$firstImage && $content->file_path) {
+                    // If file_path exists but images table is empty, create a record to normalize
+                    $content->images()->create([
+                        'file_path' => $content->file_path,
+                        'order' => 1,
+                    ]);
+                }
+                $content->save();
+            }
 
             // Log body setelah save pertama
             if ($validated['type'] === 'essay' && $content->wasRecentlyCreated === false) {

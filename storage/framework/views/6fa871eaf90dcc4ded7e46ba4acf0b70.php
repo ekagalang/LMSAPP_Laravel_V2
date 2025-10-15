@@ -1,5 +1,14 @@
-<x-app-layout>
-    @php
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+    <?php
         // Siapkan variabel di luar atribut untuk menghindari konflik Blade di dalam x-data
         $user = Auth::user();
         $isTask = in_array($content->type, ['quiz', 'essay']);
@@ -17,13 +26,13 @@
             // Untuk konten biasa, gunakan helper yang konsisten dengan dashboard
             $isContentEffectivelyCompleted = $user->hasCompletedContent($content);
         }
-    @endphp
+    ?>
 
     <div x-data="{
         sidebarOpen: false,
         showProgress: false,
-        isTask: @json($isTask),
-        contentCompleted: @json($isContentEffectivelyCompleted),
+        isTask: <?php echo json_encode($isTask, 15, 512) ?>,
+        contentCompleted: <?php echo json_encode($isContentEffectivelyCompleted, 15, 512) ?>,
 
         toggleSidebar() { this.sidebarOpen = !this.sidebarOpen },
 
@@ -37,11 +46,11 @@
     class="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
 
         <!-- [BARU] Form tersembunyi untuk menandai selesai (hanya untuk konten non-tugas) -->
-        @if(!$isTask)
-        <form id="complete-form" action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" style="display: none;">
-            @csrf
+        <?php if(!$isTask): ?>
+        <form id="complete-form" action="<?php echo e(route('contents.complete_and_continue', $content->id)); ?>" method="POST" style="display: none;">
+            <?php echo csrf_field(); ?>
         </form>
-        @endif
+        <?php endif; ?>
 
         <!-- Sidebar Backdrop Overlay -->
         <div x-show="sidebarOpen"
@@ -64,10 +73,11 @@
                 </svg>
             </button>
             <div class="flex-1 mx-4">
-                <h1 class="text-lg font-bold text-gray-900 truncate">{{ $content->title }}</h1>
+                <h1 class="text-lg font-bold text-gray-900 truncate"><?php echo e($content->title); ?></h1>
                 <div class="flex items-center space-x-2 mt-1">
                     <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium capitalize">
-                        {{ ucfirst($content->type) }}
+                        <?php echo e(ucfirst($content->type)); ?>
+
                     </span>
                 </div>
             </div>
@@ -98,7 +108,7 @@
             <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
-                        <h3 class="text-xl font-bold truncate">{{ $course->title }}</h3>
+                        <h3 class="text-xl font-bold truncate"><?php echo e($course->title); ?></h3>
                         <p class="text-indigo-100 text-sm mt-1">Pembelajaran Interaktif</p>
                     </div>
                     <button @click="sidebarOpen = false" class="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
@@ -109,7 +119,7 @@
                 </div>
 
                 <!-- Progress Bar -->
-                @php
+                <?php
                     $totalContentsInCourse = $course->lessons->flatMap->contents->count();
                     // Perbaikan: Use fresh query for completed count dengan logika essay yang baru
                     $completedContentsCount = 0;
@@ -121,34 +131,36 @@
                         }
                     }
                     $progressPercentage = $totalContentsInCourse > 0 ? round(($completedContentsCount / $totalContentsInCourse) * 100) : 0;
-                @endphp
+                ?>
                 <div class="mt-4">
                     <div class="flex items-center justify-between text-sm mb-2">
                         <span>Progress</span>
-                        <span class="font-semibold">{{ $progressPercentage }}%</span>
+                        <span class="font-semibold"><?php echo e($progressPercentage); ?>%</span>
                     </div>
                     <div class="w-full bg-white/20 rounded-full h-2">
                         <div class="bg-gradient-to-r from-yellow-400 to-green-400 h-2 rounded-full transition-all duration-500"
-                             style="width: {{ $progressPercentage }}%"></div>
+                             style="width: <?php echo e($progressPercentage); ?>%"></div>
                     </div>
-                    <p class="text-xs text-indigo-100 mt-1">{{ $completedContentsCount }}/{{ $totalContentsInCourse }} konten selesai</p>
+                    <p class="text-xs text-indigo-100 mt-1"><?php echo e($completedContentsCount); ?>/<?php echo e($totalContentsInCourse); ?> konten selesai</p>
                 </div>
             </div>
 
             <!-- Course Navigation with Custom Scroll -->
             <nav class="flex-1 overflow-y-auto p-6 pb-24 content-sidebar-scroll">
-                @foreach ($course->lessons->sortBy('order') as $lesson)
+                <?php $__currentLoopData = $course->lessons->sortBy('order'); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $lesson): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <div class="mb-6 last:mb-2">
                         <!-- Lesson Header - Redesigned -->
                         <div class="flex items-center mb-3 pb-3 border-b-2 border-indigo-100">
                             <div class="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl flex items-center justify-center text-sm font-bold mr-3 shadow-sm">
-                                {{ $loop->iteration }}
+                                <?php echo e($loop->iteration); ?>
+
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-bold text-gray-900 text-sm leading-tight truncate">
-                                    {{ $lesson->title }}
+                                    <?php echo e($lesson->title); ?>
+
                                 </h4>
-                                @php
+                                <?php
                                     $lessonContentsCount = $lesson->contents->count();
                                     // Perbaikan: Calculate lesson completed count dengan logika essay yang konsisten
                                     $lessonCompletedCount = 0;
@@ -158,25 +170,26 @@
                                         }
                                     }
                                     $lessonProgress = $lessonContentsCount > 0 ? round(($lessonCompletedCount / $lessonContentsCount) * 100) : 0;
-                                @endphp
+                                ?>
                                 <div class="flex items-center mt-1 space-x-2">
                                     <div class="flex-1 bg-gray-200 rounded-full h-1.5">
-                                        <div class="bg-gradient-to-r from-green-400 to-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: {{ $lessonProgress }}%"></div>
+                                        <div class="bg-gradient-to-r from-green-400 to-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: <?php echo e($lessonProgress); ?>%"></div>
                                     </div>
                                     <span class="text-xs font-semibold text-gray-600 whitespace-nowrap">
-                                        {{ $lessonCompletedCount }}/{{ $lessonContentsCount }}
+                                        <?php echo e($lessonCompletedCount); ?>/<?php echo e($lessonContentsCount); ?>
+
                                     </span>
                                 </div>
                             </div>
-                            @if($lesson->is_optional ?? false)
+                            <?php if($lesson->is_optional ?? false): ?>
                                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500 text-white uppercase tracking-wide shadow-sm">OPS</span>
-                            @endif
+                            <?php endif; ?>
                         </div>
 
                         <!-- Content List - Redesigned -->
                         <ul class="space-y-1.5">
-                            @foreach ($lesson->contents->sortBy('order') as $c)
-                                @php
+                            <?php $__currentLoopData = $lesson->contents->sortBy('order'); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <?php
                                     $cIsTask = in_array($c->type, ['quiz', 'essay']);
 
                                     // Perbaikan: Consistent completion check dengan logika essay baru
@@ -196,65 +209,67 @@
 
                                     $isCurrent = $c->id === $content->id;
                                     $isUnlocked = $unlockedContents->contains('id', $c->id);
-                                @endphp
+                                ?>
                                 <li>
-                                    @if($isUnlocked)
-                                        <a href="{{ route('contents.show', $c) }}"
+                                    <?php if($isUnlocked): ?>
+                                        <a href="<?php echo e(route('contents.show', $c)); ?>"
                                            class="group block p-2.5 rounded-lg transition-all duration-200 border
-                                                  {{ $isCurrent
+                                                  <?php echo e($isCurrent
                                                       ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md border-indigo-400 scale-[1.02]'
                                                       : ($isCompleted
                                                           ? 'bg-green-50 hover:bg-green-100 text-green-900 border-green-200 hover:border-green-300'
-                                                          : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm') }}">
+                                                          : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm')); ?>">
 
                                             <div class="flex items-center space-x-2.5">
                                                 <!-- Icon -->
                                                 <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-base
-                                                            {{ $isCurrent ? 'bg-white/20' : ($isCompleted ? 'bg-green-200/50' : 'bg-gray-100') }}">
-                                                    @switch($c->type)
-                                                        @case('video') 🎥 @break
-                                                        @case('document') 📄 @break
-                                                        @case('image') 🖼️ @break
-                                                        @case('quiz') 🧠 @break
-                                                        @case('essay') ✍️ @break
-                                                        @default 📝
-                                                    @endswitch
+                                                            <?php echo e($isCurrent ? 'bg-white/20' : ($isCompleted ? 'bg-green-200/50' : 'bg-gray-100')); ?>">
+                                                    <?php switch($c->type):
+                                                        case ('video'): ?> 🎥 <?php break; ?>
+                                                        <?php case ('document'): ?> 📄 <?php break; ?>
+                                                        <?php case ('image'): ?> 🖼️ <?php break; ?>
+                                                        <?php case ('quiz'): ?> 🧠 <?php break; ?>
+                                                        <?php case ('essay'): ?> ✍️ <?php break; ?>
+                                                        <?php default: ?> 📝
+                                                    <?php endswitch; ?>
                                                 </div>
 
                                                 <!-- Content Info -->
                                                 <div class="flex-1 min-w-0">
                                                     <p class="font-semibold text-sm truncate leading-tight">
-                                                        {{ $c->title }}
+                                                        <?php echo e($c->title); ?>
+
                                                     </p>
                                                     <div class="flex items-center mt-0.5 space-x-1.5">
                                                         <span class="text-[10px] font-medium opacity-75 uppercase tracking-wide">
-                                                            {{ ucfirst($c->type) }}
+                                                            <?php echo e(ucfirst($c->type)); ?>
+
                                                         </span>
-                                                        @if($c->is_optional ?? false)
+                                                        <?php if($c->is_optional ?? false): ?>
                                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500 text-white uppercase">OPS</span>
-                                                        @endif
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
 
                                                 <!-- Status Icon -->
                                                 <div class="flex-shrink-0">
-                                                    @if($isCurrent)
+                                                    <?php if($isCurrent): ?>
                                                         <div class="w-5 h-5 bg-white/30 rounded-full flex items-center justify-center">
                                                             <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                                                         </div>
-                                                    @elseif($isCompleted)
+                                                    <?php elseif($isCompleted): ?>
                                                         <div class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center">
                                                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                             </svg>
                                                         </div>
-                                                    @else
+                                                    <?php else: ?>
                                                         <div class="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
-                                                    @endif
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </a>
-                                    @else
+                                    <?php else: ?>
                                         <div class="group block p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-400 cursor-not-allowed opacity-60">
                                             <div class="flex items-center space-x-2.5">
                                                 <!-- Lock Icon -->
@@ -267,15 +282,16 @@
                                                 <!-- Content Info -->
                                                 <div class="flex-1 min-w-0">
                                                     <p class="font-semibold text-sm truncate leading-tight">
-                                                        {{ $c->title }}
+                                                        <?php echo e($c->title); ?>
+
                                                     </p>
                                                     <div class="flex items-center mt-0.5 space-x-1.5">
                                                         <span class="text-[10px] font-medium opacity-75 uppercase tracking-wide">
                                                             Terkunci
                                                         </span>
-                                                        @if($c->is_optional ?? false)
+                                                        <?php if($c->is_optional ?? false): ?>
                                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-400 text-white uppercase">OPS</span>
-                                                        @endif
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
 
@@ -285,12 +301,12 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    @endif
+                                    <?php endif; ?>
                                 </li>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </ul>
                     </div>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </nav>
 
             <!-- Sticky Back Button at Bottom -->
@@ -310,121 +326,122 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">{{ $content->title }}</h1>
+                        <h1 class="text-2xl font-bold text-gray-900"><?php echo e($content->title); ?></h1>
                         <div class="flex items-center space-x-2 mt-1">
-                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize">{{ ucfirst($content->type) }}</span>
-                            @if($content->description)<span class="text-gray-400">•</span><span class="text-sm text-gray-600">{{ Str::limit($content->description, 50) }}</span>@endif
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize"><?php echo e(ucfirst($content->type)); ?></span>
+                            <?php if($content->description): ?><span class="text-gray-400">•</span><span class="text-sm text-gray-600"><?php echo e(Str::limit($content->description, 50)); ?></span><?php endif; ?>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
                     <div x-show="!contentCompleted">
-                        @if(!$isTask)<button @click="markAsCompleted()" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg">
+                        <?php if(!$isTask): ?><button @click="markAsCompleted()" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                             <span class="text-sm">Tandai Selesai</span>
                         </button>
-                        @endif
+                        <?php endif; ?>
                     </div>
                     <div x-show="contentCompleted">
-                        @php
+                        <?php
                             $user = Auth::user();
                             $contentStatus = $user->getContentStatus($content);
                             $statusText = $user->getContentStatusText($content);
                             $badgeClass = $user->getContentStatusBadgeClass($content);
-                        @endphp
+                        ?>
 
-                        <div class="inline-flex items-center px-4 py-2 {{ $badgeClass }} font-medium rounded-lg">
-                            @if($contentStatus === 'completed')
+                        <div class="inline-flex items-center px-4 py-2 <?php echo e($badgeClass); ?> font-medium rounded-lg">
+                            <?php if($contentStatus === 'completed'): ?>
                                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                 </svg>
-                            @elseif($contentStatus === 'pending_grade')
+                            <?php elseif($contentStatus === 'pending_grade'): ?>
                                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
                                 </svg>
-                            @elseif($contentStatus === 'failed')
+                            <?php elseif($contentStatus === 'failed'): ?>
                                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                 </svg>
-                            @else
+                            <?php else: ?>
                                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
                                 </svg>
-                            @endif
-                            <span class="text-sm">{{ $statusText }}</span>
+                            <?php endif; ?>
+                            <span class="text-sm"><?php echo e($statusText); ?></span>
                         </div>
 
-                        {{-- Additional Info for Essay Content --}}
-                        @if($content->type === 'essay' && $contentStatus === 'pending_grade')
-                            @php
+                        
+                        <?php if($content->type === 'essay' && $contentStatus === 'pending_grade'): ?>
+                            <?php
                                 $submission = $user->essaySubmissions()->where('content_id', $content->id)->first();
                                 $totalQuestions = $content->essayQuestions()->count();
                                 $gradedAnswers = $submission ? $submission->answers()->whereNotNull('score')->count() : 0;
-                            @endphp
+                            ?>
                             <div class="mt-2 text-sm text-yellow-700 bg-yellow-50 p-2 rounded">
                                 <div class="flex items-center">
                                     <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                     </svg>
-                                    Progres Penilaian: {{ $gradedAnswers }}/{{ $totalQuestions }} pertanyaan sudah dinilai
+                                    Progres Penilaian: <?php echo e($gradedAnswers); ?>/<?php echo e($totalQuestions); ?> pertanyaan sudah dinilai
                                 </div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
             </header>
 
             <!-- PERBAIKAN: Content Container dengan padding bottom yang cukup untuk bottom bar -->
             <div class="flex-1 overflow-y-auto pb-32">
-                <div class="{{ $content->type === 'essay' ? 'max-w-6xl' : 'max-w-4xl' }} mx-auto p-6 lg:p-8">
+                <div class="<?php echo e($content->type === 'essay' ? 'max-w-6xl' : 'max-w-4xl'); ?> mx-auto p-6 lg:p-8">
                     <!-- Content Card -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
                         <!-- Content Header (Mobile) -->
                         <div class="lg:hidden bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white">
-                            <h2 class="text-xl font-bold mb-2">{{ $content->title }}</h2>
-                            @if($content->description)
-                                <p class="text-indigo-100">{{ $content->description }}</p>
-                            @endif
+                            <h2 class="text-xl font-bold mb-2"><?php echo e($content->title); ?></h2>
+                            <?php if($content->description): ?>
+                                <p class="text-indigo-100"><?php echo e($content->description); ?></p>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Content Body -->
                         <div class="p-6 lg:p-8">
-                            @if($content->description)
+                            <?php if($content->description): ?>
                                 <div class="mb-6 pb-6 border-b border-gray-100">
-                                    <p class="text-lg text-gray-600 leading-relaxed">{{ $content->description }}</p>
+                                    <p class="text-lg text-gray-600 leading-relaxed"><?php echo e($content->description); ?></p>
                                 </div>
-                            @endif
+                            <?php endif; ?>
 
                             <!-- Content Display Based on Type -->
                             <div class="content-display">
-                                @if($content->type == 'video')
+                                <?php if($content->type == 'video'): ?>
                                     <div class="prose max-w-none text-gray-700 leading-relaxed mb-8">
-                                        {!! $content->description !!}
+                                        <?php echo $content->description; ?>
+
                                     </div>
 
-                                    {{-- Coba tampilkan video yang disematkan --}}
+                                    
                                     <div class="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
                                         <iframe
                                             class="w-full h-full"
-                                            src="{{ $content->youtube_embed_url }}"
+                                            src="<?php echo e($content->youtube_embed_url); ?>"
                                             frameborder="0"
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowfullscreen
-                                            {{-- Tambahkan penanganan error sederhana jika iframe gagal dimuat --}}
+                                            
                                             onerror="this.style.display='none'; document.getElementById('youtube-fallback').style.display='block';"
                                         ></iframe>
                                     </div>
 
-                                    {{-- Tampilan Fallback jika video tidak bisa disematkan --}}
+                                    
                                     <div id="youtube-fallback" style="display:none;" class="mt-4">
                                         <p class="text-center text-yellow-600 bg-yellow-100 p-4 rounded-lg">
                                             Video tidak dapat diputar di sini.
                                         </p>
-                                        <a href="{{ $content->body }}" target="_blank" rel="noopener noreferrer" class="block group mt-2">
+                                        <a href="<?php echo e($content->body); ?>" target="_blank" rel="noopener noreferrer" class="block group mt-2">
                                             <div class="relative rounded-2xl overflow-hidden shadow-lg">
-                                                <img src="{{ $content->youtube_thumbnail_url }}" alt="Video thumbnail" class="w-full h-full object-cover">
+                                                <img src="<?php echo e($content->youtube_thumbnail_url); ?>" alt="Video thumbnail" class="w-full h-full object-cover">
                                                 <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center group-hover:bg-opacity-60 transition-all duration-300">
                                                     <div class="text-center text-white">
                                                         <svg class="w-20 h-20 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"></path></svg>
@@ -435,11 +452,11 @@
                                         </a>
                                     </div>
 
-                                @elseif($content->type == 'image' && ($content->images->count() || $content->file_path))
-                                    @php $imageCount = $content->images->count(); @endphp
-                                    @if($imageCount > 0)
+                                <?php elseif($content->type == 'image' && ($content->images->count() || $content->file_path)): ?>
+                                    <?php $imageCount = $content->images->count(); ?>
+                                    <?php if($imageCount > 0): ?>
                                         <div
-                                            x-data='imageSlider(@json($content->images->map(fn($img) => Storage::url($img->file_path))->values()))'
+                                            x-data='imageSlider(<?php echo json_encode($content->images->map(fn($img) => Storage::url($img->file_path))->values(), 15, 512) ?>)'
                                             x-init="init()"
                                             class="select-none group">
                                             <!-- Viewport -->
@@ -527,21 +544,21 @@
                                                 </div>
                                             </template>
 
-                                            <p class="text-sm text-gray-500 mt-4 text-center">{{ $content->title }}</p>
+                                            <p class="text-sm text-gray-500 mt-4 text-center"><?php echo e($content->title); ?></p>
                                         </div>
-                                    @else
+                                    <?php else: ?>
                                         <div class="text-center">
                                             <div class="inline-block rounded-2xl overflow-hidden shadow-2xl">
-                                                <img loading="lazy" src="{{ Storage::url($content->file_path) }}"
-                                                     alt="{{ $content->title }}"
+                                                <img loading="lazy" src="<?php echo e(Storage::url($content->file_path)); ?>"
+                                                     alt="<?php echo e($content->title); ?>"
                                                      class="max-w-full h-auto max-h-96 object-contain">
                                             </div>
-                                            <p class="text-sm text-gray-500 mt-4">{{ $content->title }}</p>
+                                            <p class="text-sm text-gray-500 mt-4"><?php echo e($content->title); ?></p>
                                         </div>
-                                    @endif
+                                    <?php endif; ?>
 
-                                @elseif($content->type == 'document' && $content->file_path)
-                                    @php
+                                <?php elseif($content->type == 'document' && $content->file_path): ?>
+                                    <?php
                                         $accessType = $content->document_access_type ?? 'both';
                                         $fileUrl = Storage::url($content->file_path);
                                         $fullFileUrl = url($fileUrl);
@@ -551,7 +568,7 @@
                                         // Cek apakah file bisa di-preview (PDF, Office docs, images)
                                         $previewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
                                         $isPreviewable = in_array($fileExtension, $previewableExtensions);
-                                    @endphp
+                                    ?>
 
                                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
                                         <div class="flex items-center justify-center mb-6">
@@ -564,8 +581,8 @@
 
                                         <div class="text-center mb-6">
                                             <h3 class="text-xl font-semibold text-gray-900 mb-2">Dokumen Pembelajaran</h3>
-                                            <p class="text-gray-600 mb-2">{{ $fileName }}</p>
-                                            @php
+                                            <p class="text-gray-600 mb-2"><?php echo e($fileName); ?></p>
+                                            <?php
                                                 $badgeClass = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ';
                                                 $badgeText = '';
                                                 if ($accessType === 'both') {
@@ -578,15 +595,15 @@
                                                     $badgeClass .= 'bg-purple-100 text-purple-700';
                                                     $badgeText = '👁️ Preview Saja';
                                                 }
-                                            @endphp
-                                            <span class="{{ $badgeClass }}">{{ $badgeText }}</span>
+                                            ?>
+                                            <span class="<?php echo e($badgeClass); ?>"><?php echo e($badgeText); ?></span>
                                         </div>
 
-                                        {{-- Preview Section (jika bisa di-preview dan akses type bukan download_only) --}}
-                                        @if($isPreviewable && $accessType !== 'download_only')
+                                        
+                                        <?php if($isPreviewable && $accessType !== 'download_only'): ?>
                                             <div class="mb-6 bg-white rounded-xl overflow-hidden shadow-lg" x-data="{ loading: true, error: false }">
                                                 <div class="aspect-[4/3] md:aspect-video relative">
-                                                    {{-- Loading State --}}
+                                                    
                                                     <div x-show="loading" class="absolute inset-0 flex items-center justify-center bg-gray-100">
                                                         <div class="text-center">
                                                             <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
@@ -597,7 +614,7 @@
                                                         </div>
                                                     </div>
 
-                                                    {{-- Error State --}}
+                                                    
                                                     <div x-show="error" class="absolute inset-0 flex items-center justify-center bg-yellow-50" style="display: none;">
                                                         <div class="text-center p-4">
                                                             <svg class="w-12 h-12 text-yellow-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -608,31 +625,31 @@
                                                         </div>
                                                     </div>
 
-                                                    {{-- PDF Preview (native) --}}
-                                                    @if($fileExtension === 'pdf')
+                                                    
+                                                    <?php if($fileExtension === 'pdf'): ?>
                                                         <iframe
-                                                            src="{{ $fileUrl }}#toolbar=0&navpanes=0&scrollbar=0"
+                                                            src="<?php echo e($fileUrl); ?>#toolbar=0&navpanes=0&scrollbar=0"
                                                             class="w-full h-full"
                                                             x-on:load="loading = false"
                                                             x-on:error="error = true; loading = false">
                                                         </iframe>
-                                                    @else
-                                                        {{-- Google Docs Viewer untuk Office files --}}
+                                                    <?php else: ?>
+                                                        
                                                         <iframe
-                                                            src="https://docs.google.com/viewer?url={{ urlencode($fullFileUrl) }}&embedded=true"
+                                                            src="https://docs.google.com/viewer?url=<?php echo e(urlencode($fullFileUrl)); ?>&embedded=true"
                                                             class="w-full h-full"
                                                             x-on:load="loading = false"
                                                             x-on:error="error = true; loading = false">
                                                         </iframe>
-                                                    @endif
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
-                                        @endif
+                                        <?php endif; ?>
 
-                                        {{-- Download Button (jika akses type bukan preview_only) --}}
-                                        @if($accessType !== 'preview_only')
+                                        
+                                        <?php if($accessType !== 'preview_only'): ?>
                                             <div class="text-center">
-                                                <a href="{{ $fileUrl }}" download
+                                                <a href="<?php echo e($fileUrl); ?>" download
                                                    class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -640,7 +657,7 @@
                                                     Download Dokumen
                                                 </a>
                                             </div>
-                                        @else
+                                        <?php else: ?>
                                             <div class="text-center">
                                                 <div class="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-500 rounded-xl">
                                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,42 +667,45 @@
                                                 </div>
                                                 <p class="text-xs text-gray-500 mt-2">Dokumen ini hanya bisa dilihat preview</p>
                                             </div>
-                                        @endif
+                                        <?php endif; ?>
 
-                                        {{-- Info message jika file tidak bisa di-preview --}}
-                                        @if(!$isPreviewable && $accessType !== 'download_only')
+                                        
+                                        <?php if(!$isPreviewable && $accessType !== 'download_only'): ?>
                                             <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                                 <p class="text-sm text-yellow-800 text-center">
                                                     <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                                     </svg>
-                                                    Preview tidak tersedia untuk tipe file .{{ $fileExtension }}
+                                                    Preview tidak tersedia untuk tipe file .<?php echo e($fileExtension); ?>
+
                                                 </p>
                                             </div>
-                                        @endif
+                                        <?php endif; ?>
                                     </div>
 
-                                @elseif($content->type == 'text')
+                                <?php elseif($content->type == 'text'): ?>
                                     <div class="prose prose-lg max-w-none">
                                         <div class="content-text text-gray-800 leading-relaxed">
-                                            {!! $content->body !!}
+                                            <?php echo $content->body; ?>
+
                                         </div>
                                     </div>
 
-                                @elseif($content->type == 'essay')
-                                    {{-- Essay Content Body --}}
-                                    @if($content->body)
+                                <?php elseif($content->type == 'essay'): ?>
+                                    
+                                    <?php if($content->body): ?>
                                         <div class="prose prose-lg max-w-none mb-8">
                                             <div class="content-text text-gray-800 leading-relaxed">
-                                                {!! $content->body !!}
+                                                <?php echo $content->body; ?>
+
                                             </div>
                                         </div>
-                                    @endif
+                                    <?php endif; ?>
 
-                                    {{-- Essay Questions Section with Autosave --}}
-                                    @include('contents.partials.essay-section-improved')
+                                    
+                                    <?php echo $__env->make('contents.partials.essay-section-improved', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-                                @elseif($content->type == 'quiz' && $content->quiz)
+                                <?php elseif($content->type == 'quiz' && $content->quiz): ?>
                                     <!-- PERBAIKAN: Tampilkan quiz content dengan benar -->
                                     <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-8 border border-purple-100">
                                         <div class="text-center mb-6">
@@ -694,106 +714,109 @@
                                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                 </svg>
                                             </div>
-                                            <h3 class="text-2xl font-bold text-gray-900 mb-2">{{ $content->quiz->title }}</h3>
-                                            @if($content->quiz->description)
-                                                <p class="text-gray-600 mb-4">{{ $content->quiz->description }}</p>
-                                            @endif
+                                            <h3 class="text-2xl font-bold text-gray-900 mb-2"><?php echo e($content->quiz->title); ?></h3>
+                                            <?php if($content->quiz->description): ?>
+                                                <p class="text-gray-600 mb-4"><?php echo e($content->quiz->description); ?></p>
+                                            <?php endif; ?>
                                         </div>
 
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                             <div class="bg-white p-4 rounded-xl text-center">
-                                                <div class="text-2xl font-bold text-purple-600">{{ $content->quiz->questions->count() }}</div>
+                                                <div class="text-2xl font-bold text-purple-600"><?php echo e($content->quiz->questions->count()); ?></div>
                                                 <div class="text-sm text-gray-600">Pertanyaan</div>
                                             </div>
                                             <div class="bg-white p-4 rounded-xl text-center">
-                                                <div class="text-2xl font-bold text-purple-600">{{ $content->quiz->total_marks }}</div>
+                                                <div class="text-2xl font-bold text-purple-600"><?php echo e($content->quiz->total_marks); ?></div>
                                                 <div class="text-sm text-gray-600">Total Poin</div>
                                             </div>
                                             <div class="bg-white p-4 rounded-xl text-center">
                                                 <div class="text-2xl font-bold text-purple-600">
-                                                    @if($content->quiz->time_limit)
-                                                        {{ $content->quiz->time_limit }} min
-                                                    @else
+                                                    <?php if($content->quiz->time_limit): ?>
+                                                        <?php echo e($content->quiz->time_limit); ?> min
+                                                    <?php else: ?>
                                                         Tanpa Batas
-                                                    @endif
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="text-sm text-gray-600">Waktu</div>
                                             </div>
                                         </div>
 
-                                        @php
+                                        <?php
                                             $userAttempts = Auth::user()->quizAttempts()->where('quiz_id', $content->quiz->id)->get();
                                             $bestAttempt = $userAttempts->sortByDesc('score')->first();
                                             $hasPassedAttempt = $userAttempts->where('passed', true)->isNotEmpty();
-                                        @endphp
+                                        ?>
 
-                                        @if($userAttempts->isNotEmpty())
+                                        <?php if($userAttempts->isNotEmpty()): ?>
                                             <div class="bg-white rounded-xl p-6 mb-6">
                                                 <h4 class="font-semibold text-gray-900 mb-4">Riwayat Percobaan</h4>
                                                 <div class="space-y-3">
-                                                    @foreach($userAttempts->sortByDesc('completed_at') as $attempt)
+                                                    <?php $__currentLoopData = $userAttempts->sortByDesc('completed_at'); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $attempt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                             <div>
                                                                 <span class="text-sm text-gray-600">
-                                                                    {{ $attempt->completed_at ? $attempt->completed_at->format('d M Y, H:i') : 'Sedang berlangsung' }}
+                                                                    <?php echo e($attempt->completed_at ? $attempt->completed_at->format('d M Y, H:i') : 'Sedang berlangsung'); ?>
+
                                                                 </span>
-                                                                @if($attempt->passed)
+                                                                <?php if($attempt->passed): ?>
                                                                     <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">LULUS</span>
-                                                                @endif
+                                                                <?php endif; ?>
                                                             </div>
-                                                            @if($attempt->completed_at)
+                                                            <?php if($attempt->completed_at): ?>
                                                                 <div class="text-right">
-                                                                    <div class="font-semibold {{ $attempt->passed ? 'text-green-600' : 'text-red-600' }}">
-                                                                        {{ $attempt->score }}/{{ $content->quiz->total_marks }}
+                                                                    <div class="font-semibold <?php echo e($attempt->passed ? 'text-green-600' : 'text-red-600'); ?>">
+                                                                        <?php echo e($attempt->score); ?>/<?php echo e($content->quiz->total_marks); ?>
+
                                                                     </div>
-                                                                    <a href="{{ route('quizzes.result', [$content->quiz, $attempt]) }}"
+                                                                    <a href="<?php echo e(route('quizzes.result', [$content->quiz, $attempt])); ?>"
                                                                        class="text-xs text-indigo-600 hover:text-indigo-800">Lihat Detail</a>
                                                                 </div>
-                                                            @endif
+                                                            <?php endif; ?>
                                                         </div>
-                                                    @endforeach
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                                 </div>
                                             </div>
-                                        @endif
+                                        <?php endif; ?>
 
                                         <div class="text-center">
-                                            {{-- Gunakan variabel $hasPassedQuizBefore dari controller --}}
-                                            @if($hasPassedQuizBefore)
-                                                {{-- Jika sudah pernah lulus, tampilkan pesan sukses dan link ke hasil --}}
+                                            
+                                            <?php if($hasPassedQuizBefore): ?>
+                                                
                                                 <div class="mb-4 p-4 bg-green-100 text-green-800 rounded-xl flex items-center justify-center">
                                                     <svg class="w-6 h-6 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                                     </svg>
                                                     <span>Selamat! Anda telah lulus kuis ini.</span>
                                                 </div>
-                                                @php
+                                                <?php
                                                     $lastPassedAttempt = $userAttempts->where('passed', true)->sortByDesc('completed_at')->first();
-                                                @endphp
-                                                @if($lastPassedAttempt)
-                                                    <a href="{{ route('quizzes.result', ['quiz' => $content->quiz, 'attempt' => $lastPassedAttempt]) }}"
+                                                ?>
+                                                <?php if($lastPassedAttempt): ?>
+                                                    <a href="<?php echo e(route('quizzes.result', ['quiz' => $content->quiz, 'attempt' => $lastPassedAttempt])); ?>"
                                                     class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
                                                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                                         Lihat Hasil Kelulusan
                                                     </a>
-                                                @endif
-                                            @else
-                                                {{-- Jika belum pernah lulus, tampilkan tombol Mulai/Coba Lagi --}}
-                                                <a href="{{ route('quizzes.start', $content->quiz) }}"
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                
+                                                <a href="<?php echo e(route('quizzes.start', $content->quiz)); ?>"
                                                 class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                                                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.01M15 10h1.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                     </svg>
-                                                    {{ $userAttempts->isNotEmpty() ? 'Coba Lagi' : 'Mulai Kuis' }}
+                                                    <?php echo e($userAttempts->isNotEmpty() ? 'Coba Lagi' : 'Mulai Kuis'); ?>
+
                                                 </a>
-                                            @endif
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     
-                                @elseif($content->type == 'zoom')
-                                    @php
+                                <?php elseif($content->type == 'zoom'): ?>
+                                    <?php
                                         $zoomDetails = json_decode($content->body, true);
                                         $schedulingStatus = $content->getSchedulingStatus();
-                                    @endphp
+                                    ?>
                                     <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-8 border border-blue-100">
                                         <div class="text-center mb-6">
                                             <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -803,18 +826,18 @@
                                             </div>
                                             <h3 class="text-2xl font-bold text-gray-900 mb-2">Rapat Online via Zoom</h3>
                                             <p class="text-gray-600 mb-4">
-                                                @if($content->is_scheduled)
-                                                    Meeting dijadwalkan {{ $content->getScheduledStartInTimezone()->format('d M Y, H:i') }} - {{ $content->getScheduledEndInTimezone()->format('H:i') }} WIB
-                                                @else
+                                                <?php if($content->is_scheduled): ?>
+                                                    Meeting dijadwalkan <?php echo e($content->getScheduledStartInTimezone()->format('d M Y, H:i')); ?> - <?php echo e($content->getScheduledEndInTimezone()->format('H:i')); ?> WIB
+                                                <?php else: ?>
                                                     Gunakan detail di bawah ini untuk bergabung ke dalam rapat.
-                                                @endif
+                                                <?php endif; ?>
                                             </p>
                                         </div>
 
-                                        {{-- Scheduling Status Display --}}
-                                        @if($content->is_scheduled)
+                                        
+                                        <?php if($content->is_scheduled): ?>
                                             <div class="mb-6">
-                                                @if($schedulingStatus['status'] === 'upcoming')
+                                                <?php if($schedulingStatus['status'] === 'upcoming'): ?>
                                                     <div class="bg-yellow-100 border border-yellow-300 rounded-xl p-4 text-center">
                                                         <div class="flex items-center justify-center mb-2">
                                                             <svg class="w-6 h-6 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -822,10 +845,10 @@
                                                             </svg>
                                                             <span class="font-semibold text-yellow-800">Meeting Belum Dimulai</span>
                                                         </div>
-                                                        <p class="text-yellow-700">{{ $schedulingStatus['message'] }}</p>
-                                                        <p class="text-sm text-yellow-600 mt-1">{{ $schedulingStatus['starts_in'] }}</p>
+                                                        <p class="text-yellow-700"><?php echo e($schedulingStatus['message']); ?></p>
+                                                        <p class="text-sm text-yellow-600 mt-1"><?php echo e($schedulingStatus['starts_in']); ?></p>
                                                     </div>
-                                                @elseif($schedulingStatus['status'] === 'active')
+                                                <?php elseif($schedulingStatus['status'] === 'active'): ?>
                                                     <div class="bg-green-100 border border-green-300 rounded-xl p-4 text-center">
                                                         <div class="flex items-center justify-center mb-2">
                                                             <svg class="w-6 h-6 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -833,10 +856,10 @@
                                                             </svg>
                                                             <span class="font-semibold text-green-800">Meeting Sedang Berlangsung</span>
                                                         </div>
-                                                        <p class="text-green-700">{{ $schedulingStatus['message'] }}</p>
-                                                        <p class="text-sm text-green-600 mt-1">Berakhir {{ $schedulingStatus['ends_in'] }}</p>
+                                                        <p class="text-green-700"><?php echo e($schedulingStatus['message']); ?></p>
+                                                        <p class="text-sm text-green-600 mt-1">Berakhir <?php echo e($schedulingStatus['ends_in']); ?></p>
                                                     </div>
-                                                @elseif($schedulingStatus['status'] === 'ended')
+                                                <?php elseif($schedulingStatus['status'] === 'ended'): ?>
                                                     <div class="bg-red-100 border border-red-300 rounded-xl p-4 text-center">
                                                         <div class="flex items-center justify-center mb-2">
                                                             <svg class="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -844,46 +867,47 @@
                                                             </svg>
                                                             <span class="font-semibold text-red-800">Meeting Telah Berakhir</span>
                                                         </div>
-                                                        <p class="text-red-700">{{ $schedulingStatus['message'] }}</p>
-                                                        <p class="text-sm text-red-600 mt-1">Berakhir {{ $schedulingStatus['ended_ago'] }}</p>
+                                                        <p class="text-red-700"><?php echo e($schedulingStatus['message']); ?></p>
+                                                        <p class="text-sm text-red-600 mt-1">Berakhir <?php echo e($schedulingStatus['ended_ago']); ?></p>
                                                     </div>
-                                                @endif
+                                                <?php endif; ?>
                                             </div>
-                                        @endif
+                                        <?php endif; ?>
 
                                         <div class="bg-white rounded-xl p-6 mb-6 divide-y divide-gray-200">
                                             <div class="flex items-center py-3">
                                                 <span class="font-semibold w-32 text-gray-600">Link Rapat</span>
-                                                @if($schedulingStatus['can_join'])
-                                                    <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" class="text-blue-600 hover:underline break-all">
-                                                        {{ $zoomDetails['link'] ?? 'Tidak tersedia' }}
+                                                <?php if($schedulingStatus['can_join']): ?>
+                                                    <a href="<?php echo e($zoomDetails['link'] ?? '#'); ?>" target="_blank" class="text-blue-600 hover:underline break-all">
+                                                        <?php echo e($zoomDetails['link'] ?? 'Tidak tersedia'); ?>
+
                                                     </a>
-                                                @else
-                                                    <span class="text-gray-400 break-all">{{ $zoomDetails['link'] ?? 'Tidak tersedia' }}</span>
-                                                @endif
+                                                <?php else: ?>
+                                                    <span class="text-gray-400 break-all"><?php echo e($zoomDetails['link'] ?? 'Tidak tersedia'); ?></span>
+                                                <?php endif; ?>
                                             </div>
                                             <div class="flex items-center py-3">
                                                 <span class="font-semibold w-32 text-gray-600">Meeting ID</span>
-                                                <span class="text-gray-800 font-medium">{{ $zoomDetails['meeting_id'] ?? 'Tidak tersedia' }}</span>
+                                                <span class="text-gray-800 font-medium"><?php echo e($zoomDetails['meeting_id'] ?? 'Tidak tersedia'); ?></span>
                                             </div>
-                                            @if(!empty($zoomDetails['password']))
+                                            <?php if(!empty($zoomDetails['password'])): ?>
                                             <div class="flex items-center py-3">
                                                 <span class="font-semibold w-32 text-gray-600">Password</span>
-                                                <span class="text-gray-800 font-medium">{{ $zoomDetails['password'] }}</span>
+                                                <span class="text-gray-800 font-medium"><?php echo e($zoomDetails['password']); ?></span>
                                             </div>
-                                            @endif
+                                            <?php endif; ?>
                                         </div>
 
                                         <div class="text-center">
-                                            @if($schedulingStatus['can_join'])
-                                                <a href="{{ $zoomDetails['link'] ?? '#' }}" target="_blank" 
+                                            <?php if($schedulingStatus['can_join']): ?>
+                                                <a href="<?php echo e($zoomDetails['link'] ?? '#'); ?>" target="_blank" 
                                                 class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                                                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                                                     </svg>
                                                     Gabung Sekarang
                                                 </a>
-                                            @else
+                                            <?php else: ?>
                                                 <button disabled 
                                                         class="inline-flex items-center px-8 py-4 bg-gray-400 text-white font-bold rounded-xl cursor-not-allowed opacity-50">
                                                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -892,16 +916,16 @@
                                                     Meeting Belum Tersedia
                                                 </button>
                                                 <p class="text-sm text-gray-500 mt-2">
-                                                    @if($schedulingStatus['status'] === 'upcoming')
+                                                    <?php if($schedulingStatus['status'] === 'upcoming'): ?>
                                                         Meeting akan dibuka otomatis saat waktu yang dijadwalkan
-                                                    @else
+                                                    <?php else: ?>
                                                         Meeting sudah tidak tersedia
-                                                    @endif
+                                                    <?php endif; ?>
                                                 </p>
-                                            @endif
+                                            <?php endif; ?>
                                         </div>
                                     </div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -920,7 +944,7 @@
                             <p class="text-purple-100 mt-1">Berbagi pemikiran dan bertanya tentang materi ini</p>
                         </div>
                         <div class="p-6 lg:p-8">
-                            @include('contents.partials.discussion-section')
+                            <?php echo $__env->make('contents.partials.discussion-section', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                         </div>
                     </div>
                 </div>
@@ -936,7 +960,7 @@
              x-transition:leave-start="opacity-100 translate-y-0"
              x-transition:leave-end="opacity-0 translate-y-full"
              class="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-md border-t border-gray-200 shadow-2xl z-[9999] transition-all duration-300 ease-in-out">
-            @php
+            <?php
                 // Perbaikan: Mendapatkan konten dalam urutan yang benar
                 $allContents = $orderedContents; // Gunakan data yang sudah diurutkan dari controller
                 $currentIndex = $allContents->search(function($item) use ($content) {
@@ -989,25 +1013,25 @@
                         }
                     }
                 }
-            @endphp
+            ?>
 
             <!-- Mobile Bottom Navigation -->
             <div class="lg:hidden">
                 <div class="px-4 py-3">
                     <div class="flex items-center space-x-3">
-                        @if ($previousContent)
-                            <a href="{{ route('contents.show', $previousContent) }}"
+                        <?php if($previousContent): ?>
+                            <a href="<?php echo e(route('contents.show', $previousContent)); ?>"
                                class="flex-shrink-0 p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                                 </svg>
                             </a>
-                        @endif
+                        <?php endif; ?>
 
                         <div class="flex-1">
-                            @if ($canGoNext || ((($content->is_optional ?? false)) && $nextContent))
-                                <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" class="w-full">
-                                    @csrf
+                            <?php if($canGoNext || ((($content->is_optional ?? false)) && $nextContent)): ?>
+                                <form action="<?php echo e(route('contents.complete_and_continue', $content->id)); ?>" method="POST" class="w-full">
+                                    <?php echo csrf_field(); ?>
                                     <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group">
                                     <span class="text-sm mr-2">Selanjutnya</span>
                                     <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1015,11 +1039,11 @@
                                     </svg>
                                     </button>
                                 </form>
-                            @elseif((!$nextContent) && ($isContentEffectivelyCompleted || (($content->is_optional ?? false))))
+                            <?php elseif((!$nextContent) && ($isContentEffectivelyCompleted || (($content->is_optional ?? false)))): ?>
                                 <!-- FITUR BARU: Cek apakah semua kursus sudah selesai -->
-                                @if($isAllCourseCompleted)
-                                    <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" class="w-full">
-                                        @csrf
+                                <?php if($isAllCourseCompleted): ?>
+                                    <form action="<?php echo e(route('contents.complete_and_continue', $content->id)); ?>" method="POST" class="w-full">
+                                        <?php echo csrf_field(); ?>
                                         <button type="submit"
                                                class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
                                                 Selesaikan Kursus
@@ -1028,7 +1052,7 @@
                                             </svg>
                                         </button>
                                     </form>
-                                @else
+                                <?php else: ?>
                                     <a href="javascript:void(0)" onclick="window.history.back()"
                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg">
                                         <span class="text-sm mr-2">Kembali ke Dashboard</span>
@@ -1036,26 +1060,26 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                                         </svg>
                                     </a>
-                                @endif
-                            @elseif(!$isContentEffectivelyCompleted && !$isTask)
+                                <?php endif; ?>
+                            <?php elseif(!$isContentEffectivelyCompleted && !$isTask): ?>
                                 <button @click="markAsCompleted()"
                                         class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 hover:scale-105">
                                     Tandai Selesai
                                 </button>
-                            @else
+                            <?php else: ?>
                                 <!-- TAMBAHAN: Pesan untuk quiz yang belum diselesaikan -->
                                 <div class="w-full text-center py-3">
                                     <p class="text-sm text-gray-600">
-                                        @if($content->type === 'quiz')
+                                        <?php if($content->type === 'quiz'): ?>
                                             Selesaikan quiz untuk melanjutkan
-                                        @elseif($content->type === 'essay')
+                                        <?php elseif($content->type === 'essay'): ?>
                                             Submit essay untuk melanjutkan
-                                        @else
+                                        <?php else: ?>
                                             Selesaikan materi ini untuk melanjutkan
-                                        @endif
+                                        <?php endif; ?>
                                     </p>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
 
                         
@@ -1068,24 +1092,24 @@
                 <div class="px-6 py-3">
                     <div class="max-w-6xl mx-auto flex items-center justify-center space-x-6">
                         <div>
-                            @if ($previousContent)
-                                <a href="{{ route('contents.show', $previousContent) }}"
+                            <?php if($previousContent): ?>
+                                <a href="<?php echo e(route('contents.show', $previousContent)); ?>"
                                 class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 group max-w-sm hover:scale-105">
                                     <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                                     </svg>
                                     <div class="text-left">
                                         <div class="text-xs text-gray-500">Sebelumnya</div>
-                                        <div class="text-sm font-semibold truncate">{{ Str::limit($previousContent->title, 30) }}</div>
+                                        <div class="text-sm font-semibold truncate"><?php echo e(Str::limit($previousContent->title, 30)); ?></div>
                                     </div>
                                 </a>
-                            @endif
+                            <?php endif; ?>
                         </div>
 
                         <div>
-                            @if ($canGoNext || ((($content->is_optional ?? false)) && $nextContent))
-                                <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
-                                    @csrf
+                            <?php if($canGoNext || ((($content->is_optional ?? false)) && $nextContent)): ?>
+                                <form action="<?php echo e(route('contents.complete_and_continue', $content->id)); ?>" method="POST">
+                                    <?php echo csrf_field(); ?>
                                     <button type="submit" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
                                     <span class="mr-2">Selanjutnya</span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1093,34 +1117,34 @@
                                     </svg>
                                     </button>
                                 </form>
-                            @elseif ((!$nextContent) && ($isContentEffectivelyCompleted || (($content->is_optional ?? false))))
-                                {{-- FIX: Simple completion button - let controller handle the logic --}}
-                                <form action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST">
-                                    @csrf
+                            <?php elseif((!$nextContent) && ($isContentEffectivelyCompleted || (($content->is_optional ?? false)))): ?>
+                                
+                                <form action="<?php echo e(route('contents.complete_and_continue', $content->id)); ?>" method="POST">
+                                    <?php echo csrf_field(); ?>
                                     <button type="submit"
                                         class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
                                             Selesai & Lanjutkan
                                     </button>
                                 </form>
-                            @elseif (!$isContentEffectivelyCompleted && !$isTask)
+                            <?php elseif(!$isContentEffectivelyCompleted && !$isTask): ?>
                                 <button @click="markAsCompleted()"
                                         class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">
                                     Tandai Selesai untuk Lanjut
                                 </button>
-                            @else
-                                {{-- TAMBAHAN: Pesan untuk desktop --}}
+                            <?php else: ?>
+                                
                                 <div class="text-center py-3">
                                     <p class="text-sm text-gray-600">
-                                        @if($content->type === 'quiz')
+                                        <?php if($content->type === 'quiz'): ?>
                                             Selesaikan quiz untuk melanjutkan
-                                        @elseif($content->type === 'essay')
+                                        <?php elseif($content->type === 'essay'): ?>
                                             Submit essay untuk melanjutkan
-                                        @else
+                                        <?php else: ?>
                                             Selesaikan tugas ini untuk melanjutkan
-                                        @endif
+                                        <?php endif; ?>
                                     </p>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1143,38 +1167,38 @@
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 mb-2">Progress Pembelajaran</h3>
-                    <p class="text-gray-600 text-sm">{{ $course->title }}</p>
+                    <p class="text-gray-600 text-sm"><?php echo e($course->title); ?></p>
                 </div>
 
                 <div class="space-y-4">
                     <div class="flex justify-between items-center">
                         <span class="text-sm font-medium text-gray-700">Total Progress</span>
-                        <span class="text-lg font-bold text-indigo-600">{{ $progressPercentage }}%</span>
+                        <span class="text-lg font-bold text-indigo-600"><?php echo e($progressPercentage); ?>%</span>
                     </div>
 
                     <div class="relative">
                         <div class="w-full bg-gray-200 rounded-full h-4">
                             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-1000 relative overflow-hidden"
-                                 style="width: {{ $progressPercentage }}%">
+                                 style="width: <?php echo e($progressPercentage); ?>%">
                                 <div class="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
                             </div>
                         </div>
                         <div class="absolute inset-0 flex items-center justify-center">
-                            <span class="text-xs font-semibold text-white drop-shadow-lg">{{ $progressPercentage }}%</span>
+                            <span class="text-xs font-semibold text-white drop-shadow-lg"><?php echo e($progressPercentage); ?>%</span>
                         </div>
                     </div>
 
                     <div class="flex justify-between items-center text-sm">
                         <div class="text-center">
-                            <div class="font-semibold text-green-600">{{ $completedContentsCount }}</div>
+                            <div class="font-semibold text-green-600"><?php echo e($completedContentsCount); ?></div>
                             <div class="text-gray-500">Selesai</div>
                         </div>
                         <div class="text-center">
-                            <div class="font-semibold text-indigo-600">{{ $totalContentsInCourse - $completedContentsCount }}</div>
+                            <div class="font-semibold text-indigo-600"><?php echo e($totalContentsInCourse - $completedContentsCount); ?></div>
                             <div class="text-gray-500">Tersisa</div>
                         </div>
                         <div class="text-center">
-                            <div class="font-semibold text-gray-700">{{ $totalContentsInCourse }}</div>
+                            <div class="font-semibold text-gray-700"><?php echo e($totalContentsInCourse); ?></div>
                             <div class="text-gray-500">Total</div>
                         </div>
                     </div>
@@ -1493,4 +1517,14 @@
             // Sidebar is now floating overlay, no layout adjustments needed
         });
     </script>
-</x-app-layout>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php /**PATH C:\Users\PC2\Videos\IT\Code\LMSCOK\ABC\Cok\LMSAPP_Laravel_V2\resources\views/contents/show.blade.php ENDPATH**/ ?>

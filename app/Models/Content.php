@@ -23,6 +23,7 @@ class Content extends Model
         'type',
         'body',
         'file_path',
+        'document_access_type',
         'order',
         'quiz_id',
         'scheduled_start',
@@ -127,6 +128,14 @@ class Content extends Model
     public function lesson()
     {
         return $this->belongsTo(Lesson::class);
+    }
+
+    /**
+     * Multiple images attached to this content (for type === 'image').
+     */
+    public function images()
+    {
+        return $this->hasMany(ContentImage::class)->orderBy('order');
     }
 
     /**
