@@ -490,9 +490,9 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Overlay controls (appear on hover/touch only) -->
-                                                <div class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 z-20 transition-opacity"
-                                                     :class="showUI ? 'opacity-100' : 'opacity-0'">
+                                                <!-- Overlay controls (mobile always visible; desktop on hover) -->
+                                                <div class="pointer-events-none absolute inset-0 flex items-center justify-between px-2 z-50 transition-opacity"
+                                                     :class="showUI ? 'opacity-100' : 'opacity-100 md:opacity-0'">
                                                     <button @click.prevent="prev()" class="pointer-events-auto p-2 rounded-full bg-white/70 backdrop-blur-sm text-gray-800 shadow ring-1 ring-black/5 hover:bg-white">
                                                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                                                     </button>
@@ -501,9 +501,9 @@
                                                     </button>
                                                 </div>
 
-                                                <!-- Overlay dots (small, subtle) -->
-                                                <div class="absolute bottom-2 left-0 right-0 flex items-center justify-center z-20 transition-opacity"
-                                                     :class="showUI ? 'opacity-100' : 'opacity-0'">
+                                                <!-- Overlay dots (mobile always visible; desktop on hover) -->
+                                                <div class="absolute bottom-2 left-0 right-0 flex items-center justify-center z-50 transition-opacity"
+                                                     :class="showUI ? 'opacity-100' : 'opacity-100 md:opacity-0'">
                                                     <div class="px-2 py-1 rounded-full bg-white/70 backdrop-blur-sm shadow ring-1 ring-black/5 flex items-center gap-1.5">
                                                         <template x-for="(src, i) in slides" :key="'dot-'+i">
                                                             <button @click="setSlide(i)" class="w-2.5 h-2.5 rounded-full"
@@ -616,9 +616,7 @@
                                                         </div>
                                                         <div id="doc-pdf-viewer" class="hidden absolute inset-0 overflow-auto">
                                                             <div class="min-h-full p-4 md:p-6">
-                                                                <div class="bg-white rounded-xl shadow-xl overflow-hidden flex justify-center">
-                                                                    <canvas id="doc-pdf-canvas" class="max-w-full h-auto"></canvas>
-                                                                </div>
+                                                                <div id="doc-pdf-pages" class="mx-auto space-y-6" style="max-width: 1000px;"></div>
                                                             </div>
                                                         </div>
                                                         <div id="doc-pdf-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-yellow-50">
@@ -653,8 +651,7 @@
                                                                         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                                                                     }
                                                                     const pdfUrl = "{{ $fileUrl }}";
-                                                                    const canvas = document.getElementById('doc-pdf-canvas');
-                                                                    const ctx = canvas.getContext('2d');
+                                                                    const pagesEl = document.getElementById('doc-pdf-pages');
                                                                     const loadingEl = document.getElementById('doc-pdf-loading');
                                                                     const viewerEl = document.getElementById('doc-pdf-viewer');
                                                                     const fallbackEl = document.getElementById('doc-pdf-fallback');
@@ -665,15 +662,45 @@
                                                                     if (!window.pdfjsLib) { showFallback(); return; }
 
                                                                     pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
-                                                                        return pdf.getPage(1).then(function(page) {
-                                                                            const viewport = page.getViewport({ scale: 1.2 });
-                                                                            canvas.width = viewport.width;
-                                                                            canvas.height = viewport.height;
-                                                                            const renderContext = { canvasContext: ctx, viewport: viewport };
-                                                                            return page.render(renderContext).promise;
-                                                                        });
-                                                                    }).then(function() {
-                                                                        showViewer();
+                                                                        if (!pagesEl) { throw new Error('No pages container'); }
+                                                                        const total = pdf.numPages;
+
+                                                                        let firstRendered = false;
+
+                                                                        const renderPage = function(num) {
+                                                                            return pdf.getPage(num).then(function(page) {
+                                                                                const containerWidth = pagesEl.clientWidth || 800;
+                                                                                const initialViewport = page.getViewport({ scale: 1.0 });
+                                                                                const scale = Math.min(2.0, containerWidth / initialViewport.width);
+                                                                                const viewport = page.getViewport({ scale: scale });
+
+                                                                                const wrapper = document.createElement('div');
+                                                                                wrapper.className = 'bg-white rounded-xl shadow-xl overflow-hidden flex justify-center';
+
+                                                                                const canvas = document.createElement('canvas');
+                                                                                canvas.className = 'max-w-full h-auto';
+                                                                                const ctx = canvas.getContext('2d');
+                                                                                canvas.width = Math.floor(viewport.width);
+                                                                                canvas.height = Math.floor(viewport.height);
+                                                                                wrapper.appendChild(canvas);
+                                                                                pagesEl.appendChild(wrapper);
+
+                                                                                const renderContext = { canvasContext: ctx, viewport: viewport };
+                                                                                return page.render(renderContext).promise.then(function() {
+                                                                                    if (!firstRendered) {
+                                                                                        firstRendered = true;
+                                                                                        showViewer();
+                                                                                    }
+                                                                                });
+                                                                            });
+                                                                        };
+
+                                                                        // Render pages sequentially to avoid heavy CPU spikes
+                                                                        let chain = Promise.resolve();
+                                                                        for (let i = 1; i <= total; i++) {
+                                                                            chain = chain.then(() => renderPage(i));
+                                                                        }
+                                                                        return chain;
                                                                     }).catch(function() {
                                                                         showFallback();
                                                                     });
