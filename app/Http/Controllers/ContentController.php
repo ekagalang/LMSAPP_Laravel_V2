@@ -39,7 +39,7 @@ class ContentController extends Controller
         }
 
         // TAMBAH load untuk essayQuestions
-        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions', 'images');
+        $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions', 'images', 'documents');
 
         if ($user->hasRole(['super-admin', 'instructor'])) {
             $unlockedContents = $orderedContents;
@@ -345,7 +345,7 @@ class ContentController extends Controller
     {
         $this->authorize('update', $lesson->course);
         // TAMBAH load essayQuestions
-        $content->load(['quiz.questions.options', 'essayQuestions', 'images']);
+        $content->load(['quiz.questions.options', 'essayQuestions', 'images', 'documents']);
         return view('contents.edit', compact('lesson', 'content'));
     }
 
@@ -382,14 +382,17 @@ class ContentController extends Controller
 
         // Validasi file upload berdasarkan tipe konten
         if ($request->input('type') === 'document') {
-            // Untuk content baru, file wajib. Untuk edit, file opsional (kecuali mau ganti)
-            if (!$content->exists || $request->hasFile('file_upload')) {
-                $rules['file_upload'] = [
-                    $content->exists ? 'nullable' : 'required',
-                    'file',
-                    'max:102400', // 100MB - lebih realistis untuk dokumen
-                    'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,rtf'
-                ];
+            // Izinkan salah satu: file_upload tunggal atau documents[] multiple
+            $rules['file_upload'] = [
+                $content->exists ? 'nullable' : 'required_without:documents',
+                'file',
+                'max:102400', // 100MB - lebih realistis untuk dokumen
+                'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,rtf'
+            ];
+            // Multiple documents optional
+            if ($request->hasFile('documents')) {
+                $rules['documents'] = ['array', 'max:20'];
+                $rules['documents.*'] = ['file', 'max:102400', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,rtf'];
             }
         } elseif ($request->input('type') === 'image') {
             // Izinkan baik single image (file_upload) maupun multiple (images[])
@@ -608,6 +611,22 @@ class ContentController extends Controller
                 }
             }
 
+            // Multiple documents handling (defer create until after $content->save())
+            $deferredDocumentFiles = [];
+            if ($validated['type'] === 'document' && $request->hasFile('documents')) {
+                foreach ($request->file('documents') as $docFile) {
+                    if (!$docFile->isValid()) continue;
+                    $stored = $docFile->store('content_files', 'public');
+                    $deferredDocumentFiles[] = [
+                        'path' => $stored,
+                        'name' => $docFile->getClientOriginalName(),
+                    ];
+                }
+                if (!$content->file_path && !empty($deferredDocumentFiles)) {
+                    $content->file_path = $deferredDocumentFiles[0]['path'];
+                }
+            }
+
             // Set order dengan lebih hati-hati
             if (!$content->exists) {
                 $lastOrder = $lesson->contents()->max('order') ?? 0;
@@ -640,6 +659,18 @@ class ContentController extends Controller
                     $content->images()->create([
                         'file_path' => $path,
                         'order' => $orderBase + $idx + 1,
+                    ]);
+                }
+            }
+
+            // Create related documents after content has an ID
+            if ($validated['type'] === 'document' && !empty($deferredDocumentFiles)) {
+                $orderBaseDocs = (int) ($content->documents()->max('order') ?? 0);
+                foreach (array_values($deferredDocumentFiles) as $idx => $doc) {
+                    $content->documents()->create([
+                        'file_path' => $doc['path'],
+                        'original_name' => $doc['name'] ?? null,
+                        'order' => $orderBaseDocs + $idx + 1,
                     ]);
                 }
             }
@@ -685,6 +716,43 @@ class ContentController extends Controller
                     ]);
                 }
                 $content->save();
+            }
+
+            // Manage deletions and reorder for existing documents (when type=document)
+            if ($validated['type'] === 'document') {
+                // Deletions
+                $deleteIds = collect($request->input('delete_documents', []))
+                    ->filter(fn($v) => is_numeric($v))
+                    ->map(fn($v) => (int) $v)
+                    ->values();
+                if ($deleteIds->isNotEmpty()) {
+                    $toDelete = $content->documents()->whereIn('id', $deleteIds)->get();
+                    foreach ($toDelete as $doc) {
+                        if ($doc->file_path) { try { Storage::disk('public')->delete($doc->file_path); } catch (\Throwable $e) {} }
+                        $doc->delete();
+                    }
+                }
+
+                // Reorder
+                $orderStr = (string) $request->input('document_order', '');
+                if ($orderStr !== '') {
+                    $ids = collect(explode(',', $orderStr))
+                        ->filter(fn($v) => trim($v) !== '')
+                        ->map(fn($v) => (int) $v)
+                        ->values();
+                    $pos = 1;
+                    foreach ($ids as $id) {
+                        $content->documents()->where('id', $id)->update(['order' => $pos]);
+                        $pos++;
+                    }
+                }
+
+                // Ensure file_path points to first document if present
+                $firstDoc = $content->documents()->orderBy('order')->first();
+                if ($firstDoc) {
+                    $content->file_path = $firstDoc->file_path;
+                    $content->save();
+                }
             }
 
             // Log body setelah save pertama

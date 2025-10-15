@@ -582,6 +582,60 @@
                                             <span class="{{ $badgeClass }}">{{ $badgeText }}</span>
                                         </div>
 
+                                        @if($content->documents && $content->documents->count())
+                                            <div class="mb-6">
+                                                <div class="bg-white rounded-xl border p-4">
+                                                    <div class="flex items-center justify-between mb-3">
+                                                        <p class="text-sm font-semibold text-gray-700">Lampiran Dokumen</p>
+                                                        <a href="#" class="text-xs text-indigo-600 hover:underline js-doc-preview" data-url="{{ $fileUrl }}" data-full-url="{{ $fullFileUrl }}" data-ext="{{ $fileExtension }}">Tampilkan file utama</a>
+                                                    </div>
+                                                    <ul class="space-y-2 text-sm">
+                                                        @foreach($content->documents as $doc)
+                                                            @continue($doc->file_path === $content->file_path)
+                                                            @php
+                                                                $docName = $doc->original_name ?? basename($doc->file_path);
+                                                                $docUrl = Storage::url($doc->file_path);
+                                                                $docFullUrl = url($docUrl);
+                                                                $docExt = strtolower(pathinfo($doc->file_path, PATHINFO_EXTENSION));
+                                                            @endphp
+                                                            <li class="flex items-center justify-between">
+                                                                <div class="flex items-center gap-3 min-w-0">
+                                                                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m4-4H8"/></svg>
+                                                                    <span class="truncate" title="{{ $docName }}">{{ $docName }}</span>
+                                                                </div>
+                                                                <div class="flex items-center gap-3 flex-shrink-0">
+                                                                    @if($accessType === 'download_only')
+                                                                        <a href="{{ $docUrl }}" download class="text-green-600 hover:underline">Unduh</a>
+                                                                    @elseif($accessType === 'preview_only')
+                                                                        @if($docExt === 'pdf')
+                                                                            @if($fileExtension === 'pdf')
+                                                                                <a href="#" class="text-indigo-600 hover:underline js-doc-preview" data-url="{{ $docUrl }}" data-full-url="{{ $docFullUrl }}" data-ext="{{ $docExt }}">Preview</a>
+                                                                            @else
+                                                                                <a href="#" class="text-indigo-600 hover:underline js-doc-preview" data-url="{{ $docUrl }}" data-full-url="{{ $docFullUrl }}" data-ext="{{ $docExt }}">Preview</a>
+                                                                            @endif
+                                                                        @else
+                                                                             <a href="#" class="text-indigo-600 hover:underline js-doc-preview" data-url="{{ $docUrl }}" data-full-url="{{ $docFullUrl }}" data-ext="{{ $docExt }}">Preview</a>
+                                                                        @endif
+                                                                    @else
+                                                                        @if($docExt === 'pdf')
+                                                                            @if($fileExtension === 'pdf')
+                                                                                <a href="#" class="text-indigo-600 hover:underline js-doc-preview" data-url="{{ $docUrl }}" data-full-url="{{ $docFullUrl }}" data-ext="{{ $docExt }}">Preview</a>
+                                                                            @else
+                                                                                <a href="#" class="text-indigo-600 hover:underline js-doc-preview" data-url="{{ $docUrl }}" data-full-url="{{ $docFullUrl }}" data-ext="{{ $docExt }}">Preview</a>
+                                                                            @endif
+                                                                        @else
+                                                                             <a href="#" class="text-indigo-600 hover:underline js-doc-preview" data-url="{{ $docUrl }}" data-full-url="{{ $docFullUrl }}" data-ext="{{ $docExt }}">Preview</a>
+                                                                        @endif
+                                                                        <a href="{{ $docUrl }}" download class="text-green-600 hover:underline">Unduh</a>
+                                                                    @endif
+                                                                </div>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        @endif
+
                                         {{-- Preview Section (jika bisa di-preview dan akses type bukan download_only) --}}
                                         @if($isPreviewable && $accessType !== 'download_only')
                                             <div class="mb-6 bg-white rounded-xl overflow-hidden shadow-lg" x-data="{ loading: true, error: false }">
@@ -619,6 +673,9 @@
                                                                 <div id="doc-pdf-pages" class="mx-auto space-y-6" style="max-width: 1000px;"></div>
                                                             </div>
                                                         </div>
+                                                        <div id="doc-embed-viewer" class="hidden absolute inset-0">
+                                                            <iframe id="doc-embed-iframe" class="w-full h-full border-0"></iframe>
+                                                        </div>
                                                         <div id="doc-pdf-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-yellow-50">
                                                             <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
                                                                 <svg class="w-10 h-10 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,60 +707,113 @@
                                                                     if (window.pdfjsLib) {
                                                                         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                                                                     }
-                                                                    const pdfUrl = "{{ $fileUrl }}";
                                                                     const pagesEl = document.getElementById('doc-pdf-pages');
                                                                     const loadingEl = document.getElementById('doc-pdf-loading');
-                                                                    const viewerEl = document.getElementById('doc-pdf-viewer');
+                                                                    const pdfViewerEl = document.getElementById('doc-pdf-viewer');
+                                                                    const embedViewerEl = document.getElementById('doc-embed-viewer');
+                                                                    const embedIframe = document.getElementById('doc-embed-iframe');
                                                                     const fallbackEl = document.getElementById('doc-pdf-fallback');
 
-                                                                    const showViewer = () => { if (loadingEl) loadingEl.classList.add('hidden'); if (viewerEl) viewerEl.classList.remove('hidden'); };
-                                                                    const showFallback = () => { if (loadingEl) loadingEl.classList.add('hidden'); if (viewerEl) viewerEl.classList.add('hidden'); if (fallbackEl) fallbackEl.classList.remove('hidden'); };
+                                                                    const clearPages = () => { if (!pagesEl) return; while (pagesEl.firstChild) pagesEl.removeChild(pagesEl.firstChild); };
+                                                                    const showLoading = () => {
+                                                                        if (loadingEl) loadingEl.classList.remove('hidden');
+                                                                        if (pdfViewerEl) pdfViewerEl.classList.add('hidden');
+                                                                        if (embedViewerEl) embedViewerEl.classList.add('hidden');
+                                                                        if (fallbackEl) fallbackEl.classList.add('hidden');
+                                                                    };
+                                                                    const showPdfViewer = () => {
+                                                                        if (loadingEl) loadingEl.classList.add('hidden');
+                                                                        if (embedViewerEl) embedViewerEl.classList.add('hidden');
+                                                                        if (fallbackEl) fallbackEl.classList.add('hidden');
+                                                                        if (pdfViewerEl) pdfViewerEl.classList.remove('hidden');
+                                                                    };
+                                                                    const showEmbedViewer = () => {
+                                                                        if (loadingEl) loadingEl.classList.add('hidden');
+                                                                        if (pdfViewerEl) pdfViewerEl.classList.add('hidden');
+                                                                        if (fallbackEl) fallbackEl.classList.add('hidden');
+                                                                        if (embedViewerEl) embedViewerEl.classList.remove('hidden');
+                                                                    };
+                                                                    const showFallback = () => {
+                                                                        if (loadingEl) loadingEl.classList.add('hidden');
+                                                                        if (pdfViewerEl) pdfViewerEl.classList.add('hidden');
+                                                                        if (embedViewerEl) embedViewerEl.classList.add('hidden');
+                                                                        if (fallbackEl) fallbackEl.classList.remove('hidden');
+                                                                    };
 
                                                                     if (!window.pdfjsLib) { showFallback(); return; }
 
-                                                                    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
-                                                                        if (!pagesEl) { throw new Error('No pages container'); }
-                                                                        const total = pdf.numPages;
+                                                                    window.loadDocumentPdf = function(pdfUrl) {
+                                                                        try {
+                                                                            showLoading();
+                                                                            clearPages();
+                                                                            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                                                                                if (!pagesEl) { throw new Error('No pages container'); }
+                                                                                const total = pdf.numPages;
+                                                                                let firstRendered = false;
+                                                                                const renderPage = function(num) {
+                                                                                    return pdf.getPage(num).then(function(page) {
+                                                                                        const containerWidth = pagesEl.clientWidth || 800;
+                                                                                        const initialViewport = page.getViewport({ scale: 1.0 });
+                                                                                        const scale = Math.min(2.0, containerWidth / initialViewport.width);
+                                                                                        const viewport = page.getViewport({ scale: scale });
+                                                                                        const wrapper = document.createElement('div');
+                                                                                        wrapper.className = 'bg-white rounded-xl shadow-xl overflow-hidden flex justify-center';
+                                                                                        const canvas = document.createElement('canvas');
+                                                                                        canvas.className = 'max-w-full h-auto';
+                                                                                        const ctx = canvas.getContext('2d');
+                                                                                        canvas.width = Math.floor(viewport.width);
+                                                                                        canvas.height = Math.floor(viewport.height);
+                                                                                        wrapper.appendChild(canvas);
+                                                                                        pagesEl.appendChild(wrapper);
+                                                                                        const renderContext = { canvasContext: ctx, viewport: viewport };
+                                                                                        return page.render(renderContext).promise.then(function() {
+                                                                                            if (!firstRendered) { firstRendered = true; showPdfViewer(); }
+                                                                                        });
+                                                                                    });
+                                                                                };
+                                                                                let chain = Promise.resolve();
+                                                                                for (let i = 1; i <= total; i++) {
+                                                                                    chain = chain.then(() => renderPage(i));
+                                                                                }
+                                                                                return chain;
+                                                                            }).catch(function() { showFallback(); });
+                                                                        } catch (e) { showFallback(); }
+                                                                    };
 
-                                                                        let firstRendered = false;
+                                                                    window.loadDocumentEmbed = function(embedUrl) {
+                                                                        try {
+                    if (!embedIframe) { showFallback(); return; }
+                    showLoading();
+                    embedIframe.onload = function() { showEmbedViewer(); };
+                    embedIframe.src = embedUrl;
+                } catch (e) { showFallback(); }
+            };
 
-                                                                        const renderPage = function(num) {
-                                                                            return pdf.getPage(num).then(function(page) {
-                                                                                const containerWidth = pagesEl.clientWidth || 800;
-                                                                                const initialViewport = page.getViewport({ scale: 1.0 });
-                                                                                const scale = Math.min(2.0, containerWidth / initialViewport.width);
-                                                                                const viewport = page.getViewport({ scale: scale });
+            // Initial load with main file
+            @if($fileExtension === 'pdf')
+                window.loadDocumentPdf("{{ $fileUrl }}");
+            @else
+                window.loadDocumentEmbed("https://docs.google.com/viewer?url={{ urlencode($fullFileUrl) }}&embedded=true");
+            @endif
 
-                                                                                const wrapper = document.createElement('div');
-                                                                                wrapper.className = 'bg-white rounded-xl shadow-xl overflow-hidden flex justify-center';
-
-                                                                                const canvas = document.createElement('canvas');
-                                                                                canvas.className = 'max-w-full h-auto';
-                                                                                const ctx = canvas.getContext('2d');
-                                                                                canvas.width = Math.floor(viewport.width);
-                                                                                canvas.height = Math.floor(viewport.height);
-                                                                                wrapper.appendChild(canvas);
-                                                                                pagesEl.appendChild(wrapper);
-
-                                                                                const renderContext = { canvasContext: ctx, viewport: viewport };
-                                                                                return page.render(renderContext).promise.then(function() {
-                                                                                    if (!firstRendered) {
-                                                                                        firstRendered = true;
-                                                                                        showViewer();
-                                                                                    }
-                                                                                });
-                                                                            });
-                                                                        };
-
-                                                                        // Render pages sequentially to avoid heavy CPU spikes
-                                                                        let chain = Promise.resolve();
-                                                                        for (let i = 1; i <= total; i++) {
-                                                                            chain = chain.then(() => renderPage(i));
-                                                                        }
-                                                                        return chain;
-                                                                    }).catch(function() {
-                                                                        showFallback();
-                                                                    });
+            // Hook preview links (any ext)
+            document.addEventListener('click', function(e){
+                const t = e.target.closest('.js-doc-preview');
+                if (t) {
+                    e.preventDefault();
+                    const ext = (t.getAttribute('data-ext') || '').toLowerCase();
+                    const url = t.getAttribute('data-url');
+                    const full = t.getAttribute('data-full-url') || url;
+                    if (ext === 'pdf') {
+                        window.loadDocumentPdf(url);
+                        (pdfViewerEl || embedViewerEl)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        const embed = 'https://docs.google.com/viewer?url=' + encodeURIComponent(full) + '&embedded=true';
+                        window.loadDocumentEmbed(embed);
+                        (embedViewerEl || pdfViewerEl)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
                                                                 } catch (e) {
                                                                     const fb = document.getElementById('doc-pdf-fallback');
                                                                     if (fb) { fb.classList.remove('hidden'); }
@@ -713,13 +823,27 @@
                                                             })();
                                                         </script>
                                                     @else
-                                                        {{-- Google Docs Viewer untuk Office files --}}
-                                                        <iframe
-                                                            src="https://docs.google.com/viewer?url={{ urlencode($fullFileUrl) }}&embedded=true"
-                                                            class="w-full h-full"
-                                                            x-on:load="loading = false"
-                                                            x-on:error="error = true; loading = false">
-                                                        </iframe>
+                                                        {{-- Google Docs Viewer untuk Office files (dynamic) --}}
+                                                        <div id="doc-embed-viewer" class="absolute inset-0">
+                                                            <iframe id="doc-embed-iframe"
+                                                                    src="https://docs.google.com/viewer?url={{ urlencode($fullFileUrl) }}&embedded=true"
+                                                                    class="w-full h-full border-0"
+                                                                    x-on:load="loading = false"
+                                                                    x-on:error="error = true; loading = false"></iframe>
+                                                        </div>
+                                                        <script>
+                                                            (function(){
+                                                                document.addEventListener('click', function(e){
+                                                                    const t = e.target.closest('.js-doc-preview');
+                                                                    if (!t) return;
+                                                                    e.preventDefault();
+                                                                    const full = t.getAttribute('data-full-url') || t.getAttribute('data-url');
+                                                                    const embed = 'https://docs.google.com/viewer?url=' + encodeURIComponent(full) + '&embedded=true';
+                                                                    const f = document.getElementById('doc-embed-iframe');
+                                                                    if (f) { f.src = embed; }
+                                                                });
+                                                            })();
+                                                        </script>
                                                     @endif
                                                 </div>
                                             </div>

@@ -139,6 +139,14 @@ class Content extends Model
     }
 
     /**
+     * Multiple documents attached to this content (for type === 'document').
+     */
+    public function documents()
+    {
+        return $this->hasMany(ContentDocument::class)->orderBy('order');
+    }
+
+    /**
      * Relasi ke Quiz (jika tipe kontennya adalah kuis)
      */
     public function quiz()
