@@ -26,6 +26,136 @@
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Analytics Overview Section -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Analytics & Insights
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Progress Distribution Chart -->
+                    <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide">Distribusi Progress Peserta</h4>
+                        <div class="space-y-3">
+                            @php
+                                $distributionColors = [
+                                    '0-25' => ['bg' => 'bg-red-500', 'text' => 'text-red-700', 'light' => 'bg-red-100'],
+                                    '26-50' => ['bg' => 'bg-orange-500', 'text' => 'text-orange-700', 'light' => 'bg-orange-100'],
+                                    '51-75' => ['bg' => 'bg-yellow-500', 'text' => 'text-yellow-700', 'light' => 'bg-yellow-100'],
+                                    '76-99' => ['bg' => 'bg-blue-500', 'text' => 'text-blue-700', 'light' => 'bg-blue-100'],
+                                    '100' => ['bg' => 'bg-green-500', 'text' => 'text-green-700', 'light' => 'bg-green-100'],
+                                ];
+                                $labels = [
+                                    '0-25' => '0-25% (Baru Mulai)',
+                                    '26-50' => '26-50% (Sedang Berjalan)',
+                                    '51-75' => '51-75% (Hampir Setengah)',
+                                    '76-99' => '76-99% (Hampir Selesai)',
+                                    '100' => '100% (Selesai)',
+                                ];
+                            @endphp
+
+                            @foreach($analytics['distribution'] as $range => $count)
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex justify-between text-sm mb-1">
+                                            <span class="font-medium text-gray-700">{{ $labels[$range] }}</span>
+                                            <span class="font-bold {{ $distributionColors[$range]['text'] }}">{{ $count }} peserta</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                            @php
+                                                $percentage = $analytics['total_participants'] > 0
+                                                    ? ($count / $analytics['total_participants']) * 100
+                                                    : 0;
+                                            @endphp
+                                            <div class="{{ $distributionColors[$range]['bg'] }} h-3 rounded-full transition-all duration-500"
+                                                 style="width: {{ $percentage }}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <!-- Average Progress -->
+                        <div class="mt-6 pt-6 border-t border-gray-300">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-semibold text-gray-700">Rata-rata Progress:</span>
+                                <div class="flex items-center gap-2">
+                                    <div class="text-2xl font-bold text-indigo-600">{{ $analytics['average_progress'] }}%</div>
+                                    <svg class="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top 5 Current Lessons -->
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Posisi Terakhir Peserta
+                        </h4>
+
+                        @if(count($analytics['top_lessons']) > 0)
+                            <div class="space-y-3">
+                                @foreach($analytics['top_lessons'] as $lessonId => $lesson)
+                                    <div class="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="text-sm font-bold text-gray-900 mb-1 line-clamp-2">
+                                                    {{ $lesson['title'] }}
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <span class="inline-flex items-center">
+                                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                                                        </svg>
+                                                        {{ $lesson['count'] }} peserta
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+                                                    #{{ $loop->iteration }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-8 text-gray-500">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="text-sm">Belum ada peserta yang memulai</p>
+                            </div>
+                        @endif
+
+                        <!-- Quick Stats -->
+                        <div class="mt-6 pt-6 border-t border-indigo-200">
+                            <div class="grid grid-cols-2 gap-4 text-center">
+                                <div class="bg-white rounded-lg p-3">
+                                    <div class="text-2xl font-bold text-green-600">{{ $analytics['completed_participants'] }}</div>
+                                    <div class="text-xs text-gray-600 mt-1">Selesai</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-3">
+                                    <div class="text-2xl font-bold text-blue-600">{{ $analytics['in_progress_participants'] }}</div>
+                                    <div class="text-xs text-gray-600 mt-1">Dalam Progress</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">

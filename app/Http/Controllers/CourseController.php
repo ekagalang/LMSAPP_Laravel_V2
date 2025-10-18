@@ -429,8 +429,14 @@ class CourseController extends Controller
                 'completed_count' => $progressData['completed_count'],
                 'progress_percentage' => $progressData['progress_percentage'],
                 'last_position' => $lastPosition,
+                'last_lesson_id' => $lastCompletedContent && $lastCompletedContent->lesson
+                    ? $lastCompletedContent->lesson->id
+                    : null,
             ];
         });
+
+        // ✅ ANALYTICS: Hitung analytics untuk semua peserta (tidak hanya current page)
+        $analytics = $this->calculateProgressAnalytics($course, $enrolledUsersQuery);
 
         return view('courses.progress', [
             'course' => $course,
@@ -438,7 +444,117 @@ class CourseController extends Controller
             'participantsProgress' => $participantsProgress,
             'totalContentCount' => $totalContentCount,
             'enrolledUsers' => $enrolledUsers, // Untuk pagination links
+            'analytics' => $analytics, // Data analytics
         ]);
+    }
+
+    /**
+     * ✅ ANALYTICS: Calculate progress analytics for all participants
+     */
+    private function calculateProgressAnalytics($course, $enrolledUsersQuery)
+    {
+        // Clone query untuk mendapatkan semua user (bukan hanya current page)
+        $allUsers = (clone $enrolledUsersQuery)
+            ->with([
+                'completedContents' => function ($query) use ($course) {
+                    $query->whereHas('lesson', function ($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->wherePivot('completed', true)
+                    ->with('lesson:id,title,course_id,order');
+                },
+                'quizAttempts' => function ($query) use ($course) {
+                    $query->whereHas('quiz.lesson', function ($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->where('passed', true);
+                },
+                'essaySubmissions' => function ($query) use ($course) {
+                    $query->whereHas('content.lesson', function ($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->with(['answers' => function ($q) {
+                        $q->select('id', 'submission_id', 'question_id', 'score', 'feedback');
+                    }]);
+                }
+            ])
+            ->get();
+
+        $course->load(['lessons.contents.quiz', 'lessons.contents.essayQuestions']);
+
+        $totalContentCount = $course->lessons->sum(function ($lesson) {
+            return $lesson->contents->count();
+        });
+
+        // Progress distribution
+        $progressDistribution = [
+            '0-25' => 0,
+            '26-50' => 0,
+            '51-75' => 0,
+            '76-99' => 0,
+            '100' => 0,
+        ];
+
+        // Lesson position tracking
+        $lessonPositions = [];
+        $totalProgress = 0;
+
+        foreach ($allUsers as $user) {
+            $progressData = $this->calculateUserProgressOptimized($user, $course, $totalContentCount);
+            $percentage = $progressData['progress_percentage'];
+            $totalProgress += $percentage;
+
+            // Categorize progress
+            if ($percentage == 100) {
+                $progressDistribution['100']++;
+            } elseif ($percentage >= 76) {
+                $progressDistribution['76-99']++;
+            } elseif ($percentage >= 51) {
+                $progressDistribution['51-75']++;
+            } elseif ($percentage >= 26) {
+                $progressDistribution['26-50']++;
+            } else {
+                $progressDistribution['0-25']++;
+            }
+
+            // Track last position
+            $lastCompletedContent = $user->completedContents
+                ->sortByDesc('pivot.completed_at')
+                ->first();
+
+            if ($lastCompletedContent && $lastCompletedContent->lesson) {
+                $lessonId = $lastCompletedContent->lesson->id;
+                $lessonTitle = $lastCompletedContent->lesson->title;
+
+                if (!isset($lessonPositions[$lessonId])) {
+                    $lessonPositions[$lessonId] = [
+                        'title' => $lessonTitle,
+                        'count' => 0,
+                        'order' => $lastCompletedContent->lesson->order ?? 999,
+                    ];
+                }
+                $lessonPositions[$lessonId]['count']++;
+            }
+        }
+
+        // Sort lessons by count and get top 5
+        uasort($lessonPositions, function($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+        $topLessons = array_slice($lessonPositions, 0, 5, true);
+
+        // Calculate averages
+        $totalUsers = $allUsers->count();
+        $averageProgress = $totalUsers > 0 ? round($totalProgress / $totalUsers, 1) : 0;
+
+        return [
+            'distribution' => $progressDistribution,
+            'top_lessons' => $topLessons,
+            'average_progress' => $averageProgress,
+            'total_participants' => $totalUsers,
+            'completed_participants' => $progressDistribution['100'],
+            'in_progress_participants' => $totalUsers - $progressDistribution['100'],
+        ];
     }
 
     /**
