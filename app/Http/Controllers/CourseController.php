@@ -346,7 +346,7 @@ class CourseController extends Controller
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
                 ->pluck('course_classes.id');
-            
+
             if ($instructorPeriods->isNotEmpty()) {
                 // Get participants only from instructor's assigned periods
                 $enrolledUsersQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
@@ -369,37 +369,169 @@ class CourseController extends Controller
             });
         }
 
-        $enrolledUsers = $enrolledUsersQuery->get();
+        // ✅ OPTIMASI BESAR: Tambahkan pagination
+        $perPage = $request->input('per_page', 50); // Default 50 per page
 
-        // Progress calculation tetap sama
-        $participantsProgress = $enrolledUsers->map(function ($participant) use ($course) {
-            $progressData = $participant->getProgressForCourse($course);
+        // ✅ OPTIMASI: Eager load semua relasi yang dibutuhkan untuk menghitung progress
+        $enrolledUsers = $enrolledUsersQuery
+            ->with([
+                'completedContents' => function ($query) use ($course) {
+                    $query->whereHas('lesson', function ($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->wherePivot('completed', true)
+                    ->with('lesson:id,title,course_id');
+                },
+                'quizAttempts' => function ($query) use ($course) {
+                    $query->whereHas('quiz.lesson', function ($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->where('passed', true)
+                    ->select('id', 'user_id', 'quiz_id', 'passed', 'completed_at');
+                },
+                'essaySubmissions' => function ($query) use ($course) {
+                    $query->whereHas('content.lesson', function ($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->with(['answers' => function ($q) {
+                        $q->select('id', 'submission_id', 'question_id', 'score', 'feedback');
+                    }]);
+                }
+            ])
+            ->orderBy('name')
+            ->paginate($perPage);
 
+        // ✅ OPTIMASI: Load course lessons & contents sekali saja (bukan per participant)
+        $course->load(['lessons.contents.quiz', 'lessons.contents.essayQuestions']);
+
+        // Pre-calculate total content count
+        $totalContentCount = $course->lessons->sum(function ($lesson) {
+            return $lesson->contents->count();
+        });
+
+        // ✅ OPTIMASI: Gunakan method yang lebih efisien untuk hitung progress
+        $participantsProgress = $enrolledUsers->map(function ($participant) use ($course, $totalContentCount) {
+            $progressData = $this->calculateUserProgressOptimized($participant, $course, $totalContentCount);
+
+            // Get last completed content dari relasi yang sudah di-load
             $lastCompletedContent = $participant->completedContents
-                ->where('lesson.course_id', $course->id)
                 ->sortByDesc('pivot.completed_at')
                 ->first();
 
-            $lastPosition = $lastCompletedContent ? $lastCompletedContent->lesson->title : 'Belum Memulai';
+            $lastPosition = $lastCompletedContent && $lastCompletedContent->lesson
+                ? $lastCompletedContent->lesson->title
+                : 'Belum Memulai';
 
             return [
                 'id' => $participant->id,
                 'name' => $participant->name,
                 'email' => $participant->email,
-                'completed_count' => $progressData['completed_contents'],
+                'completed_count' => $progressData['completed_count'],
                 'progress_percentage' => $progressData['progress_percentage'],
                 'last_position' => $lastPosition,
             ];
         });
-
-        $totalContentCount = $course->lessons()->withCount('contents')->get()->sum('contents_count');
 
         return view('courses.progress', [
             'course' => $course,
             'instructorCourses' => $instructorCourses,
             'participantsProgress' => $participantsProgress,
             'totalContentCount' => $totalContentCount,
+            'enrolledUsers' => $enrolledUsers, // Untuk pagination links
         ]);
+    }
+
+    /**
+     * ✅ OPTIMASI: Method helper untuk menghitung progress tanpa N+1 queries
+     * Menggunakan data yang sudah di-eager load
+     */
+    private function calculateUserProgressOptimized($user, $course, $totalContentCount)
+    {
+        if ($totalContentCount === 0) {
+            return [
+                'progress_percentage' => 0,
+                'completed_count' => 0,
+                'total_count' => 0,
+            ];
+        }
+
+        $completedCount = 0;
+
+        // Buat map untuk akses cepat O(1)
+        $completedContentsMap = $user->completedContents->pluck('id')->flip();
+        $quizAttemptsMap = $user->quizAttempts->pluck('quiz_id')->flip();
+        $essaySubmissionsMap = $user->essaySubmissions->keyBy('content_id');
+
+        foreach ($course->lessons as $lesson) {
+            foreach ($lesson->contents as $content) {
+                $isCompleted = false;
+
+                // Check berdasarkan tipe content
+                if ($content->is_optional ?? false) {
+                    $isCompleted = $completedContentsMap->has($content->id);
+                } elseif ($content->type === 'quiz' && $content->quiz_id) {
+                    $isCompleted = $quizAttemptsMap->has($content->quiz_id);
+                } elseif ($content->type === 'essay') {
+                    $submission = $essaySubmissionsMap->get($content->id);
+                    if ($submission) {
+                        $isCompleted = $this->checkEssayCompletionOptimized($content, $submission);
+                    }
+                } else {
+                    $isCompleted = $completedContentsMap->has($content->id);
+                }
+
+                if ($isCompleted) {
+                    $completedCount++;
+                }
+            }
+        }
+
+        $progressPercentage = round(($completedCount / $totalContentCount) * 100, 2);
+
+        return [
+            'progress_percentage' => $progressPercentage,
+            'completed_count' => $completedCount,
+            'total_count' => $totalContentCount,
+        ];
+    }
+
+    /**
+     * ✅ OPTIMASI: Check essay completion tanpa query tambahan
+     */
+    private function checkEssayCompletionOptimized($content, $submission)
+    {
+        if (!$submission) {
+            return false;
+        }
+
+        $totalQuestions = $content->essayQuestions->count();
+
+        // Legacy system (no questions)
+        if ($totalQuestions === 0) {
+            return $submission->answers->count() > 0;
+        }
+
+        // Check if requires review
+        if (!($content->requires_review ?? true)) {
+            return $submission->answers->count() > 0;
+        }
+
+        // New system - check based on scoring and grading mode
+        if (!$content->scoring_enabled) {
+            // Without scoring
+            if ($content->grading_mode === 'overall') {
+                return $submission->answers->whereNotNull('feedback')->count() > 0;
+            } else {
+                return $submission->answers->whereNotNull('feedback')->count() >= $totalQuestions;
+            }
+        } else {
+            // With scoring
+            if ($content->grading_mode === 'overall') {
+                return $submission->answers->whereNotNull('score')->count() > 0;
+            } else {
+                return $submission->answers->whereNotNull('score')->count() >= $totalQuestions;
+            }
+        }
     }
 
     public function showParticipantProgress(Course $course, User $user)

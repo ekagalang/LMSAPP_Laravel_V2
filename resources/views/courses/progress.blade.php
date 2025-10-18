@@ -37,11 +37,11 @@
                         </div>
                         <div class="ml-4">
                             <p class="text-blue-100">Total Peserta</p>
-                            <p class="text-2xl font-bold">{{ count($participantsProgress) }}</p>
+                            <p class="text-2xl font-bold">{{ $enrolledUsers->total() }}</p>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
                     <div class="flex items-center">
                         <div class="p-3 rounded-lg bg-white bg-opacity-20">
@@ -50,7 +50,7 @@
                             </svg>
                         </div>
                         <div class="ml-4">
-                            <p class="text-green-100">Selesai 100%</p>
+                            <p class="text-green-100">Selesai 100% (hal. ini)</p>
                             <p class="text-2xl font-bold">{{ collect($participantsProgress)->where('progress_percentage', 100)->count() }}</p>
                         </div>
                     </div>
@@ -223,6 +223,23 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- ✅ PAGINATION -->
+                    @if($enrolledUsers->hasPages())
+                        <div class="mt-6 px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+                            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div class="text-sm text-gray-700">
+                                    Menampilkan <span class="font-medium">{{ $enrolledUsers->firstItem() }}</span>
+                                    sampai <span class="font-medium">{{ $enrolledUsers->lastItem() }}</span>
+                                    dari <span class="font-medium">{{ $enrolledUsers->total() }}</span> peserta
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    {{ $enrolledUsers->appends(request()->query())->links() }}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
