@@ -340,6 +340,7 @@ class CourseController extends Controller
             $instructorCourses->push($course);
         }
 
+        // ✅ FIX: Buat base query untuk analytics (tanpa search/pagination)
         // Filter participants by instructor's assigned periods
         if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
             // Get periods where this instructor is assigned for this course
@@ -349,18 +350,22 @@ class CourseController extends Controller
 
             if ($instructorPeriods->isNotEmpty()) {
                 // Get participants only from instructor's assigned periods
-                $enrolledUsersQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
+                $baseQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
                     $query->whereIn('course_classes.id', $instructorPeriods);
                 });
             } else {
                 // If instructor is not assigned to any periods, show course-level participants
-                $enrolledUsersQuery = $course->enrolledUsers();
+                $baseQuery = $course->enrolledUsers();
             }
         } else {
             // For super-admin, event-organizer, or other roles, show all participants
-            $enrolledUsersQuery = $course->enrolledUsers();
+            $baseQuery = $course->enrolledUsers();
         }
 
+        // Clone base query untuk table (dengan search & pagination)
+        $enrolledUsersQuery = clone $baseQuery;
+
+        // Apply search filter HANYA untuk table list, TIDAK untuk analytics
         if ($request->filled('search')) {
             $searchTerm = $request->input('search');
             $enrolledUsersQuery->where(function ($query) use ($searchTerm) {
@@ -435,8 +440,8 @@ class CourseController extends Controller
             ];
         });
 
-        // ✅ ANALYTICS: Hitung analytics untuk semua peserta (tidak hanya current page)
-        $analytics = $this->calculateProgressAnalytics($course, $enrolledUsersQuery);
+        // ✅ ANALYTICS: Gunakan baseQuery (TANPA search filter) untuk analytics SEMUA peserta
+        $analytics = $this->calculateProgressAnalytics($course, $baseQuery);
 
         return view('courses.progress', [
             'course' => $course,

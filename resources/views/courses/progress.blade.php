@@ -25,14 +25,14 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8">
             <!-- 2 Column Layout: Kiri = Daftar Peserta, Kanan = Analytics -->
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
 
                 <!-- KOLOM KIRI: Daftar Peserta (8 kolom / 66%) -->
-                <div class="xl:col-span-8 space-y-6">
+                <div class="xl:col-span-8 space-y-4 min-w-0">
                     <!-- Stats Cards Row -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-5 text-white shadow-lg">
                             <div class="flex items-center">
                                 <div class="p-2 rounded-lg bg-white bg-opacity-20">
@@ -77,9 +77,9 @@
                     </div>
 
                     <!-- Main Content Card with Scrollable List -->
-                    <div class="bg-white overflow-hidden shadow-xl sm:rounded-xl border border-gray-200" style="max-height: calc(100vh - 280px);">
+                    <div class="bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden" style="max-height: calc(100vh - 260px);">
                         <!-- Fixed Header - Filter and Search -->
-                        <div class="p-6 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                        <div class="p-4 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
@@ -132,8 +132,8 @@
                         </div>
 
                         <!-- Scrollable Table -->
-                        <div class="overflow-y-auto" style="max-height: calc(100vh - 480px);">
-                            <table class="min-w-full divide-y divide-gray-200">
+                        <div class="overflow-y-auto overflow-x-auto" style="max-height: calc(100vh - 450px);">
+                            <table class="w-full divide-y divide-gray-200">
                                 <thead class="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0">
                                     <tr>
                                         <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -227,10 +227,10 @@
                 </div>
 
                 <!-- KOLOM KANAN: Analytics (4 kolom / 33%) -->
-                <div class="xl:col-span-4">
+                <div class="xl:col-span-4 min-w-0">
                     <!-- Sticky Analytics Card -->
                     <div class="sticky top-6">
-                        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden" style="max-height: calc(100vh - 120px);">
+                        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden" style="max-height: calc(100vh - 100px);">
                             <!-- Header -->
                             <div class="p-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
                                 <h3 class="text-lg font-bold flex items-center">
@@ -243,7 +243,7 @@
                             </div>
 
                             <!-- Scrollable Content -->
-                            <div class="overflow-y-auto p-4 space-y-4" style="max-height: calc(100vh - 200px);">
+                            <div class="overflow-y-auto p-4 space-y-4" style="max-height: calc(100vh - 180px);">
                                 <!-- Progress Distribution -->
                                 <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4">
                                     <h4 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Distribusi Progress</h4>
