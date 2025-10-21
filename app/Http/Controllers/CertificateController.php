@@ -576,6 +576,80 @@ class CertificateController extends Controller
     }
 
     /**
+     * Bulk download certificates as ZIP
+     */
+    public function bulkDownload(Request $request)
+    {
+        $request->validate([
+            'certificate_ids' => 'required|array',
+            'certificate_ids.*' => 'exists:certificates,id'
+        ]);
+
+        $certificates = Certificate::whereIn('id', $request->certificate_ids)
+            ->with(['user', 'course'])
+            ->get();
+
+        // Check if user can download all certificates
+        foreach ($certificates as $certificate) {
+            $this->authorize('view', $certificate);
+        }
+
+        // Create temporary directory for ZIP
+        $tempDir = storage_path('app/temp/certificates_' . uniqid());
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $zipFileName = 'certificates_' . now()->format('Y-m-d_His') . '.zip';
+        $zipFilePath = $tempDir . '/' . $zipFileName;
+
+        try {
+            $zip = new \ZipArchive();
+            if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \Exception('Could not create ZIP file');
+            }
+
+            $addedFiles = 0;
+            foreach ($certificates as $certificate) {
+                if ($certificate->fileExists()) {
+                    $pdfPath = Storage::disk('public')->path($certificate->path);
+                    $fileName = 'Sertifikat-' .
+                        Str::slug($certificate->course->title) . '-' .
+                        Str::slug($certificate->user->name) . '-' .
+                        $certificate->certificate_code . '.pdf';
+
+                    if ($zip->addFile($pdfPath, $fileName)) {
+                        $addedFiles++;
+                    }
+                }
+            }
+
+            $zip->close();
+
+            if ($addedFiles === 0) {
+                // Clean up and return error
+                @unlink($zipFilePath);
+                @rmdir($tempDir);
+                return back()->with('error', 'Tidak ada file sertifikat yang valid untuk diunduh.');
+            }
+
+            // Download the ZIP file
+            return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Log::error("Bulk download failed: " . $e->getMessage());
+            // Clean up
+            if (file_exists($zipFilePath)) {
+                @unlink($zipFilePath);
+            }
+            if (file_exists($tempDir)) {
+                @rmdir($tempDir);
+            }
+            return back()->with('error', 'Gagal membuat file ZIP: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Bulk actions for certificates
      */
     public function bulkAction(Request $request)
@@ -583,10 +657,15 @@ class CertificateController extends Controller
         $this->authorize('update', Certificate::class);
 
         $request->validate([
-            'action' => 'required|in:delete,update_template',
+            'action' => 'required|in:delete,update_template,download',
             'certificate_ids' => 'required|array',
             'certificate_ids.*' => 'exists:certificates,id'
         ]);
+
+        // Handle download action separately (returns file download)
+        if ($request->action === 'download') {
+            return $this->bulkDownload($request);
+        }
 
         $certificates = Certificate::whereIn('id', $request->certificate_ids)->get();
 

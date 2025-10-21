@@ -165,15 +165,21 @@
         <!-- Bulk Actions -->
         <div class="bg-white shadow rounded-lg mb-6" id="bulk-actions" style="display: none;">
             <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Aksi Massal</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">
+                    Aksi Massal - <span id="selected-count">0</span> sertifikat dipilih
+                </h3>
                 <div class="flex gap-4">
-                    <button onclick="bulkAction('delete')" 
-                            class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                        🗑️ Hapus Terpilih
+                    <button onclick="bulkAction('download')"
+                            class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                        📥 Download Terpilih (ZIP)
                     </button>
-                    <button onclick="bulkAction('update_template')" 
+                    <button onclick="bulkAction('update_template')"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
                         🔄 Update Template
+                    </button>
+                    <button onclick="bulkAction('delete')"
+                            class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                        🗑️ Hapus Terpilih
                     </button>
                 </div>
             </div>
@@ -368,8 +374,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function toggleBulkActions() {
         const checkedBoxes = document.querySelectorAll('.certificate-checkbox:checked');
+        const selectedCountSpan = document.getElementById('selected-count');
+
         if (checkedBoxes.length > 0) {
             bulkActionsDiv.style.display = 'block';
+            if (selectedCountSpan) {
+                selectedCountSpan.textContent = checkedBoxes.length;
+            }
         } else {
             bulkActionsDiv.style.display = 'none';
         }
@@ -379,17 +390,63 @@ document.addEventListener('DOMContentLoaded', function() {
 function bulkAction(action) {
     const checkedBoxes = document.querySelectorAll('.certificate-checkbox:checked');
     const certificateIds = Array.from(checkedBoxes).map(cb => cb.value);
-    
+
     if (certificateIds.length === 0) {
         alert('Pilih minimal satu sertifikat');
         return;
     }
 
-    const actionText = action === 'delete' ? 'menghapus' : 'memperbarui template';
+    const actionMessages = {
+        'delete': 'menghapus',
+        'update_template': 'memperbarui template',
+        'download': 'mengunduh'
+    };
+    const actionText = actionMessages[action] || action;
+
     if (!confirm(`Apakah Anda yakin ingin ${actionText} ${certificateIds.length} sertifikat?`)) {
         return;
     }
 
+    // For download action, use form submission to trigger file download
+    if (action === 'download') {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route("certificate-management.bulk-action") }}';
+
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = action;
+        form.appendChild(actionInput);
+
+        certificateIds.forEach(id => {
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'certificate_ids[]';
+            idInput.value = id;
+            form.appendChild(idInput);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+
+        // Clear selection after download
+        setTimeout(() => {
+            checkedBoxes.forEach(cb => cb.checked = false);
+            document.getElementById('select-all').checked = false;
+            document.getElementById('bulk-actions').style.display = 'none';
+        }, 1000);
+
+        return;
+    }
+
+    // For other actions, use AJAX
     fetch('{{ route("certificate-management.bulk-action") }}', {
         method: 'POST',
         headers: {

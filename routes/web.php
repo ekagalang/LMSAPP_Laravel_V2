@@ -298,6 +298,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/force-complete', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'index'])->name('force-complete.index');
         Route::post('/force-complete/complete', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'processForceComplete'])->name('force-complete.complete');
         Route::post('/force-complete/complete-all', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'processForceCompleteAll'])->name('force-complete.complete-all');
+        Route::post('/force-complete/bulk', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'bulkForceComplete'])->name('force-complete.bulk');
+        Route::post('/force-complete/bulk-certificates', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'bulkGenerateCertificates'])->name('force-complete.bulk-certificates');
     });
 
     // Route untuk Gradebook
