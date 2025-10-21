@@ -1158,11 +1158,40 @@ class CourseController extends Controller
         $this->authorize('duplicate', Course::class);
 
         try {
+            // ✅ FIX: Add detailed logging untuk debugging
+            \Log::info('Starting course duplication', [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'user_id' => Auth::id(),
+            ]);
+
             $newCourse = $course->duplicate();
+
+            \Log::info('Course duplicated successfully', [
+                'original_course_id' => $course->id,
+                'new_course_id' => $newCourse->id,
+                'new_course_title' => $newCourse->title,
+            ]);
+
             return redirect()->route('courses.index')
                 ->with('success', "Course \"{$course->title}\" has been duplicated successfully.");
         } catch (\Exception $e) {
-            return redirect()->route('courses.index')->with('error', 'Failed to duplicate course. Please try again.');
+            // ✅ FIX: Log detailed error information
+            \Log::error('Course duplication failed', [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'user_id' => Auth::id(),
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // ✅ FIX: Return more detailed error message for debugging
+            $errorMessage = 'Failed to duplicate course: ' . $e->getMessage();
+
+            return redirect()->route('courses.index')
+                ->with('error', $errorMessage);
         }
     }
 

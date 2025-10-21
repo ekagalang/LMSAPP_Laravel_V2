@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CertificateController;
+use App\Jobs\BulkForceCompleteJob;
+use App\Jobs\BulkGenerateCertificatesJob;
 use App\Models\Course;
 use App\Models\User;
 use App\Models\Content;
@@ -209,6 +211,144 @@ class ForceCompleteController extends Controller
         } catch (\Exception $e) {
             Log::error('Force complete all error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Terjadi kesalahan saat force complete massal: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk force complete selected participants (with queue)
+     */
+    public function bulkForceComplete(Request $request)
+    {
+        $this->authorize('update', Course::class);
+
+        $request->validate([
+            'course_id' => 'required|exists:courses,id',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+            'generate_certificate' => 'nullable|boolean',
+            'use_queue' => 'nullable|boolean',
+        ]);
+
+        $course = Course::findOrFail($request->course_id);
+        $userIds = $request->user_ids;
+        $generateCertificate = $request->boolean('generate_certificate');
+        $useQueue = $request->boolean('use_queue', true); // Default to queue
+
+        // If more than 50 users or use_queue is true, use job queue
+        if ($useQueue || count($userIds) > 50) {
+            $batchId = uniqid('bulk_fc_', true);
+
+            // Split into chunks of 50 users per job
+            $chunks = array_chunk($userIds, 50);
+
+            foreach ($chunks as $chunk) {
+                BulkForceCompleteJob::dispatch($course, $chunk, $generateCertificate, $batchId);
+            }
+
+            Log::info("Bulk force complete queued", [
+                'batch_id' => $batchId,
+                'course_id' => $course->id,
+                'total_users' => count($userIds),
+                'jobs_created' => count($chunks)
+            ]);
+
+            return redirect()->back()->with('success',
+                'Proses force complete untuk ' . count($userIds) . ' peserta telah dijadwalkan. ' .
+                'Prosesnya akan berjalan di background. Silakan cek log untuk progress. Batch ID: ' . $batchId
+            );
+        }
+
+        // Process immediately for small batches
+        try {
+            $processed = 0;
+            foreach ($userIds as $userId) {
+                $user = User::find($userId);
+                if ($user) {
+                    DB::transaction(function () use ($user, $course) {
+                        $this->forceCompleteUserInCourse($user, $course);
+                    });
+
+                    if ($generateCertificate) {
+                        CertificateController::generateForUser($course, $user);
+                    }
+                    $processed++;
+                }
+            }
+
+            return redirect()->back()->with('success',
+                'Berhasil force complete ' . $processed . ' peserta dari ' . count($userIds) . ' yang dipilih.'
+            );
+        } catch (\Exception $e) {
+            Log::error('Bulk force complete error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk generate certificates for selected participants (with queue)
+     */
+    public function bulkGenerateCertificates(Request $request)
+    {
+        $this->authorize('update', Course::class);
+
+        $request->validate([
+            'course_id' => 'required|exists:courses,id',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+            'use_queue' => 'nullable|boolean',
+        ]);
+
+        $course = Course::findOrFail($request->course_id);
+        $userIds = $request->user_ids;
+        $useQueue = $request->boolean('use_queue', true);
+
+        if (!$course->certificate_template_id) {
+            return redirect()->back()->with('error', 'Kursus belum memiliki template sertifikat.');
+        }
+
+        // If more than 50 users or use_queue is true, use job queue
+        if ($useQueue || count($userIds) > 50) {
+            $batchId = uniqid('bulk_cert_', true);
+
+            // Split into chunks of 50 users per job
+            $chunks = array_chunk($userIds, 50);
+
+            foreach ($chunks as $chunk) {
+                BulkGenerateCertificatesJob::dispatch($course, $chunk, $batchId);
+            }
+
+            Log::info("Bulk certificate generation queued", [
+                'batch_id' => $batchId,
+                'course_id' => $course->id,
+                'total_users' => count($userIds),
+                'jobs_created' => count($chunks)
+            ]);
+
+            return redirect()->back()->with('success',
+                'Proses generate sertifikat untuk ' . count($userIds) . ' peserta telah dijadwalkan. ' .
+                'Prosesnya akan berjalan di background. Batch ID: ' . $batchId
+            );
+        }
+
+        // Process immediately for small batches
+        try {
+            $generated = 0;
+            foreach ($userIds as $userId) {
+                $user = User::find($userId);
+                if ($user) {
+                    $certificate = CertificateController::generateForUser($course, $user);
+                    if ($certificate) {
+                        $generated++;
+                    }
+                }
+            }
+
+            return redirect()->back()->with('success',
+                'Berhasil generate ' . $generated . ' sertifikat dari ' . count($userIds) . ' peserta yang dipilih.'
+            );
+        } catch (\Exception $e) {
+            Log::error('Bulk certificate generation error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
