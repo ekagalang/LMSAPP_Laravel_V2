@@ -555,20 +555,11 @@
                 document.getElementById('body_label').textContent = '📝 Isi Konten';
                 document.getElementById('body_hint').textContent = 'Gunakan editor untuk memformat teks dengan rich content';
                 
-                // Initialize summernote for text
+                // Initialize summernote for text with File Manager
                 setTimeout(() => {
-                    $('#body_text').summernote({
+                    initSummernoteWithFileManager('#body_text', {
                         height: 300,
-                        toolbar: [
-                            ['style', ['style']],
-                            ['font', ['bold', 'underline', 'clear']],
-                            ['fontname', ['fontname']],
-                            ['color', ['color']],
-                            ['para', ['ul', 'ol', 'paragraph']],
-                            ['table', ['table']],
-                            ['insert', ['link', 'picture', 'video']],
-                            ['view', ['fullscreen', 'help']]
-                        ]
+                        placeholder: 'Tulis konten pembelajaran di sini...'
                     });
                 }, 100);
 

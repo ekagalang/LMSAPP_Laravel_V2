@@ -25,6 +25,8 @@ use App\Http\Controllers\EssaySubmissionController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\EssayQuestionController;
+use App\Http\Controllers\FileControlController;
+use App\Http\Controllers\ActivityLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +52,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Upload image teks editor
     Route::post('/images/upload', [ImageUploadController::class, 'store'])->name('images.upload');
+
+    // File Control routes
+    Route::get('/file-control', [FileControlController::class, 'index'])->name('file-control.index');
+    Route::post('/file-control/upload', [FileControlController::class, 'upload'])->name('file-control.upload');
+    Route::post('/file-control/delete', [FileControlController::class, 'delete'])->name('file-control.delete');
+    Route::get('/file-control/files', [FileControlController::class, 'getFiles'])->name('file-control.files');
+
+    // Activity Logs
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::get('/activity-logs/{id}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
+    Route::post('/activity-logs/clear', [ActivityLogController::class, 'clear'])->name('activity-logs.clear');
+    Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
 
     // Profile Pengguna
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

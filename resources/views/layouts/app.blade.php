@@ -202,6 +202,15 @@
                                                    class="dropdown-item-custom">
                                                     {{ __('Force Complete Konten') }}
                                                 </a>
+                                                <div class="border-t my-1"></div>
+                                                <a href="{{ route('file-control.index') }}"
+                                                    class="dropdown-item-custom">
+                                                    {{ __('File Manager') }}
+                                                </a>
+                                                <a href="{{ route('activity-logs.index') }}"
+                                                    class="dropdown-item-custom">
+                                                    {{ __('Log') }}
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -327,6 +336,14 @@
                                 <a href="{{ route('admin.force-complete.index') }}" 
                                    class="responsive-nav-link-custom">
                                     {{ __('Force Complete Konten') }}
+                                </a>
+                                <a href="{{ route('file-control.index') }}"
+                                    class="responsive-nav-link-custom">
+                                    {{ __('File Manager') }}
+                                </a>
+                                <a href="{{ route('activity-logs.index') }}"
+                                    class="responsive-nav-link-custom">
+                                    {{ __('Log') }}
                                 </a>
                             </div>
                         </div>
