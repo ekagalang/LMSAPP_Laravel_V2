@@ -89,6 +89,19 @@ class CourseController extends Controller
                 }
             }
 
+            // ✅ LOG COURSE CREATION
+            \App\Models\ActivityLog::log('course_created', [
+                'description' => "Created course: {$course->title}",
+                'metadata' => [
+                    'course_id' => $course->id,
+                    'course_title' => $course->title,
+                    'status' => $course->status,
+                    'has_thumbnail' => !empty($course->thumbnail),
+                    'certificate_template_id' => $course->certificate_template_id,
+                    'periods_enabled' => $request->boolean('enable_periods'),
+                ]
+            ]);
+
             DB::commit();
 
             return redirect()->route('courses.show', $course)
@@ -197,6 +210,9 @@ class CourseController extends Controller
         try {
             DB::beginTransaction();
 
+            // ✅ ENHANCED LOGGING: Capture original data
+            $originalData = $course->getOriginal();
+
             if ($request->boolean('clear_thumbnail')) {
                 if ($course->thumbnail) {
                     Storage::disk('public')->delete($course->thumbnail);
@@ -216,6 +232,32 @@ class CourseController extends Controller
             } else {
                 $course->periods()->delete();
             }
+
+            // ✅ LOG COURSE UPDATE WITH BEFORE/AFTER
+            $changes = [];
+            $fields = ['title', 'description', 'objectives', 'status', 'thumbnail', 'certificate_template_id'];
+
+            foreach ($fields as $field) {
+                if ($originalData[$field] != $course->$field) {
+                    $changes[$field] = [
+                        'before' => $originalData[$field],
+                        'after' => $course->$field
+                    ];
+                }
+            }
+
+            \App\Models\ActivityLog::log('course_updated', [
+                'description' => "Updated course: {$course->title}" . (count($changes) > 0 ? " (" . implode(', ', array_keys($changes)) . " changed)" : ""),
+                'metadata' => [
+                    'course_id' => $course->id,
+                    'course_title' => $course->title,
+                    'status' => $course->status,
+                    'changes' => $changes,
+                    'changed_fields' => array_keys($changes),
+                    'thumbnail_changed' => $request->hasFile('thumbnail') || $request->boolean('clear_thumbnail'),
+                    'periods_enabled' => $request->boolean('enable_periods'),
+                ]
+            ]);
 
             DB::commit();
             return redirect()->route('courses.index')->with('success', 'Kursus berhasil diperbarui.');
@@ -263,10 +305,27 @@ class CourseController extends Controller
     public function destroy(Course $course)
     {
         $this->authorize('delete', $course);
+
+        // Store data before deletion for logging
+        $courseData = [
+            'course_id' => $course->id,
+            'course_title' => $course->title,
+            'status' => $course->status,
+            'total_lessons' => $course->lessons()->count(),
+            'total_participants' => $course->enrolledUsers()->count(),
+        ];
+
         if ($course->thumbnail) {
             Storage::disk('public')->delete($course->thumbnail);
         }
         $course->delete();
+
+        // ✅ LOG COURSE DELETION
+        \App\Models\ActivityLog::log('course_deleted', [
+            'description' => "Deleted course: {$courseData['course_title']}",
+            'metadata' => $courseData
+        ]);
+
         return redirect()->route('courses.index')->with('success', 'Kursus berhasil dihapus.');
     }
 
@@ -285,6 +344,18 @@ class CourseController extends Controller
         // Gunakan syncWithoutDetaching untuk menambahkan user tanpa menghapus yang sudah ada
         $course->enrolledUsers()->syncWithoutDetaching($request->user_ids);
 
+        // ✅ LOG PARTICIPANT ENROLLMENT
+        $enrolledUsers = User::whereIn('id', $request->user_ids)->get(['id', 'name', 'email']);
+        \App\Models\ActivityLog::log('participants_enrolled', [
+            'description' => "Enrolled " . count($request->user_ids) . " participant(s) to course: {$course->title}",
+            'metadata' => [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'participant_count' => count($request->user_ids),
+                'participants' => $enrolledUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email])->toArray(),
+            ]
+        ]);
+
         return redirect()->back()->with('success', 'Peserta berhasil didaftarkan.');
     }
 
@@ -300,8 +371,22 @@ class CourseController extends Controller
             'user_ids.*' => 'exists:users,id',
         ]);
 
+        // Get user data before detaching for logging
+        $unenrolledUsers = User::whereIn('id', $request->user_ids)->get(['id', 'name', 'email']);
+
         // Gunakan detach untuk menghapus hubungan antara kursus dan user
         $course->enrolledUsers()->detach($request->user_ids);
+
+        // ✅ LOG PARTICIPANT UNENROLLMENT
+        \App\Models\ActivityLog::log('participants_unenrolled', [
+            'description' => "Unenrolled " . count($request->user_ids) . " participant(s) from course: {$course->title}",
+            'metadata' => [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'participant_count' => count($request->user_ids),
+                'participants' => $unenrolledUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email])->toArray(),
+            ]
+        ]);
 
         return redirect()->back()->with('success', 'Akses peserta berhasil dicabut.');
     }
@@ -875,7 +960,27 @@ class CourseController extends Controller
         $this->authorize('update', $course);
         $request->validate(['user_ids' => 'required|array']);
         $instructorIds = User::whereIn('id', $request->user_ids)->role('instructor')->pluck('id');
+
+        // Get instructor details for logging
+        $addedInstructors = User::whereIn('id', $instructorIds)->get(['id', 'name', 'email']);
+
         $course->instructors()->syncWithoutDetaching($instructorIds);
+
+        // ✅ LOG INSTRUCTOR ASSIGNMENT
+        \App\Models\ActivityLog::log('instructor_added', [
+            'description' => "Added " . count($addedInstructors) . " instructor(s) to course: {$course->title}",
+            'metadata' => [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'instructor_count' => count($addedInstructors),
+                'instructors' => $addedInstructors->map(fn($i) => [
+                    'id' => $i->id,
+                    'name' => $i->name,
+                    'email' => $i->email
+                ])->toArray(),
+            ]
+        ]);
+
         return back()->with('success', 'Instruktur berhasil ditambahkan.');
     }
 
@@ -883,7 +988,27 @@ class CourseController extends Controller
     {
         $this->authorize('update', $course);
         $request->validate(['user_ids' => 'required|array']);
+
+        // Get instructor details before removal for logging
+        $removedInstructors = User::whereIn('id', $request->user_ids)->get(['id', 'name', 'email']);
+
         $course->instructors()->detach($request->user_ids);
+
+        // ✅ LOG INSTRUCTOR REMOVAL
+        \App\Models\ActivityLog::log('instructor_removed', [
+            'description' => "Removed " . count($removedInstructors) . " instructor(s) from course: {$course->title}",
+            'metadata' => [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'instructor_count' => count($removedInstructors),
+                'instructors' => $removedInstructors->map(fn($i) => [
+                    'id' => $i->id,
+                    'name' => $i->name,
+                    'email' => $i->email
+                ])->toArray(),
+            ]
+        ]);
+
         return back()->with('success', 'Instruktur berhasil dihapus.');
     }
 
@@ -1140,7 +1265,27 @@ class CourseController extends Controller
         $this->authorize('update', $course);
         $request->validate(['user_ids' => 'required|array']);
         $organizerIds = User::whereIn('id', $request->user_ids)->role('event-organizer')->pluck('id');
+
+        // Get organizer details for logging
+        $addedOrganizers = User::whereIn('id', $organizerIds)->get(['id', 'name', 'email']);
+
         $course->eventOrganizers()->syncWithoutDetaching($organizerIds);
+
+        // ✅ LOG EVENT ORGANIZER ASSIGNMENT
+        \App\Models\ActivityLog::log('event_organizer_added', [
+            'description' => "Added " . count($addedOrganizers) . " Event Organizer(s) to course: {$course->title}",
+            'metadata' => [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'organizer_count' => count($addedOrganizers),
+                'organizers' => $addedOrganizers->map(fn($o) => [
+                    'id' => $o->id,
+                    'name' => $o->name,
+                    'email' => $o->email
+                ])->toArray(),
+            ]
+        ]);
+
         return back()->with('success', 'Event Organizer berhasil ditambahkan.');
     }
 
@@ -1148,7 +1293,27 @@ class CourseController extends Controller
     {
         $this->authorize('update', $course);
         $request->validate(['user_ids' => 'required|array']);
+
+        // Get organizer details before removal for logging
+        $removedOrganizers = User::whereIn('id', $request->user_ids)->get(['id', 'name', 'email']);
+
         $course->eventOrganizers()->detach($request->user_ids);
+
+        // ✅ LOG EVENT ORGANIZER REMOVAL
+        \App\Models\ActivityLog::log('event_organizer_removed', [
+            'description' => "Removed " . count($removedOrganizers) . " Event Organizer(s) from course: {$course->title}",
+            'metadata' => [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'organizer_count' => count($removedOrganizers),
+                'organizers' => $removedOrganizers->map(fn($o) => [
+                    'id' => $o->id,
+                    'name' => $o->name,
+                    'email' => $o->email
+                ])->toArray(),
+            ]
+        ]);
+
         return back()->with('success', 'Event Organizer berhasil dihapus.');
     }
 

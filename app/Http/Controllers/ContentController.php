@@ -690,7 +690,61 @@ class ContentController extends Controller
                 Log::info('BEFORE FIRST SAVE', ['body' => $content->body]);
             }
 
+            // ✅ ENHANCED LOGGING: Track before/after changes
+            $isCreating = !$content->exists;
+            $originalData = $isCreating ? null : $content->getOriginal();
+
             $content->save();
+
+            // ✅ LOG CONTENT ACTIVITY WITH BEFORE/AFTER
+            if ($isCreating) {
+                \App\Models\ActivityLog::log('content_created', [
+                    'description' => "Created new {$content->type} content: {$content->title}",
+                    'metadata' => [
+                        'content_id' => $content->id,
+                        'content_title' => $content->title,
+                        'content_type' => $content->type,
+                        'lesson_id' => $content->lesson_id,
+                        'lesson_title' => $content->lesson->title ?? null,
+                        'course_id' => $content->lesson->course_id ?? null,
+                        'course_title' => $content->lesson->course->title ?? null,
+                        'is_optional' => $content->is_optional ?? false,
+                        'attendance_required' => $content->attendance_required ?? false,
+                        'file_info' => $content->file_path ? [
+                            'file_name' => basename($content->file_path),
+                            'file_path' => $content->file_path,
+                        ] : null,
+                    ]
+                ]);
+            } else {
+                // Track what changed
+                $changes = [];
+                $fields = ['title', 'description', 'type', 'order', 'is_optional', 'attendance_required', 'file_path', 'url'];
+
+                foreach ($fields as $field) {
+                    if (isset($originalData[$field]) && $originalData[$field] != $content->$field) {
+                        $changes[$field] = [
+                            'before' => $originalData[$field],
+                            'after' => $content->$field
+                        ];
+                    }
+                }
+
+                \App\Models\ActivityLog::log('content_updated', [
+                    'description' => "Updated {$content->type} content: {$content->title}" . (count($changes) > 0 ? " (" . implode(', ', array_keys($changes)) . " changed)" : ""),
+                    'metadata' => [
+                        'content_id' => $content->id,
+                        'content_title' => $content->title,
+                        'content_type' => $content->type,
+                        'lesson_id' => $content->lesson_id,
+                        'lesson_title' => $content->lesson->title ?? null,
+                        'course_id' => $content->lesson->course_id ?? null,
+                        'course_title' => $content->lesson->course->title ?? null,
+                        'changes' => $changes,
+                        'changed_fields' => array_keys($changes),
+                    ]
+                ]);
+            }
 
             // Create related images after content has an ID
             if ($validated['type'] === 'image' && !empty($deferredImagePaths)) {
@@ -947,9 +1001,27 @@ class ContentController extends Controller
     public function destroy(Lesson $lesson, Content $content)
     {
         $this->authorize('update', $lesson->course);
+
+        // Store data before deletion for logging
+        $contentData = [
+            'content_id' => $content->id,
+            'content_title' => $content->title,
+            'content_type' => $content->type,
+            'lesson_id' => $content->lesson_id,
+            'course_id' => $lesson->course_id,
+            'course_title' => $lesson->course->title,
+        ];
+
         if ($content->file_path) Storage::disk('public')->delete($content->file_path);
         if ($content->quiz) $content->quiz->delete();
         $content->delete();
+
+        // ✅ LOG CONTENT DELETION
+        \App\Models\ActivityLog::log('content_deleted', [
+            'description' => "Deleted content: {$contentData['content_title']} ({$contentData['content_type']})",
+            'metadata' => $contentData
+        ]);
+
         return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil dihapus!');
     }
 

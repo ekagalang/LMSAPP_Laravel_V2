@@ -36,12 +36,25 @@ class LessonController extends Controller
             'is_optional' => 'sometimes|boolean',
         ]);
 
-        $course->lessons()->create([
+        $lesson = $course->lessons()->create([
             'title' => $request->title,
             'description' => $request->description,
             'order' => $request->order ?? $course->lessons()->count() + 1,
             'prerequisite_id' => $request->prerequisite_id,
             'is_optional' => $request->boolean('is_optional'),
+        ]);
+
+        // ✅ LOG LESSON CREATION
+        \App\Models\ActivityLog::log('lesson_created', [
+            'description' => "Created lesson: {$lesson->title} in course: {$course->title}",
+            'metadata' => [
+                'lesson_id' => $lesson->id,
+                'lesson_title' => $lesson->title,
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'order' => $lesson->order,
+                'is_optional' => $lesson->is_optional,
+            ]
         ]);
 
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil ditambahkan!');
@@ -79,6 +92,19 @@ class LessonController extends Controller
             'is_optional' => $request->boolean('is_optional'),
         ]);
 
+        // ✅ LOG LESSON UPDATE
+        \App\Models\ActivityLog::log('lesson_updated', [
+            'description' => "Updated lesson: {$lesson->title} in course: {$course->title}",
+            'metadata' => [
+                'lesson_id' => $lesson->id,
+                'lesson_title' => $lesson->title,
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'order' => $lesson->order,
+                'is_optional' => $lesson->is_optional,
+            ]
+        ]);
+
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil diperbarui!');
     }
 
@@ -88,7 +114,24 @@ class LessonController extends Controller
     public function destroy(Course $course, Lesson $lesson)
     {
         $this->authorize('update', $course); // Otorisasi berdasarkan kursus induk
+
+        // Store data before deletion for logging
+        $lessonData = [
+            'lesson_id' => $lesson->id,
+            'lesson_title' => $lesson->title,
+            'course_id' => $course->id,
+            'course_title' => $course->title,
+            'total_contents' => $lesson->contents()->count(),
+        ];
+
         $lesson->delete();
+
+        // ✅ LOG LESSON DELETION
+        \App\Models\ActivityLog::log('lesson_deleted', [
+            'description' => "Deleted lesson: {$lessonData['lesson_title']} from course: {$course->title}",
+            'metadata' => $lessonData
+        ]);
+
         return redirect()->route('courses.show', $course)->with('success', 'Pelajaran berhasil dihapus!');
     }
 
