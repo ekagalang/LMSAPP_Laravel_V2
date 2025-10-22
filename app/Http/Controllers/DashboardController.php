@@ -16,6 +16,7 @@ use App\Models\Announcement;
 use App\Models\Certificate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -556,194 +557,215 @@ class DashboardController extends Controller
     private function getInstructorStats($user)
     {
         try {
-            // ✅ OPTIMIZATION: Eager load only necessary data
-            $instructorCourses = Course::whereHas('instructors', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-            ->with(['lessons' => function($query) {
-                $query->select('id', 'course_id')->withCount('contents');
-            }])
-            ->withCount('enrolledUsers')
-            ->get();
+            return Cache::remember('instructor_stats_' . $user->id, 60, function () use ($user) {
+                // Minimal per-course list (limit to 10 entries)
+                $coursesList = Course::whereHas('instructors', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->select('id', 'title', 'status', 'created_at')
+                    ->withCount('enrolledUsers')
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get();
 
-            $courseIds = $instructorCourses->pluck('id');
+                // Course counters
+                $totalCourses = Course::whereHas('instructors', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->count();
+                $publishedCourses = Course::whereHas('instructors', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->where('status', 'published')
+                    ->count();
+                $draftCourses = $totalCourses - $publishedCourses;
 
-            // Get upcoming zoom sessions for instructor's courses
-            $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
-                ->whereHas('lesson.course.instructors', function ($query) use ($user) {
-                    $query->where('user_id', $user->id);
-                })
-                ->where(function ($query) {
-                    $query->where('is_scheduled', false)
-                        ->orWhere(function ($subQuery) {
-                            $subQuery->where('is_scheduled', true)
-                                ->where('scheduled_start', '>=', now())
-                                ->where('scheduled_start', '<=', now()->addDays(7));
-                        });
-                })
-                ->with(['lesson.course:id,title'])
-                ->orderBy('scheduled_start', 'asc')
-                ->take(5)
-                ->get();
+                // Students (participants) totals and recent enrollments (last 30 days)
+                $totalStudents = DB::table('course_user')
+                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->distinct('course_user.user_id')
+                    ->count('course_user.user_id');
 
-            // Course statistics
-            $totalCourses = $instructorCourses->count();
-            $publishedCourses = $instructorCourses->where('status', 'published')->count();
-            $draftCourses = $instructorCourses->where('status', 'draft')->count();
+                $recentEnrollments = DB::table('course_user')
+                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->where('course_user.created_at', '>=', now()->subDays(30))
+                    ->count();
 
-            // ✅ OPTIMIZATION: Single query for student statistics
-            $totalStudents = DB::table('course_user')
-                ->whereIn('course_id', $courseIds)
-                ->distinct('user_id')
-                ->count('user_id');
+                // Content totals
+                $totalLessons = DB::table('lessons')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->count();
 
-            $recentEnrollments = DB::table('course_user')
-                ->whereIn('course_id', $courseIds)
-                ->where('created_at', '>=', now()->subDays(30))
-                ->count();
+                $totalContents = DB::table('contents')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->count('contents.id');
 
-            // ✅ OPTIMIZATION: Use already loaded data for content statistics
-            $totalLessons = $instructorCourses->sum(function ($course) {
-                return $course->lessons->count();
-            });
+                // Quiz stats
+                $totalQuizzes = DB::table('quizzes')
+                    ->join('lessons', 'quizzes.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->count();
 
-            $totalContents = $instructorCourses->sum(function ($course) {
-                return $course->lessons->sum('contents_count');
-            });
+                $quizAttempts = DB::table('quiz_attempts')
+                    ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
+                    ->join('lessons', 'quizzes.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->count();
 
-            // ✅ OPTIMIZATION: Single query with joins instead of whereHas
-            $totalQuizzes = DB::table('quizzes')
-                ->join('lessons', 'quizzes.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->count();
+                $completedQuizzes = DB::table('quiz_attempts')
+                    ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
+                    ->join('lessons', 'quizzes.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->whereNotNull('quiz_attempts.completed_at')
+                    ->count();
 
-            $quizAttempts = DB::table('quiz_attempts')
-                ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
-                ->join('lessons', 'quizzes.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->count();
+                // Discussion stats
+                $totalDiscussions = DB::table('discussions')
+                    ->join('contents', 'discussions.content_id', '=', 'contents.id')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->count();
 
-            $completedQuizzes = DB::table('quiz_attempts')
-                ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
-                ->join('lessons', 'quizzes.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->whereNotNull('quiz_attempts.completed_at')
-                ->count();
+                $recentDiscussions = DB::table('discussions')
+                    ->join('contents', 'discussions.content_id', '=', 'contents.id')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->where('discussions.created_at', '>=', now()->subDays(7))
+                    ->count();
 
-            // ✅ OPTIMIZATION: Direct joins for discussion statistics
-            $totalDiscussions = DB::table('discussions')
-                ->join('contents', 'discussions.content_id', '=', 'contents.id')
-                ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->count();
+                // Essay stats
+                $pendingEssays = DB::table('essay_submissions')
+                    ->join('contents', 'essay_submissions.content_id', '=', 'contents.id')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->whereNull('essay_submissions.graded_at')
+                    ->count();
 
-            $recentDiscussions = DB::table('discussions')
-                ->join('contents', 'discussions.content_id', '=', 'contents.id')
-                ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->where('discussions.created_at', '>=', now()->subDays(7))
-                ->count();
+                $totalEssaySubmissions = DB::table('essay_submissions')
+                    ->join('contents', 'essay_submissions.content_id', '=', 'contents.id')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->count();
 
-            // ✅ OPTIMIZATION: Direct joins for essay submissions
-            $pendingEssays = DB::table('essay_submissions')
-                ->join('contents', 'essay_submissions.content_id', '=', 'contents.id')
-                ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->whereNull('essay_submissions.graded_at')
-                ->count();
+                // Upcoming zoom sessions (limit 5)
+                $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
+                    ->whereHas('lesson.course.instructors', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->where(function ($query) {
+                        $query->where('is_scheduled', false)
+                            ->orWhere(function ($subQuery) {
+                                $subQuery->where('is_scheduled', true)
+                                    ->where('scheduled_start', '>=', now())
+                                    ->where('scheduled_start', '<=', now()->addDays(7));
+                            });
+                    })
+                    ->with(['lesson.course:id,title'])
+                    ->orderBy('scheduled_start', 'asc')
+                    ->take(5)
+                    ->get(['id', 'lesson_id', 'title', 'body', 'is_scheduled', 'scheduled_start', 'scheduled_end']);
 
-            $totalEssaySubmissions = DB::table('essay_submissions')
-                ->join('contents', 'essay_submissions.content_id', '=', 'contents.id')
-                ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
-                ->where('course_instructor.user_id', $user->id)
-                ->count();
+                // Recent activities (minimal and limited)
+                $recentCourses = Course::whereHas('instructors', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->orderByDesc('created_at')
+                    ->limit(3)
+                    ->get(['id', 'title', 'created_at']);
 
-            // Recent activities
-            $recentCourses = $instructorCourses->sortByDesc('created_at')->take(3);
+                $recentStudents = User::select(
+                        'users.id',
+                        'users.name',
+                        'users.email',
+                        DB::raw('MAX(course_user.created_at) as last_enrolled_at')
+                    )
+                    ->join('course_user', 'users.id', '=', 'course_user.user_id')
+                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                    ->join('course_instructor', 'courses.id', '=', 'course_instructor.course_id')
+                    ->where('course_instructor.user_id', $user->id)
+                    ->groupBy('users.id', 'users.name', 'users.email')
+                    ->orderByDesc('last_enrolled_at')
+                    ->limit(5)
+                    ->get();
 
-            // ✅ OPTIMIZATION: Limit joined data
-            $recentStudents = User::select('users.id', 'users.name', 'users.email', 'users.created_at')
-                ->join('course_user', 'users.id', '=', 'course_user.user_id')
-                ->whereIn('course_user.course_id', $courseIds)
-                ->orderBy('course_user.created_at', 'desc')
-                ->limit(5)
-                ->distinct()
-                ->get();
+                $recentDiscussionsList = Discussion::with(['user:id,name,email', 'content:id,title'])
+                    ->whereHas('content.lesson.course.instructors', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->latest()
+                    ->take(5)
+                    ->get(['id', 'user_id', 'content_id', 'created_at']);
 
-            $recentDiscussionsList = Discussion::with(['user:id,name,email', 'content:id,title'])
-                ->whereHas('content.lesson.course.instructors', function ($query) use ($user) {
-                    $query->where('user_id', $user->id);
-                })
-                ->latest()
-                ->take(5)
-                ->get();
+                $coursePerformance = $coursesList->map(function ($course) {
+                    return [
+                        'id' => $course->id,
+                        'title' => $course->title,
+                        'students' => $course->enrolled_users_count,
+                        'progress' => null,
+                        'status' => $course->status,
+                        'created_at' => $course->created_at,
+                    ];
+                });
 
-            // ✅ CRITICAL OPTIMIZATION: Simplified course performance without N+1 queries
-            // Instead of calculating per-participant progress, use aggregated data
-            $coursePerformance = $instructorCourses->map(function ($course) use ($user) {
-                $totalStudents = $course->enrolled_users_count;
-
-                // ✅ SIMPLIFIED: Just show participant count, skip expensive progress calculation
-                // Progress calculation is too expensive for dashboard (can be moved to dedicated page)
                 return [
-                    'id' => $course->id,
-                    'title' => $course->title,
-                    'students' => $totalStudents,
-                    'progress' => null, // Set to null to avoid expensive calculation
-                    'status' => $course->status,
-                    'created_at' => $course->created_at,
+                    'courses' => [
+                        'total' => $totalCourses,
+                        'published' => $publishedCourses,
+                        'draft' => $draftCourses,
+                        'performance' => $coursePerformance,
+                    ],
+                    'students' => [
+                        'total' => $totalStudents,
+                        'recent_enrollments' => $recentEnrollments,
+                    ],
+                    'content' => [
+                        'lessons' => $totalLessons,
+                        'contents' => $totalContents,
+                    ],
+                    'quizzes' => [
+                        'total' => $totalQuizzes,
+                        'attempts' => $quizAttempts,
+                        'completed' => $completedQuizzes,
+                    ],
+                    'discussions' => [
+                        'total' => $totalDiscussions,
+                        'recent' => $recentDiscussions,
+                    ],
+                    'essays' => [
+                        'pending' => $pendingEssays,
+                        'total' => $totalEssaySubmissions,
+                    ],
+                    'recent_activities' => [
+                        'courses' => $recentCourses,
+                        'students' => $recentStudents,
+                        'discussions' => $recentDiscussionsList,
+                    ],
+                    'upcoming_zoom_sessions' => $upcomingZoomSessions,
                 ];
             });
-
-            return [
-                'courses' => [
-                    'total' => $totalCourses,
-                    'published' => $publishedCourses,
-                    'draft' => $draftCourses,
-                    'performance' => $coursePerformance,
-                ],
-                'students' => [
-                    'total' => $totalStudents,
-                    'recent_enrollments' => $recentEnrollments,
-                ],
-                'content' => [
-                    'lessons' => $totalLessons,
-                    'contents' => $totalContents,
-                ],
-                'quizzes' => [
-                    'total' => $totalQuizzes,
-                    'attempts' => $quizAttempts,
-                    'completed' => $completedQuizzes,
-                ],
-                'discussions' => [
-                    'total' => $totalDiscussions,
-                    'recent' => $recentDiscussions,
-                ],
-                'essays' => [
-                    'pending' => $pendingEssays,
-                    'total' => $totalEssaySubmissions,
-                ],
-                'recent_activities' => [
-                    'courses' => $recentCourses,
-                    'students' => $recentStudents,
-                    'discussions' => $recentDiscussionsList,
-                ],
-                'upcoming_zoom_sessions' => $upcomingZoomSessions,
-            ];
         } catch (\Exception $e) {
             Log::error('Error in getInstructorStats: ' . $e->getMessage());
             return $this->getEmptyStats();
@@ -753,95 +775,111 @@ class DashboardController extends Controller
     private function getEoStats(User $user): array
     {
         try {
-            // ✅ OPTIMIZATION: Load only necessary data with count
-            $managedCourses = $user->eventOrganizedCourses()
-                ->withCount('enrolledUsers')
-                ->get();
-            $courseIds = $managedCourses->pluck('id');
+            return Cache::remember('eo_stats_' . $user->id, 60, function () use ($user) {
+                // Upcoming zoom sessions
+                $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
+                    ->whereHas('lesson.course.eventOrganizers', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->where(function ($query) {
+                        $query->where('is_scheduled', false)
+                            ->orWhere(function ($subQuery) {
+                                $subQuery->where('is_scheduled', true)
+                                    ->where('scheduled_start', '>=', now())
+                                    ->where('scheduled_start', '<=', now()->addDays(7));
+                            });
+                    })
+                    ->with(['lesson.course:id,title'])
+                    ->orderBy('scheduled_start', 'asc')
+                    ->take(5)
+                    ->get(['id', 'lesson_id', 'title', 'body', 'is_scheduled', 'scheduled_start', 'scheduled_end']);
 
-            // Get upcoming zoom sessions for EO's managed courses
-            $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
-                ->whereHas('lesson.course.eventOrganizers', function ($query) use ($user) {
-                    $query->where('user_id', $user->id);
-                })
-                ->where(function ($query) {
-                    $query->where('is_scheduled', false)
-                        ->orWhere(function ($subQuery) {
-                            $subQuery->where('is_scheduled', true)
-                                ->where('scheduled_start', '>=', now())
-                                ->where('scheduled_start', '<=', now()->addDays(7));
-                        });
-                })
-                ->with(['lesson.course:id,title'])
-                ->orderBy('scheduled_start', 'asc')
-                ->take(5)
-                ->get();
+                // Course stats
+                $totalCourses = $user->eventOrganizedCourses()->count();
+                $publishedCourses = $user->eventOrganizedCourses()->where('status', 'published')->count();
+                $draftCourses = $totalCourses - $publishedCourses;
 
-            // 2. Statistik Kursus
-            $totalCourses = $managedCourses->count();
-            $publishedCourses = $managedCourses->where('status', 'published')->count();
-            $draftCourses = $managedCourses->where('status', 'draft')->count();
+                // Lightweight per-course list for display (limit to 10)
+                $eoCoursesList = $user->eventOrganizedCourses()
+                    ->select('id', 'title', 'status')
+                    ->withCount('enrolledUsers')
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get();
 
-            // ✅ OPTIMIZATION: Single query for participant statistics
-            $totalParticipants = DB::table('course_user')
-                ->whereIn('course_id', $courseIds)
-                ->distinct('user_id')
-                ->count('user_id');
+                // Participant stats
+                $totalParticipants = DB::table('course_user')
+                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                    ->where('course_event_organizer.user_id', $user->id)
+                    ->distinct('course_user.user_id')
+                    ->count('course_user.user_id');
 
-            $recentEnrollments = DB::table('course_user')
-                ->whereIn('course_id', $courseIds)
-                ->where('created_at', '>=', now()->subDays(30))
-                ->count();
+                $recentEnrollments = DB::table('course_user')
+                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                    ->where('course_event_organizer.user_id', $user->id)
+                    ->where('course_user.created_at', '>=', now()->subDays(30))
+                    ->count();
 
-            // ✅ OPTIMIZATION: Direct join for discussion statistics
-            $totalDiscussions = DB::table('discussions')
-                ->join('contents', 'discussions.content_id', '=', 'contents.id')
-                ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                ->whereIn('lessons.course_id', $courseIds)
-                ->count();
+                // Discussion stats
+                $totalDiscussions = DB::table('discussions')
+                    ->join('contents', 'discussions.content_id', '=', 'contents.id')
+                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                    ->where('course_event_organizer.user_id', $user->id)
+                    ->count();
 
-            // ✅ CRITICAL OPTIMIZATION: Simplified course performance without N+1 queries
-            $coursePerformance = $managedCourses->map(function ($course) {
-                $participantCount = $course->enrolled_users_count;
+                // Recent users (by enrollments in last 7 days)
+                $recentUsers = User::select(
+                        'users.id',
+                        'users.name',
+                        'users.email',
+                        DB::raw('MAX(course_user.created_at) as last_enrolled_at')
+                    )
+                    ->join('course_user', 'users.id', '=', 'course_user.user_id')
+                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                    ->where('course_event_organizer.user_id', $user->id)
+                    ->where('course_user.created_at', '>=', now()->subDays(7))
+                    ->groupBy('users.id', 'users.name', 'users.email')
+                    ->orderByDesc('last_enrolled_at')
+                    ->limit(5)
+                    ->get();
 
-                // ✅ SIMPLIFIED: Just show participant count, skip expensive progress calculation
-                // Progress calculation is too expensive for dashboard
                 return [
-                    'title' => $course->title,
-                    'status' => $course->status,
-                    'participants' => $participantCount,
-                    'progress' => null, // Set to null to avoid expensive calculation
+                    'overview' => [
+                        ['label' => 'Kursus Dikelola', 'value' => $totalCourses, 'icon' => 'briefcase'],
+                        ['label' => 'Total Peserta', 'value' => $totalParticipants, 'icon' => 'users'],
+                        ['label' => 'Pendaftar Baru (30 Hari)', 'value' => $recentEnrollments, 'icon' => 'user-plus'],
+                        ['label' => 'Total Diskusi', 'value' => $totalDiscussions, 'icon' => 'chat-bubble-left-right'],
+                    ],
+                    'courses' => [
+                        'total' => $totalCourses,
+                    ],
+                    'course_summary' => [
+                        'published' => $publishedCourses,
+                        'draft' => $draftCourses,
+                    ],
+                    // Keep a small list for the UI (capped at 10)
+                    'course_performance' => $eoCoursesList->map(function ($c) {
+                        return [
+                            'title' => $c->title,
+                            'status' => $c->status,
+                            'participants' => $c->enrolled_users_count,
+                            'progress' => null,
+                        ];
+                    }),
+                    'students' => [
+                        'total' => $totalParticipants,
+                    ],
+                    'recent_activity' => [
+                        'users' => $recentUsers,
+                    ],
+                    'upcoming_zoom_sessions' => $upcomingZoomSessions,
                 ];
             });
-
-            // ✅ OPTIMIZATION: Direct join for recent users
-            $recentUsers = User::select('users.id', 'users.name', 'users.email', 'users.created_at')
-                ->join('course_user', 'users.id', '=', 'course_user.user_id')
-                ->whereIn('course_user.course_id', $courseIds)
-                ->where('course_user.created_at', '>=', now()->subDays(7))
-                ->orderBy('course_user.created_at', 'desc')
-                ->limit(5)
-                ->distinct()
-                ->get();
-
-            // 7. Susun data untuk dikirim ke view
-            return [
-                'overview' => [
-                    ['label' => 'Kursus Dikelola', 'value' => $totalCourses, 'icon' => 'briefcase'],
-                    ['label' => 'Total Peserta', 'value' => $totalParticipants, 'icon' => 'users'],
-                    ['label' => 'Pendaftar Baru (30 Hari)', 'value' => $recentEnrollments, 'icon' => 'user-plus'],
-                    ['label' => 'Total Diskusi', 'value' => $totalDiscussions, 'icon' => 'chat-bubble-left-right'],
-                ],
-                'course_summary' => [
-                    'published' => $publishedCourses,
-                    'draft' => $draftCourses,
-                ],
-                'course_performance' => $coursePerformance,
-                'recent_activity' => [
-                    'users' => $recentUsers,
-                ],
-                'upcoming_zoom_sessions' => $upcomingZoomSessions,
-            ];
         } catch (\Exception $e) {
             Log::error('Error in getEoStats: ' . $e->getMessage());
             return $this->getEmptyStats();
