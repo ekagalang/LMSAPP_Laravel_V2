@@ -176,12 +176,6 @@
                                                     </svg>
                                                     {{ $course['participants'] }} peserta
                                                 </div>
-                                                <div class="flex items-center">
-                                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                                    </svg>
-                                                    {{ $course['progress'] }}% rata-rata
-                                                </div>
                                             </div>
                                         </div>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $course['status'] === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
@@ -189,15 +183,12 @@
                                         </span>
                                     </div>
 
-                                    <!-- Progress Bar -->
-                                    <div class="w-full">
-                                        <div class="flex justify-between text-xs text-gray-600 mb-1">
-                                            <span>Progress Rata-rata Peserta</span>
-                                            <span>{{ $course['progress'] }}%</span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                            <div class="bg-gradient-to-r from-teal-500 to-cyan-500 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: {{ $course['progress'] }}%"></div>
-                                        </div>
+                                    {{-- ✅ OPTIMIZATION: Progress calculation removed for performance --}}
+                                    <div class="flex items-center text-xs text-gray-500 mt-3">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>Lihat detail progress di halaman kursus</span>
                                     </div>
                                 </div>
                                 @empty
@@ -346,21 +337,16 @@
                             <h3 class="text-lg font-medium text-gray-900">Metrik Performa</h3>
                         </div>
                         <div class="p-6">
+                            {{-- ✅ OPTIMIZATION: Simplified statistics without progress --}}
                             <div class="space-y-4">
                                 <div class="text-center">
                                     <div class="text-2xl font-bold text-teal-600 mb-1">
-                                        {{ $stats['course_performance']->avg('progress') ? round($stats['course_performance']->avg('progress'), 1) : 0 }}%
+                                        {{ $stats['course_performance']->count() }}
                                     </div>
-                                    <p class="text-sm text-gray-600">Rata-rata Progress Keseluruhan</p>
+                                    <p class="text-sm text-gray-600">Total Kursus Dikelola</p>
                                 </div>
 
                                 <div class="pt-4 border-t border-gray-200">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="text-sm text-gray-600">Kursus Terbaik</span>
-                                        <span class="text-sm font-medium text-gray-900">
-                                            {{ $stats['course_performance']->max('progress') ?? 0 }}%
-                                        </span>
-                                    </div>
                                     <div class="flex justify-between items-center mb-2">
                                         <span class="text-sm text-gray-600">Total Peserta</span>
                                         <span class="text-sm font-medium text-gray-900">

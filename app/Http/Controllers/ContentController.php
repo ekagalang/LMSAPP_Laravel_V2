@@ -304,6 +304,33 @@ class ContentController extends Controller
             return true;
         }
 
+        // CHECK ATTENDANCE REQUIREMENT FOR SYNCHRONOUS CONTENT
+        // If content requires attendance, user must be marked present/excused
+        if ($content->attendance_required) {
+            $attendance = $user->attendances()
+                ->where('content_id', $content->id)
+                ->first();
+
+            // No attendance record = content not completed = next content locked
+            if (!$attendance) {
+                return false;
+            }
+
+            // Must be marked as present or excused (not absent or late)
+            if (!in_array($attendance->status, ['present', 'excused'])) {
+                return false;
+            }
+
+            // Check minimum attendance duration if specified
+            if ($content->min_attendance_minutes &&
+                $attendance->duration_minutes < $content->min_attendance_minutes) {
+                return false;
+            }
+
+            // Attendance requirement met, content is completed for unlock purposes
+            return true;
+        }
+
         if ($content->type === 'quiz' && $content->quiz_id) {
             return $user->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
@@ -313,11 +340,11 @@ class ContentController extends Controller
             $submission = $user->essaySubmissions()
                 ->where('content_id', $content->id)
                 ->first();
-                
+
             if (!$submission) {
                 return false;
             }
-            
+
             // Untuk unlock, cukup sudah submit - tidak perlu menunggu grading
             return $submission->answers()->count() > 0;
         } else {
@@ -378,6 +405,10 @@ class ContentController extends Controller
             'order' => 'nullable|integer',
             'is_optional' => 'sometimes|boolean',
             'document_access_type' => ['nullable', Rule::in(['both', 'download_only', 'preview_only'])],
+            // Attendance fields
+            'attendance_required' => 'sometimes|boolean',
+            'min_attendance_minutes' => 'nullable|integer|min:1',
+            'attendance_notes' => 'nullable|string|max:1000',
         ];
 
         // Validasi file upload berdasarkan tipe konten
@@ -506,6 +537,15 @@ class ContentController extends Controller
 
             // Pastikan flag opsional terset sesuai input (default false)
             $content->is_optional = (bool) ($request->boolean('is_optional'));
+
+            // ✅ ATTENDANCE: Explicitly set attendance_required boolean (handle unchecked state)
+            $content->attendance_required = (bool) ($request->boolean('attendance_required'));
+
+            // If attendance not required, clear related fields
+            if (!$content->attendance_required) {
+                $content->min_attendance_minutes = null;
+                $content->attendance_notes = null;
+            }
 
             // 🆕 TAMBAHAN: Set essay settings berdasarkan review_mode
             if ($validated['type'] === 'essay') {
@@ -650,7 +690,61 @@ class ContentController extends Controller
                 Log::info('BEFORE FIRST SAVE', ['body' => $content->body]);
             }
 
+            // ✅ ENHANCED LOGGING: Track before/after changes
+            $isCreating = !$content->exists;
+            $originalData = $isCreating ? null : $content->getOriginal();
+
             $content->save();
+
+            // ✅ LOG CONTENT ACTIVITY WITH BEFORE/AFTER
+            if ($isCreating) {
+                \App\Models\ActivityLog::log('content_created', [
+                    'description' => "Created new {$content->type} content: {$content->title}",
+                    'metadata' => [
+                        'content_id' => $content->id,
+                        'content_title' => $content->title,
+                        'content_type' => $content->type,
+                        'lesson_id' => $content->lesson_id,
+                        'lesson_title' => $content->lesson->title ?? null,
+                        'course_id' => $content->lesson->course_id ?? null,
+                        'course_title' => $content->lesson->course->title ?? null,
+                        'is_optional' => $content->is_optional ?? false,
+                        'attendance_required' => $content->attendance_required ?? false,
+                        'file_info' => $content->file_path ? [
+                            'file_name' => basename($content->file_path),
+                            'file_path' => $content->file_path,
+                        ] : null,
+                    ]
+                ]);
+            } else {
+                // Track what changed
+                $changes = [];
+                $fields = ['title', 'description', 'type', 'order', 'is_optional', 'attendance_required', 'file_path', 'url'];
+
+                foreach ($fields as $field) {
+                    if (isset($originalData[$field]) && $originalData[$field] != $content->$field) {
+                        $changes[$field] = [
+                            'before' => $originalData[$field],
+                            'after' => $content->$field
+                        ];
+                    }
+                }
+
+                \App\Models\ActivityLog::log('content_updated', [
+                    'description' => "Updated {$content->type} content: {$content->title}" . (count($changes) > 0 ? " (" . implode(', ', array_keys($changes)) . " changed)" : ""),
+                    'metadata' => [
+                        'content_id' => $content->id,
+                        'content_title' => $content->title,
+                        'content_type' => $content->type,
+                        'lesson_id' => $content->lesson_id,
+                        'lesson_title' => $content->lesson->title ?? null,
+                        'course_id' => $content->lesson->course_id ?? null,
+                        'course_title' => $content->lesson->course->title ?? null,
+                        'changes' => $changes,
+                        'changed_fields' => array_keys($changes),
+                    ]
+                ]);
+            }
 
             // Create related images after content has an ID
             if ($validated['type'] === 'image' && !empty($deferredImagePaths)) {
@@ -907,9 +1001,27 @@ class ContentController extends Controller
     public function destroy(Lesson $lesson, Content $content)
     {
         $this->authorize('update', $lesson->course);
+
+        // Store data before deletion for logging
+        $contentData = [
+            'content_id' => $content->id,
+            'content_title' => $content->title,
+            'content_type' => $content->type,
+            'lesson_id' => $content->lesson_id,
+            'course_id' => $lesson->course_id,
+            'course_title' => $lesson->course->title,
+        ];
+
         if ($content->file_path) Storage::disk('public')->delete($content->file_path);
         if ($content->quiz) $content->quiz->delete();
         $content->delete();
+
+        // ✅ LOG CONTENT DELETION
+        \App\Models\ActivityLog::log('content_deleted', [
+            'description' => "Deleted content: {$contentData['content_title']} ({$contentData['content_type']})",
+            'metadata' => $contentData
+        ]);
+
         return redirect()->route('courses.show', $lesson->course)->with('success', 'Konten berhasil dihapus!');
     }
 

@@ -95,9 +95,18 @@
                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
                                             {{ __('Certificate Template') }}
                                         </a>
-                                        <a href="{{ route('admin.auto-grade.index') }}" 
+                                        <a href="{{ route('admin.auto-grade.index') }}"
                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
                                             {{ __('Auto Complete Grading') }}
+                                        </a>
+                                        <div class="border-t border-gray-100 my-1"></div>
+                                        <a href="{{ route('file-control.index') }}"
+                                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
+                                            {{ __('File Control') }}
+                                        </a>
+                                        <a href="{{ route('activity-logs.index') }}"
+                                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
+                                            {{ __('Activity Logs') }}
                                         </a>
                                     </div>
                                 </x-slot>

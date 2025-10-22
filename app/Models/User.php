@@ -158,6 +158,14 @@ class User extends Authenticatable
         return $this->completedContents();
     }
 
+    /**
+     * Get attendances for this user
+     */
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
     public function getProgressForCourse(Course $course): array
     {
         // Get all contents from all lessons in this course
@@ -422,6 +430,29 @@ class User extends Authenticatable
                 ->where('content_id', $content->id)
                 ->wherePivot('completed', true)
                 ->exists();
+        }
+
+        // CHECK ATTENDANCE REQUIREMENT FOR SYNCHRONOUS CONTENT
+        if ($content->attendance_required) {
+            $attendance = $this->attendances()
+                ->where('content_id', $content->id)
+                ->first();
+
+            if (!$attendance) {
+                return false; // No attendance record = not completed
+            }
+
+            // Check if attendance meets minimum duration requirement
+            if ($content->min_attendance_minutes && $attendance->duration_minutes < $content->min_attendance_minutes) {
+                return false; // Didn't meet minimum duration
+            }
+
+            // Must be marked as present or excused
+            if (!in_array($attendance->status, ['present', 'excused'])) {
+                return false; // Absent or late = not completed
+            }
+
+            // Attendance requirement met, continue to check other completion criteria
         }
 
         if ($content->type === 'quiz' && $content->quiz_id) {

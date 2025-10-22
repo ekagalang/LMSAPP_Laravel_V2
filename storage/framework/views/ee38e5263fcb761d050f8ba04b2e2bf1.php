@@ -1,10 +1,20 @@
-<x-app-layout>
-    <x-slot name="header">
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+     <?php $__env->slot('header', null, []); ?> 
         <div class="flex flex-wrap justify-between items-center gap-6">
             <div class="flex items-center space-x-4">
                 <div>
                     <h2 class="font-bold text-2xl text-gray-900 leading-tight">
-                        {{ $course->title }}
+                        <?php echo e($course->title); ?>
+
                     </h2>
                     <p class="text-sm text-gray-600 mt-1">Detail dan manajemen kursus</p>
                 </div>
@@ -16,63 +26,63 @@
                     </svg>
                     Kembali
                 </a>
-                @can('view', $course)
-                    <a href="{{ route('courses.discussions.index', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('view', $course)): ?>
+                    <a href="<?php echo e(route('courses.discussions.index', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                         </svg>
                         Diskusi
                     </a>
-                @endcan
-                @can('grade quizzes')
-                    <a href="{{ route('courses.gradebook', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium text-sm hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                <?php endif; ?>
+                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('grade quizzes')): ?>
+                    <a href="<?php echo e(route('courses.gradebook', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium text-sm hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
                         Penilaian Essay
                     </a>
-                @endcan
-                @can('view progress reports')
-                    <a href="{{ route('courses.scores', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-medium text-sm hover:from-indigo-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                <?php endif; ?>
+                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('view progress reports')): ?>
+                    <a href="<?php echo e(route('courses.scores', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-medium text-sm hover:from-indigo-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         Nilai Quiz
                     </a>
-                    <a href="{{ route('courses.progress', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium text-sm hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <a href="<?php echo e(route('courses.progress', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium text-sm hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                         Lihat Progres
                     </a>
-                @endcan
-                @can('update', $course)
-                    <a href="{{ route('courses.tokens', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium text-sm hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                <?php endif; ?>
+                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
+                    <a href="<?php echo e(route('courses.tokens', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium text-sm hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
                         </svg>
                         Token Kelas
                     </a>
-                    <a href="{{ route('attendance.course-report', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <a href="<?php echo e(route('attendance.course-report', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
                         Attendance
                     </a>
-                    <a href="{{ route('courses.edit', $course) }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium text-sm hover:from-purple-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <a href="<?php echo e(route('courses.edit', $course)); ?>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium text-sm hover:from-purple-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
                         Edit Kursus
                     </a>
-                @endcan
+                <?php endif; ?>
             </div>
         </div>
-    </x-slot>
+     <?php $__env->endSlot(); ?>
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if (session('success'))
+            <?php if(session('success')): ?>
                 <div class="mb-8 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm" role="alert">
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
@@ -81,11 +91,11 @@
                             </svg>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                            <p class="text-sm font-medium text-green-800"><?php echo e(session('success')); ?></p>
                         </div>
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
 
             <div x-data="{ currentTab: 'lessons' }" class="bg-white rounded-2xl shadow-xl overflow-hidden">
                 <!-- Enhanced Tab Navigation -->
@@ -101,7 +111,7 @@
                                 <span>Pelajaran & Konten</span>
                             </div>
                         </button>
-                        {{-- 🆕 NEW: Periods & Chat Tab --}}
+                        
                         <button @click="currentTab = 'periods'"
                                 :class="{'border-indigo-500 text-indigo-600 bg-indigo-50': currentTab === 'periods', 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50': currentTab !== 'periods'}"
                                 class="whitespace-nowrap py-4 px-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200">
@@ -113,7 +123,7 @@
                             </div>
                         </button>
 
-                        @can('update', $course)
+                        <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                             <button @click="currentTab = 'managers'"
                                     :class="{'border-indigo-500 text-indigo-600 bg-indigo-50': currentTab === 'managers', 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50': currentTab !== 'managers'}"
                                     class="whitespace-nowrap py-4 px-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200">
@@ -144,7 +154,7 @@
                                     <span>Peserta Kursus</span>
                                 </div>
                             </button>
-                        @endcan
+                        <?php endif; ?>
                     </nav>
                 </div>
 
@@ -152,7 +162,7 @@
                 <div x-show="currentTab === 'lessons'" class="p-8">
                     <div
                         x-data="{
-                            lessons: {{ Js::from($course->lessons->sortBy('order')->values()) }},
+                            lessons: <?php echo e(Js::from($course->lessons->sortBy('order')->values())); ?>,
                             activeAccordion: null,
                             moveUp(index) {
                                 if (index === 0) return;
@@ -166,9 +176,9 @@
                             },
                             updateLessonOrderOnServer() {
                                 const orderedIds = this.lessons.map(lesson => lesson.id);
-                                fetch('{{ route('lessons.update_order') }}', {
+                                fetch('<?php echo e(route('lessons.update_order')); ?>', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>' },
                                     body: JSON.stringify({ lessons: orderedIds })
                                 });
                             },
@@ -186,9 +196,9 @@
                             },
                             updateContentOrderOnServer(lessonIndex) {
                                 const orderedContentIds = this.lessons[lessonIndex].contents.map(content => content.id);
-                                fetch('{{ route('contents.update_order') }}', {
+                                fetch('<?php echo e(route('contents.update_order')); ?>', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>' },
                                     body: JSON.stringify({ contents: orderedContentIds })
                                 });
                             }
@@ -199,14 +209,14 @@
                                 <h3 class="text-2xl font-bold text-gray-900">Daftar Pelajaran</h3>
                                 <p class="text-gray-600 mt-1">Kelola urutan dan konten pelajaran</p>
                             </div>
-                            @can('update', $course)
-                                <a href="{{ route('courses.lessons.create', $course) }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold text-sm hover:from-indigo-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
+                                <a href="<?php echo e(route('courses.lessons.create', $course)); ?>" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold text-sm hover:from-indigo-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                     </svg>
                                     Tambah Pelajaran
                                 </a>
-                            @endcan
+                            <?php endif; ?>
                         </div>
 
                         <div x-show="lessons.length === 0" class="text-center py-16">
@@ -226,7 +236,7 @@
 
                                     <div class="p-6 flex justify-between items-center">
                                         <div class="flex items-center flex-grow">
-                                            @can('update', $course)
+                                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                                 <div class="flex flex-col mr-4 space-y-1">
                                                     <button @click="moveUp(index)" :disabled="index === 0"
                                                             :class="{'opacity-25 cursor-not-allowed': index === 0}"
@@ -243,7 +253,7 @@
                                                         </svg>
                                                     </button>
                                                 </div>
-                                            @endcan
+                                            <?php endif; ?>
                                             <div class="flex items-center space-x-4">
                                                 <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                                                     <span class="font-bold text-white text-lg" x-text="index + 1"></span>
@@ -263,11 +273,11 @@
                                             </div>
                                         </div>
                                         <div class="flex items-center space-x-2 flex-shrink-0">
-                                            @can('update', $course)
+                                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                                 <!-- Action Buttons -->
                                                 <div class="flex items-center space-x-2">
-                                                    <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi pelajaran ini?');">
-                                                        @csrf
+                                                    <form :action="`/courses/<?php echo e($course->id); ?>/lessons/${lesson.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi pelajaran ini?');">
+                                                        <?php echo csrf_field(); ?>
                                                         <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-lg hover:bg-green-200 transition-colors">
                                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
@@ -276,7 +286,7 @@
                                                         </button>
                                                     </form>
 
-                                                    <a :href="`/courses/{{$course->id}}/lessons/${lesson.id}/edit`" class="inline-flex items-center px-3 py-2 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-200 transition-colors">
+                                                    <a :href="`/courses/<?php echo e($course->id); ?>/lessons/${lesson.id}/edit`" class="inline-flex items-center px-3 py-2 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-200 transition-colors">
                                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                         </svg>
@@ -290,8 +300,8 @@
                                                         Tambah Konten
                                                     </a>
 
-                                                    <form :action="`/courses/{{$course->id}}/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
-                                                        @csrf @method('DELETE')
+                                                    <form :action="`/courses/<?php echo e($course->id); ?>/lessons/${lesson.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus pelajaran ini?');">
+                                                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                                                         <button type="submit" class="inline-flex items-center px-3 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 transition-colors">
                                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -300,7 +310,7 @@
                                                         </button>
                                                     </form>
                                                 </div>
-                                            @endcan
+                                            <?php endif; ?>
 
                                             <!-- Expand Button -->
                                             <button @click="activeAccordion = (activeAccordion === lesson.id) ? null : lesson.id"
@@ -324,7 +334,7 @@
                                                 <template x-for="(content, contentIndex) in lesson.contents" :key="content.id">
                                                     <div class="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200">
                                                         <div class="flex items-center space-x-4">
-                                                            @can('update', $course)
+                                                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                                             <div class="flex flex-col space-y-1">
                                                                 <button @click="moveContentUp(index, contentIndex)" :disabled="contentIndex === 0"
                                                                         :class="{'opacity-25 cursor-not-allowed': contentIndex === 0}"
@@ -341,7 +351,7 @@
                                                                     </svg>
                                                                 </button>
                                                             </div>
-                                                            @endcan
+                                                            <?php endif; ?>
 
                                                             <!-- Content Type Icon -->
                                                             <div class="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -381,10 +391,10 @@
                                                             </div>
                                                         </div>
 
-                                                        @can('update', $course)
+                                                        <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                                         <div class="flex items-center space-x-2">
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}/duplicate`" method="POST" onsubmit="return confirm('Yakin ingin duplikasi konten ini?');">
-                                                                @csrf
+                                                                <?php echo csrf_field(); ?>
                                                                 <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-lg hover:bg-green-100 transition-colors">
                                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
@@ -401,7 +411,7 @@
                                                             </a>
 
                                                             <form :action="`/lessons/${lesson.id}/contents/${content.id}`" method="POST" onsubmit="return confirm('Yakin ingin menghapus konten ini?');">
-                                                                @csrf @method('DELETE')
+                                                                <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                                                                 <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-700 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors">
                                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -410,7 +420,7 @@
                                                                 </button>
                                                             </form>
                                                         </div>
-                                                        @endcan
+                                                        <?php endif; ?>
                                                     </div>
                                                 </template>
 
@@ -421,14 +431,14 @@
                                                         </svg>
                                                     </div>
                                                     <p class="text-gray-500 text-sm">Belum ada konten untuk pelajaran ini.</p>
-                                                    @can('update', $course)
+                                                    <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                                         <a :href="`/lessons/${lesson.id}/contents/create`" class="inline-flex items-center mt-3 px-4 py-2 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-200 transition-colors">
                                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                                             </svg>
                                                             Tambah Konten Pertama
                                                         </a>
-                                                    @endcan
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -439,15 +449,15 @@
                     </div>
                 </div>
 
-                {{-- 🆕 NEW: Periods & Chat Tab --}}
+                
                 <div x-show="currentTab === 'periods'" x-cloak class="p-8" 
-                     x-data="periodManager({{ $course->id }}, @js($course->periods->toArray() ?? []))">
+                     x-data="periodManager(<?php echo e($course->id); ?>, <?php echo \Illuminate\Support\Js::from($course->periods->toArray() ?? [])->toHtml() ?>)">
                     <div class="mb-8">
                         <h3 class="text-2xl font-bold text-gray-900">Kelas & Komunikasi Kursus</h3>
                         <p class="text-gray-600 mt-1">Kelola kelas kursus dan akses chat realtime</p>
                     </div>
 
-                    @if($course->periods && $course->periods->count() > 0)
+                    <?php if($course->periods && $course->periods->count() > 0): ?>
                         <!-- Search and Bulk Actions -->
                         <div class="mb-6 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -466,7 +476,7 @@
                                 </div>
 
                                 <!-- Bulk Actions -->
-                                @can('update', $course)
+                                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                 <div class="flex items-center space-x-3">
                                     <label class="flex items-center">
                                         <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()" 
@@ -482,7 +492,7 @@
                                         <span x-text="`Hapus (${selectedPeriods.length})`"></span>
                                     </button>
                                 </div>
-                                @endcan
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -491,38 +501,38 @@
                             <div class="flex items-center space-x-4">
                                 <div class="flex items-center space-x-2">
                                     <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                                    <span class="text-sm text-gray-600">Kelas Aktif: {{ $course->periods->where('status', 'active')->count() }}</span>
+                                    <span class="text-sm text-gray-600">Kelas Aktif: <?php echo e($course->periods->where('status', 'active')->count()); ?></span>
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
-                                    <span class="text-sm text-gray-600">Mendatang: {{ $course->periods->where('status', 'upcoming')->count() }}</span>
+                                    <span class="text-sm text-gray-600">Mendatang: <?php echo e($course->periods->where('status', 'upcoming')->count()); ?></span>
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
-                                    <span class="text-sm text-gray-600">Selesai: {{ $course->periods->where('status', 'completed')->count() }}</span>
+                                    <span class="text-sm text-gray-600">Selesai: <?php echo e($course->periods->where('status', 'completed')->count()); ?></span>
                                 </div>
                             </div>
 
                             <div class="flex space-x-2">
-                                @can('update', $course)
-                                    <a href="{{ route('course-periods.create', $course) }}"
+                                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
+                                    <a href="<?php echo e(route('course-periods.create', $course)); ?>"
                                         class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-md transition-all duration-200">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                         </svg>
                                         Tambah Kelas
                                     </a>
-                                @endcan
+                                <?php endif; ?>
 
-                                @if($course->hasActivePeriod())
-                                    <a href="{{ route('chat.index') }}?course={{ $course->id }}"
+                                <?php if($course->hasActivePeriod()): ?>
+                                    <a href="<?php echo e(route('chat.index')); ?>?course=<?php echo e($course->id); ?>"
                                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 shadow-md transition-all duration-200">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                         </svg>
                                         Buka Chat
                                     </a>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -533,10 +543,10 @@
                                      :class="period.status === 'active' ? 'ring-2 ring-green-300 border-green-200' : ''">
                                     <div class="flex items-center justify-between mb-4">
                                         <div class="flex items-center space-x-3">
-                                            @can('update', $course)
+                                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                                 <input type="checkbox" :value="period.id" x-model="selectedPeriods"
                                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                            @endcan
+                                            <?php endif; ?>
                                             <h4 class="text-lg font-bold text-gray-900" x-text="period.name"></h4>
                                         </div>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -578,7 +588,7 @@
                                     <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                                         <div>
                                             <template x-if="period.status === 'active'">
-                                                <a :href="`{{ route('chat.index') }}?period=${period.id}`"
+                                                <a :href="`<?php echo e(route('chat.index')); ?>?period=${period.id}`"
                                                    class="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-800 transition-colors">
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
@@ -604,15 +614,15 @@
                                             </template>
                                         </div>
 
-                                        @can('update', $course)
+                                        <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                                             <div class="flex items-center space-x-2">
-                                                <a :href="`{{ url('courses/' . $course->id . '/periods') }}/${period.id}/manage`"
+                                                <a :href="`<?php echo e(url('courses/' . $course->id . '/periods')); ?>/${period.id}/manage`"
                                                    class="text-xs text-green-600 hover:text-green-800 font-medium">Kelola</a>
-                                                <a :href="`{{ url('courses/' . $course->id . '/periods') }}/${period.id}/edit`"
+                                                <a :href="`<?php echo e(url('courses/' . $course->id . '/periods')); ?>/${period.id}/edit`"
                                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</a>
                                                 <button @click="deletePeriod(period.id)" class="text-xs text-red-600 hover:text-red-800 font-medium">Hapus</button>
                                             </div>
-                                        @endcan
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </template>
@@ -629,7 +639,7 @@
                             <p class="text-gray-600" x-text="`Tidak ada kelas yang cocok dengan \"${searchTerm}\"`"></p>
                         </div>
 
-                        @if($course->periods->where('status', 'active')->count() === 0)
+                        <?php if($course->periods->where('status', 'active')->count() === 0): ?>
                             <div class="mt-8 p-6 bg-yellow-50 border border-yellow-200 rounded-xl">
                                 <div class="flex items-center">
                                     <svg class="w-6 h-6 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -641,10 +651,10 @@
                                     </div>
                                 </div>
                             </div>
-                        @endif
+                        <?php endif; ?>
 
-                    @else
-                        {{-- No Periods State --}}
+                    <?php else: ?>
+                        
                         <div class="text-center py-16">
                             <div class="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                                 <svg class="w-12 h-12 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,20 +663,20 @@
                             </div>
                             <h4 class="text-2xl font-bold text-gray-900 mb-3">Belum Ada Kelas Kursus</h4>
                             <p class="text-gray-600 text-lg mb-8 max-w-md mx-auto">Buat kelas kursus untuk mengaktifkan fitur chat dan mengelola timeline pembelajaran.</p>
-                            @can('update', $course)
-                                <a href="{{ route('course-periods.create', ['course' => $course->id]) }}"
+                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
+                                <a href="<?php echo e(route('course-periods.create', ['course' => $course->id])); ?>"
                                     class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                     </svg>
                                     Buat Kelas Pertama
                                 </a>
-                            @endcan
+                            <?php endif; ?>
                         </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
 
-                @can('update', $course)
+                <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $course)): ?>
                     <!-- Managers Tab -->
                     <div x-show="currentTab === 'managers'" x-cloak class="p-8">
                         <div class="mb-8">
@@ -685,24 +695,24 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-red-900">Instruktur Ditugaskan</h4>
-                                        <p class="text-sm text-red-700">{{ $course->instructors->count() }} instruktur aktif</p>
+                                        <p class="text-sm text-red-700"><?php echo e($course->instructors->count()); ?> instruktur aktif</p>
                                     </div>
                                 </div>
 
-                                <form action="{{ route('courses.removeInstructor', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus instruktur terpilih?');">
-                                    @csrf @method('DELETE')
+                                <form action="<?php echo e(route('courses.removeInstructor', $course)); ?>" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus instruktur terpilih?');">
+                                    <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                                     <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
-                                        @forelse($course->instructors as $instructor)
+                                        <?php $__empty_1 = true; $__currentLoopData = $course->instructors; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $instructor): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                             <div class="flex items-center p-3 bg-white rounded-xl border border-red-200 hover:bg-red-50 transition-colors">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="instructor-{{$instructor->id}}" class="mr-3 rounded border-red-300 text-red-600 focus:ring-red-500">
+                                                <input type="checkbox" name="user_ids[]" value="<?php echo e($instructor->id); ?>" id="instructor-<?php echo e($instructor->id); ?>" class="mr-3 rounded border-red-300 text-red-600 focus:ring-red-500">
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center">
-                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($instructor->name, 0, 1)) }}</span>
+                                                        <span class="text-white text-sm font-semibold"><?php echo e(strtoupper(substr($instructor->name, 0, 1))); ?></span>
                                                     </div>
-                                                    <label for="instructor-{{$instructor->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $instructor->name }}</label>
+                                                    <label for="instructor-<?php echo e($instructor->id); ?>" class="font-medium text-gray-900 cursor-pointer"><?php echo e($instructor->name); ?></label>
                                                 </div>
                                             </div>
-                                        @empty
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                             <div class="text-center py-8">
                                                 <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -711,16 +721,16 @@
                                                 </div>
                                                 <p class="text-red-600 font-medium">Belum ada instruktur ditugaskan</p>
                                             </div>
-                                        @endforelse
+                                        <?php endif; ?>
                                     </div>
-                                    @if($course->instructors->isNotEmpty())
+                                    <?php if($course->instructors->isNotEmpty()): ?>
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                             Hapus Instruktur Terpilih
                                         </button>
-                                    @endif
+                                    <?php endif; ?>
                                 </form>
                             </div>
 
@@ -734,24 +744,24 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-green-900">Tambahkan Instruktur</h4>
-                                        <p class="text-sm text-green-700">{{ $availableInstructors->count() }} instruktur tersedia</p>
+                                        <p class="text-sm text-green-700"><?php echo e($availableInstructors->count()); ?> instruktur tersedia</p>
                                     </div>
                                 </div>
 
-                                <form action="{{ route('courses.addInstructor', $course) }}" method="POST">
-                                    @csrf
+                                <form action="<?php echo e(route('courses.addInstructor', $course)); ?>" method="POST">
+                                    <?php echo csrf_field(); ?>
                                     <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
-                                        @forelse($availableInstructors as $instructor)
+                                        <?php $__empty_1 = true; $__currentLoopData = $availableInstructors; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $instructor): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                             <div class="flex items-center p-3 bg-white rounded-xl border border-green-200 hover:bg-green-50 transition-colors">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $instructor->id }}" id="avail-instructor-{{$instructor->id}}" class="mr-3 rounded border-green-300 text-green-600 focus:ring-green-500">
+                                                <input type="checkbox" name="user_ids[]" value="<?php echo e($instructor->id); ?>" id="avail-instructor-<?php echo e($instructor->id); ?>" class="mr-3 rounded border-green-300 text-green-600 focus:ring-green-500">
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($instructor->name, 0, 1)) }}</span>
+                                                        <span class="text-white text-sm font-semibold"><?php echo e(strtoupper(substr($instructor->name, 0, 1))); ?></span>
                                                     </div>
-                                                    <label for="avail-instructor-{{$instructor->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $instructor->name }}</label>
+                                                    <label for="avail-instructor-<?php echo e($instructor->id); ?>" class="font-medium text-gray-900 cursor-pointer"><?php echo e($instructor->name); ?></label>
                                                 </div>
                                             </div>
-                                        @empty
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                             <div class="text-center py-8">
                                                 <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -760,17 +770,17 @@
                                                 </div>
                                                 <p class="text-green-600 font-medium">Semua instruktur sudah ditugaskan</p>
                                             </div>
-                                        @endforelse
+                                        <?php endif; ?>
                                     </div>
-                                    {{-- All pagination removed - now using Collection directly --}}
-                                    @if($availableInstructors->count() > 0)
+                                    
+                                    <?php if($availableInstructors->count() > 0): ?>
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                             </svg>
                                             Tambahkan Instruktur
                                         </button>
-                                    @endif
+                                    <?php endif; ?>
                                 </form>
                             </div>
                         </div>
@@ -794,24 +804,24 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-purple-900">EO Ditugaskan</h4>
-                                        <p class="text-sm text-purple-700">{{ $course->eventOrganizers->count() }} EO aktif</p>
+                                        <p class="text-sm text-purple-700"><?php echo e($course->eventOrganizers->count()); ?> EO aktif</p>
                                     </div>
                                 </div>
 
-                                <form action="{{ route('courses.removeEo', $course) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus EO terpilih?');">
-                                    @csrf @method('DELETE')
+                                <form action="<?php echo e(route('courses.removeEo', $course)); ?>" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus EO terpilih?');">
+                                    <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                                     <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
-                                        @forelse($course->eventOrganizers as $organizer)
+                                        <?php $__empty_1 = true; $__currentLoopData = $course->eventOrganizers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $organizer): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                             <div class="flex items-center p-3 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 transition-colors">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="organizer-{{$organizer->id}}" class="mr-3 rounded border-purple-300 text-purple-600 focus:ring-purple-500">
+                                                <input type="checkbox" name="user_ids[]" value="<?php echo e($organizer->id); ?>" id="organizer-<?php echo e($organizer->id); ?>" class="mr-3 rounded border-purple-300 text-purple-600 focus:ring-purple-500">
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
-                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($organizer->name, 0, 1)) }}</span>
+                                                        <span class="text-white text-sm font-semibold"><?php echo e(strtoupper(substr($organizer->name, 0, 1))); ?></span>
                                                     </div>
-                                                    <label for="organizer-{{$organizer->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $organizer->name }}</label>
+                                                    <label for="organizer-<?php echo e($organizer->id); ?>" class="font-medium text-gray-900 cursor-pointer"><?php echo e($organizer->name); ?></label>
                                                 </div>
                                             </div>
-                                        @empty
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                             <div class="text-center py-8">
                                                 <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -820,16 +830,16 @@
                                                 </div>
                                                 <p class="text-purple-600 font-medium">Belum ada EO ditugaskan</p>
                                             </div>
-                                        @endforelse
+                                        <?php endif; ?>
                                     </div>
-                                    @if($course->eventOrganizers->isNotEmpty())
+                                    <?php if($course->eventOrganizers->isNotEmpty()): ?>
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                             Hapus EO Terpilih
                                         </button>
-                                    @endif
+                                    <?php endif; ?>
                                 </form>
                             </div>
 
@@ -843,24 +853,24 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-blue-900">Tambahkan EO</h4>
-                                        <p class="text-sm text-blue-700">{{ $availableOrganizers->count() }} EO tersedia</p>
+                                        <p class="text-sm text-blue-700"><?php echo e($availableOrganizers->count()); ?> EO tersedia</p>
                                     </div>
                                 </div>
 
-                                <form action="{{ route('courses.addEo', $course) }}" method="POST">
-                                    @csrf
+                                <form action="<?php echo e(route('courses.addEo', $course)); ?>" method="POST">
+                                    <?php echo csrf_field(); ?>
                                     <div class="space-y-3 mb-6 max-h-80 overflow-y-auto">
-                                        @forelse($availableOrganizers as $organizer)
+                                        <?php $__empty_1 = true; $__currentLoopData = $availableOrganizers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $organizer): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                             <div class="flex items-center p-3 bg-white rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors">
-                                                <input type="checkbox" name="user_ids[]" value="{{ $organizer->id }}" id="avail-organizer-{{$organizer->id}}" class="mr-3 rounded border-blue-300 text-blue-600 focus:ring-blue-500">
+                                                <input type="checkbox" name="user_ids[]" value="<?php echo e($organizer->id); ?>" id="avail-organizer-<?php echo e($organizer->id); ?>" class="mr-3 rounded border-blue-300 text-blue-600 focus:ring-blue-500">
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center">
-                                                        <span class="text-white text-sm font-semibold">{{ strtoupper(substr($organizer->name, 0, 1)) }}</span>
+                                                        <span class="text-white text-sm font-semibold"><?php echo e(strtoupper(substr($organizer->name, 0, 1))); ?></span>
                                                     </div>
-                                                    <label for="avail-organizer-{{$organizer->id}}" class="font-medium text-gray-900 cursor-pointer">{{ $organizer->name }}</label>
+                                                    <label for="avail-organizer-<?php echo e($organizer->id); ?>" class="font-medium text-gray-900 cursor-pointer"><?php echo e($organizer->name); ?></label>
                                                 </div>
                                             </div>
-                                        @empty
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                             <div class="text-center py-8">
                                                 <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -869,17 +879,17 @@
                                                 </div>
                                                 <p class="text-blue-600 font-medium">Semua EO sudah ditugaskan</p>
                                             </div>
-                                        @endforelse
+                                        <?php endif; ?>
                                     </div>
-                                    {{-- All pagination removed - now using Collection directly --}}
-                                    @if($availableOrganizers->count() > 0)
+                                    
+                                    <?php if($availableOrganizers->count() > 0): ?>
                                         <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                             </svg>
                                             Tambahkan EO
                                         </button>
-                                    @endif
+                                    <?php endif; ?>
                                 </form>
                             </div>
                         </div>
@@ -892,8 +902,8 @@
                             selectedUnenrollUsers: [],
                             searchTermEnroll: '',
                             searchTermUnenroll: '',
-                            unEnrolledParticipantsData: {{ Js::from($unEnrolledParticipants) }},
-                            enrolledParticipantsData: {{ Js::from($course->enrolledUsers) }},
+                            unEnrolledParticipantsData: <?php echo e(Js::from($unEnrolledParticipants)); ?>,
+                            enrolledParticipantsData: <?php echo e(Js::from($course->enrolledUsers)); ?>,
                             get filteredUnEnrolledParticipants() {
                                 if (this.searchTermEnroll === '') return this.unEnrolledParticipantsData;
                                 return this.unEnrolledParticipantsData.filter(user =>
@@ -925,11 +935,11 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-orange-900">Peserta Terdaftar</h4>
-                                        <p class="text-sm text-orange-700">{{ $course->enrolledUsers->count() }} peserta aktif</p>
+                                        <p class="text-sm text-orange-700"><?php echo e($course->enrolledUsers->count()); ?> peserta aktif</p>
                                     </div>
                                 </div>
 
-                                @if($course->enrolledUsers->isEmpty())
+                                <?php if($course->enrolledUsers->isEmpty()): ?>
                                     <div class="text-center py-8">
                                         <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -938,9 +948,9 @@
                                         </div>
                                         <p class="text-orange-600 font-medium">Belum ada peserta terdaftar</p>
                                     </div>
-                                @else
-                                    <form id="unenroll-form" method="POST" action="{{ route('courses.unenroll_mass', $course) }}" onsubmit="return confirm('Anda yakin ingin mencabut akses peserta terpilih?');">
-                                        @csrf @method('DELETE')
+                                <?php else: ?>
+                                    <form id="unenroll-form" method="POST" action="<?php echo e(route('courses.unenroll_mass', $course)); ?>" onsubmit="return confirm('Anda yakin ingin mencabut akses peserta terpilih?');">
+                                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
 
                                         <!-- Search Input -->
                                         <div class="mb-4">
@@ -987,7 +997,7 @@
                                             Cabut Akses Terpilih
                                         </button>
                                     </form>
-                                @endif
+                                <?php endif; ?>
                             </div>
 
                             <!-- Available Participants -->
@@ -1000,12 +1010,12 @@
                                     </div>
                                     <div>
                                         <h4 class="text-lg font-bold text-emerald-900">Daftarkan Peserta</h4>
-                                        <p class="text-sm text-emerald-700">{{ $unEnrolledParticipants->count() }} calon peserta tersedia</p>
+                                        <p class="text-sm text-emerald-700"><?php echo e($unEnrolledParticipants->count()); ?> calon peserta tersedia</p>
                                     </div>
                                 </div>
 
-                                <form id="enroll-form" method="POST" action="{{ route('courses.enroll', $course) }}">
-                                    @csrf
+                                <form id="enroll-form" method="POST" action="<?php echo e(route('courses.enroll', $course)); ?>">
+                                    <?php echo csrf_field(); ?>
 
                                     <!-- Search Input -->
                                     <div class="mb-4">
@@ -1048,7 +1058,7 @@
                                         </template>
                                     </div>
 
-                                    {{-- REMOVED: Pagination links --}}
+                                    
 
                                     <button type="submit" x-bind:disabled="selectedEnrollUsers.length === 0"
                                             :class="selectedEnrollUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"
@@ -1062,7 +1072,7 @@
                             </div>
                         </div>
                     </div>
-                @endcan
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -1115,7 +1125,7 @@
                         const tokenInput = document.createElement('input');
                         tokenInput.type = 'hidden';
                         tokenInput.name = '_token';
-                        tokenInput.value = '{{ csrf_token() }}';
+                        tokenInput.value = '<?php echo e(csrf_token()); ?>';
                         form.appendChild(tokenInput);
                         
                         // Add method override
@@ -1138,4 +1148,14 @@
             return true; // or implement your unlock logic here
         }
     </script>
-</x-app-layout>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php /**PATH C:\Users\PC2\Videos\IT\Code\LMSCOK\ABC\Cok\LMSAPP_Laravel_V2\resources\views/courses/show.blade.php ENDPATH**/ ?>

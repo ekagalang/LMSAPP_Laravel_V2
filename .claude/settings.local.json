@@ -8,7 +8,8 @@
       "Bash(powershell:*)",
       "Bash(findstr \"upload_max_filesize\\|post_max_size\\|max_file_uploads\")",
       "Read(//c/tools/php84/**)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
