@@ -27,6 +27,7 @@ use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\EssayQuestionController;
 use App\Http\Controllers\FileControlController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AttendanceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/activity-logs/{id}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
     Route::post('/activity-logs/clear', [ActivityLogController::class, 'clear'])->name('activity-logs.clear');
     Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
+
+    // Attendance Management
+    // IMPORTANT: Specific routes BEFORE generic routes to avoid conflicts
+    Route::get('/attendance/content/{content}/export', [AttendanceController::class, 'export'])->name('attendance.export');
+    Route::get('/attendance/content/{content}', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::post('/attendance/content/{content}/mark', [AttendanceController::class, 'mark'])->name('attendance.mark');
+    Route::post('/attendance/content/{content}/bulk-mark', [AttendanceController::class, 'bulkMark'])->name('attendance.bulk-mark');
+    Route::put('/attendance/record/{attendance}', [AttendanceController::class, 'update'])->name('attendance.update');
+    Route::delete('/attendance/record/{attendance}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
+    Route::get('/course/{course}/attendance-report', [AttendanceController::class, 'courseReport'])->name('attendance.course-report');
 
     // Profile Pengguna
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

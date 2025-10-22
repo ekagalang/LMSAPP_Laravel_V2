@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Activity Logs - File Control History
+            Activity Logs - System Activity History
         </h2>
     </x-slot>
 
@@ -14,7 +14,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <div>
                             <h3 class="text-2xl font-bold text-gray-800">Activity History</h3>
-                            <p class="text-gray-600 text-sm mt-1">Track all file management activities</p>
+                            <p class="text-gray-600 text-sm mt-1">Track all system activities including file management, attendance, courses, and more</p>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="exportLogs()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
@@ -39,7 +39,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
                                 <input type="text" name="search" value="{{ request('search') }}"
-                                    placeholder="File name or description..."
+                                    placeholder="Search description, file name, or participant..."
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
                             </div>
 
@@ -134,11 +134,11 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -161,15 +161,29 @@
                                                     @if($log->action == 'upload') bg-blue-100 text-blue-800
                                                     @elseif($log->action == 'delete') bg-red-100 text-red-800
                                                     @elseif($log->action == 'copy_link') bg-purple-100 text-purple-800
+                                                    @elseif(str_contains($log->action, 'attendance')) bg-green-100 text-green-800
+                                                    @elseif(str_contains($log->action, 'course')) bg-indigo-100 text-indigo-800
+                                                    @elseif(str_contains($log->action, 'content')) bg-yellow-100 text-yellow-800
                                                     @else bg-gray-100 text-gray-800
                                                     @endif">
                                                     {{ ucfirst(str_replace('_', ' ', $log->action)) }}
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4">
-                                                <div class="text-sm text-gray-900">{{ $log->file_name ?? 'N/A' }}</div>
-                                                @if($log->file_size)
-                                                    <div class="text-xs text-gray-500">{{ $log->formatted_file_size }}</div>
+                                                @if($log->file_name)
+                                                    <div class="text-sm text-gray-900">{{ $log->file_name }}</div>
+                                                    @if($log->file_size)
+                                                        <div class="text-xs text-gray-500">{{ $log->formatted_file_size }}</div>
+                                                    @endif
+                                                @elseif(isset($log->metadata['content_title']))
+                                                    <div class="text-sm text-gray-900">{{ $log->metadata['content_title'] }}</div>
+                                                    @if(isset($log->metadata['participant_name']))
+                                                        <div class="text-xs text-gray-500">{{ $log->metadata['participant_name'] }}</div>
+                                                    @endif
+                                                @elseif(isset($log->metadata['course_title']))
+                                                    <div class="text-sm text-gray-900">{{ $log->metadata['course_title'] }}</div>
+                                                @else
+                                                    <div class="text-sm text-gray-500">-</div>
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4">

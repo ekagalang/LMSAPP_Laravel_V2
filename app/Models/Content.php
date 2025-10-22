@@ -34,6 +34,9 @@ class Content extends Model
         'grading_mode',
         'requires_review',
         'is_optional',
+        'attendance_required',
+        'min_attendance_minutes',
+        'attendance_notes',
     ];
 
     protected $casts = [
@@ -43,6 +46,8 @@ class Content extends Model
         'scoring_enabled' => 'boolean',
         'requires_review' => 'boolean',
         'is_optional' => 'boolean',
+        'attendance_required' => 'boolean',
+        'min_attendance_minutes' => 'integer',
     ];
 
     /**
@@ -160,6 +165,36 @@ class Content extends Model
     public function completers()
     {
         return $this->belongsToMany(User::class, 'content_user')->withPivot('completed', 'completed_at');
+    }
+
+    /**
+     * Get attendances for this content
+     */
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    /**
+     * Check if attendance is required for this content
+     */
+    public function requiresAttendance(): bool
+    {
+        return $this->attendance_required ?? false;
+    }
+
+    /**
+     * Get attendance statistics for this content
+     */
+    public function getAttendanceStats()
+    {
+        return [
+            'total' => $this->attendances()->count(),
+            'present' => $this->attendances()->where('status', 'present')->count(),
+            'absent' => $this->attendances()->where('status', 'absent')->count(),
+            'late' => $this->attendances()->where('status', 'late')->count(),
+            'excused' => $this->attendances()->where('status', 'excused')->count(),
+        ];
     }
 
     /**

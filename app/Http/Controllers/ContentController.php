@@ -304,6 +304,33 @@ class ContentController extends Controller
             return true;
         }
 
+        // CHECK ATTENDANCE REQUIREMENT FOR SYNCHRONOUS CONTENT
+        // If content requires attendance, user must be marked present/excused
+        if ($content->attendance_required) {
+            $attendance = $user->attendances()
+                ->where('content_id', $content->id)
+                ->first();
+
+            // No attendance record = content not completed = next content locked
+            if (!$attendance) {
+                return false;
+            }
+
+            // Must be marked as present or excused (not absent or late)
+            if (!in_array($attendance->status, ['present', 'excused'])) {
+                return false;
+            }
+
+            // Check minimum attendance duration if specified
+            if ($content->min_attendance_minutes &&
+                $attendance->duration_minutes < $content->min_attendance_minutes) {
+                return false;
+            }
+
+            // Attendance requirement met, content is completed for unlock purposes
+            return true;
+        }
+
         if ($content->type === 'quiz' && $content->quiz_id) {
             return $user->quizAttempts()
                 ->where('quiz_id', $content->quiz_id)
@@ -313,11 +340,11 @@ class ContentController extends Controller
             $submission = $user->essaySubmissions()
                 ->where('content_id', $content->id)
                 ->first();
-                
+
             if (!$submission) {
                 return false;
             }
-            
+
             // Untuk unlock, cukup sudah submit - tidak perlu menunggu grading
             return $submission->answers()->count() > 0;
         } else {
@@ -378,6 +405,10 @@ class ContentController extends Controller
             'order' => 'nullable|integer',
             'is_optional' => 'sometimes|boolean',
             'document_access_type' => ['nullable', Rule::in(['both', 'download_only', 'preview_only'])],
+            // Attendance fields
+            'attendance_required' => 'sometimes|boolean',
+            'min_attendance_minutes' => 'nullable|integer|min:1',
+            'attendance_notes' => 'nullable|string|max:1000',
         ];
 
         // Validasi file upload berdasarkan tipe konten
@@ -506,6 +537,15 @@ class ContentController extends Controller
 
             // Pastikan flag opsional terset sesuai input (default false)
             $content->is_optional = (bool) ($request->boolean('is_optional'));
+
+            // ✅ ATTENDANCE: Explicitly set attendance_required boolean (handle unchecked state)
+            $content->attendance_required = (bool) ($request->boolean('attendance_required'));
+
+            // If attendance not required, clear related fields
+            if (!$content->attendance_required) {
+                $content->min_attendance_minutes = null;
+                $content->attendance_notes = null;
+            }
 
             // 🆕 TAMBAHAN: Set essay settings berdasarkan review_mode
             if ($validated['type'] === 'essay') {
