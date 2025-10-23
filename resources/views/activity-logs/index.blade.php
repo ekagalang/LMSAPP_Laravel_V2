@@ -32,6 +32,19 @@
                         </div>
                     </div>
 
+                    <!-- Category Pills -->
+                    <div class="mb-4">
+                        <div class="flex flex-wrap gap-2">
+                            @php $currentCat = request('category'); @endphp
+                            <a href="{{ route('activity-logs.index', array_merge(request()->except('page','category'), [])) }}"
+                               class="px-3 py-1 rounded-full text-sm {{ !$currentCat ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">All</a>
+                            @foreach(($categories ?? []) as $key => $label)
+                                <a href="{{ route('activity-logs.index', array_merge(request()->except('page'), ['category' => $key])) }}"
+                                   class="px-3 py-1 rounded-full text-sm {{ $currentCat === $key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">{{ $label }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+
                     <!-- Filters -->
                     <form method="GET" action="{{ route('activity-logs.index') }}" class="bg-gray-50 p-4 rounded-lg mb-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -291,7 +304,8 @@
             fetch(`/activity-logs/${id}`)
                 .then(response => response.json())
                 .then(data => {
-                    const content = `
+                    const meta = data.metadata || {};
+                    let content = `
                         <div class="grid grid-cols-2 gap-4">
                             <div class="col-span-2 md:col-span-1">
                                 <label class="block text-sm font-medium text-gray-700">User</label>
@@ -300,22 +314,6 @@
                             <div class="col-span-2 md:col-span-1">
                                 <label class="block text-sm font-medium text-gray-700">Action</label>
                                 <p class="mt-1 text-sm text-gray-900">${data.action}</p>
-                            </div>
-                            <div class="col-span-2 md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700">File Name</label>
-                                <p class="mt-1 text-sm text-gray-900">${data.file_name || 'N/A'}</p>
-                            </div>
-                            <div class="col-span-2 md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700">File Size</label>
-                                <p class="mt-1 text-sm text-gray-900">${data.formatted_file_size || 'N/A'}</p>
-                            </div>
-                            <div class="col-span-2">
-                                <label class="block text-sm font-medium text-gray-700">File Path</label>
-                                <p class="mt-1 text-sm text-gray-900 break-all">${data.file_path || 'N/A'}</p>
-                            </div>
-                            <div class="col-span-2">
-                                <label class="block text-sm font-medium text-gray-700">File Type</label>
-                                <p class="mt-1 text-sm text-gray-900">${data.file_type || 'N/A'}</p>
                             </div>
                             <div class="col-span-2">
                                 <label class="block text-sm font-medium text-gray-700">Description</label>
@@ -339,18 +337,63 @@
                                 <label class="block text-sm font-medium text-gray-700">User Agent</label>
                                 <p class="mt-1 text-sm text-gray-900 break-all">${data.user_agent || 'N/A'}</p>
                             </div>
-                            ${data.metadata ? `
-                                <div class="col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700">Metadata</label>
-                                    <pre class="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded overflow-x-auto">${JSON.stringify(data.metadata, null, 2)}</pre>
-                                </div>
-                            ` : ''}
                             <div class="col-span-2 md:col-span-1">
                                 <label class="block text-sm font-medium text-gray-700">Created At</label>
                                 <p class="mt-1 text-sm text-gray-900">${new Date(data.created_at).toLocaleString()}</p>
                             </div>
                         </div>
                     `;
+
+                    // Render before/after diffs from Eloquent listeners
+                    const before = meta.before || {};
+                    const after = meta.after || {};
+                    const changedFields = meta.changed_fields || [];
+                    if (changedFields.length) {
+                        content += `
+                            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-red-50 p-3 rounded">
+                                    <div class="font-semibold mb-2">Before</div>
+                                    ${changedFields.map(k => `<div class=\"text-sm\"><span class=\"text-gray-500\">${k}:</span> ${escapeHtml(before[k])}</div>`).join('')}
+                                </div>
+                                <div class="bg-green-50 p-3 rounded">
+                                    <div class="font-semibold mb-2">After</div>
+                                    ${changedFields.map(k => `<div class=\"text-sm\"><span class=\"text-gray-500\">${k}:</span> ${escapeHtml(after[k])}</div>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Render model diffs from http_* logs
+                    const models = Array.isArray(meta.models) ? meta.models : [];
+                    if (models.length) {
+                        content += `<div class=\"mt-6\"><div class=\"text-sm font-semibold mb-2\">Models</div>`;
+                        models.forEach(m => {
+                            const fields = Array.isArray(m.changed_fields) ? m.changed_fields : [];
+                            content += `
+                                <div class=\"mb-3 border rounded\">
+                                    <div class=\"px-3 py-2 bg-gray-50 border-b text-sm\">
+                                        <span class=\"font-semibold\">${m.model}</span> #${m.id} <span class=\"ml-2 text-xs px-2 py-0.5 rounded bg-gray-100\">${m.state}</span>
+                                    </div>
+                                    <div class=\"grid grid-cols-1 md:grid-cols-2 gap-3 p-3\">
+                                        <div class=\"bg-red-50 p-2 rounded\"><div class=\"font-semibold mb-1\">Before</div>${fields.map(k => `<div class=\"text-xs\"><span class=\"text-gray-500\">${k}:</span> ${escapeHtml((m.before||{})[k])}</div>`).join('')}</div>
+                                        <div class=\"bg-green-50 p-2 rounded\"><div class=\"font-semibold mb-1\">After</div>${fields.map(k => `<div class=\"text-xs\"><span class=\"text-gray-500\">${k}:</span> ${escapeHtml((m.after||{})[k])}</div>`).join('')}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        content += `</div>`;
+                    }
+
+                    // Raw metadata viewer
+                    if (Object.keys(meta).length) {
+                        content += `
+                            <div class=\"mt-4\">
+                                <div class=\"text-sm font-semibold mb-1\">Raw Metadata</div>
+                                <pre class=\"mt-1 text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-x-auto\">${escapeHtml(JSON.stringify(meta, null, 2))}</pre>
+                            </div>
+                        `;
+                    }
+
                     document.getElementById('detailsContent').innerHTML = content;
                     document.getElementById('detailsModal').classList.remove('hidden');
                 })

@@ -341,7 +341,7 @@
                             <div class="space-y-4">
                                 <div class="text-center">
                                     <div class="text-2xl font-bold text-teal-600 mb-1">
-                                        {{ $stats['course_performance']->count() }}
+                                        {{ $stats['courses']['total'] ?? 0 }}
                                     </div>
                                     <p class="text-sm text-gray-600">Total Kursus Dikelola</p>
                                 </div>
@@ -350,13 +350,13 @@
                                     <div class="flex justify-between items-center mb-2">
                                         <span class="text-sm text-gray-600">Total Peserta</span>
                                         <span class="text-sm font-medium text-gray-900">
-                                            {{ $stats['course_performance']->sum('participants') }}
+                                            {{ $stats['students']['total'] ?? 0 }}
                                         </span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm text-gray-600">Rata-rata Peserta/Kursus</span>
                                         <span class="text-sm font-medium text-gray-900">
-                                            {{ $stats['course_performance']->count() > 0 ? round($stats['course_performance']->sum('participants') / $stats['course_performance']->count(), 1) : 0 }}
+                                            {{ ($stats['courses']['total'] ?? 0) > 0 ? round(($stats['students']['total'] ?? 0) / $stats['courses']['total'], 1) : 0 }}
                                         </span>
                                     </div>
                                 </div>

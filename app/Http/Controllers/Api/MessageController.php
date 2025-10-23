@@ -10,6 +10,8 @@ use App\Events\MessageSent;
 use App\Events\UserTyping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\ChatMessageNotification;
 
 class MessageController extends Controller
 {
@@ -67,6 +69,17 @@ class MessageController extends Controller
 
         // Broadcast the message
         broadcast(new MessageSent($message, $chat))->toOthers();
+
+        // Notify other participants (database notification)
+        try {
+            $recipientIds = $chat->participants()->pluck('users.id')->filter(fn($id) => (int)$id !== (int)$request->user()->id);
+            if ($recipientIds->isNotEmpty()) {
+                $recipients = \App\Models\User::whereIn('id', $recipientIds)->get();
+                if ($recipients->isNotEmpty()) {
+                    Notification::send($recipients, new ChatMessageNotification($chat, $message));
+                }
+            }
+        } catch (\Throwable $e) { \Log::warning('Chat message notify error: '.$e->getMessage()); }
 
         return response()->json(['message' => $message->toArray()], 201);
     }

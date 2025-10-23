@@ -26,7 +26,7 @@ class DiscussionController extends Controller
             ->with(['user', 'replies', 'content.lesson']);
 
         // Filter discussions by instructor's assigned period participants
-        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+        if ($user->isInstructorFor($course) && !Auth::user()->can('manage all courses') && !$user->isEventOrganizerFor($course)) {
             // Get periods where this instructor is assigned for this course
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)

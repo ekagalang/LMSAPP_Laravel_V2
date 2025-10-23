@@ -126,20 +126,17 @@ class ActivityLog extends Model
         // Get user
         $user = auth()->user();
 
-        // Only log for Admin, EO, and Instructor (skip Participant)
-        $allowedRoles = ['super-admin', 'admin', 'event-organizer', 'instructor'];
-        $hasAllowedRole = false;
-
-        foreach ($allowedRoles as $role) {
-            if ($user->hasRole($role)) {
-                $hasAllowedRole = true;
-                break;
+        // Log all roles except pure Participant
+        try {
+            $roles = $user->getRoleNames();
+            // If user has only the 'participant' role (and no others), skip logging
+            if ($roles->count() === 1 && $roles->contains('participant')) {
+                return null;
             }
-        }
-
-        // If user is Participant (or no allowed role), don't log
-        if (!$hasAllowedRole) {
-            return null;
+            // If user has no roles assigned, treat as elevated (log) to avoid missing admin-like users
+            // Otherwise (any role other than only participant), log
+        } catch (\Throwable $e) {
+            // If roles not available for any reason, default to logging
         }
 
         // Create log entry

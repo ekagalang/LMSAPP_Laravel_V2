@@ -23,8 +23,8 @@ class ChatPolicy
 
         // If chat is associated with a course period, it must be active
         if ($chat->courseClass && !$chat->courseClass->isActive()) {
-            // Only admin can view inactive course chats
-            return $user->hasRole('super-admin');
+            // Only users with full course management can view inactive course chats
+            return $user->can('manage all courses');
         }
 
         return true;
@@ -32,65 +32,39 @@ class ChatPolicy
 
     public function create(User $user): bool
     {
-        // Admin can always create chats
-        if ($user->hasRole('super-admin')) {
+        if ($user->can('manage all courses')) {
             return true;
         }
-
-        // Instructors and event organizers can create chats
-        if ($user->hasRole(['instructor', 'event-organizer'])) {
-            return true;
-        }
-
-        // Participants can create direct chats but may be restricted for group chats
-        // This can be further customized based on business rules
-        if ($user->hasRole('participant')) {
-            return true; // Allow for now, can be restricted later
-        }
-
-        return false;
+        return $user->can('create chats');
     }
 
     public function sendMessage(User $user, Chat $chat): bool
     {
-        // Must be able to view the chat first
         if (!$this->view($user, $chat)) {
             return false;
         }
-
-        // Admin can always send messages
-        if ($user->hasRole('super-admin')) {
-            return true;
-        }
-
-        // If chat has a course period, it must be active
         if ($chat->courseClass && !$chat->courseClass->isActive()) {
             return false;
         }
-
-        return true;
+        return $user->can('send chat messages') || $user->can('manage all courses');
     }
 
     public function addParticipant(User $user, Chat $chat): bool
     {
-        // Admin can always add participants
-        if ($user->hasRole('super-admin')) {
+        // Managers can always add participants
+        if ($user->can('manage all courses')) {
             return true;
         }
 
-        // Chat creator can add participants
-        if ($chat->created_by === $user->id) {
+        // Chat creator can add participants if allowed
+        if ($chat->created_by === $user->id && $user->can('add chat participants')) {
             return true;
         }
 
-        // Instructors can add participants to course chats where they are instructors
-        if ($user->hasRole('instructor') && $chat->courseClass) {
-            return $chat->courseClass->course->instructors->contains($user->id);
-        }
-
-        // Event organizers can add participants to course chats where they are organizers
-        if ($user->hasRole('event-organizer') && $chat->courseClass) {
-            return $chat->courseClass->course->eventOrganizers->contains($user->id);
+        // Instructors/organizers tied to the course can add (needs permission)
+        if ($chat->courseClass && $user->can('add chat participants')) {
+            $course = $chat->courseClass->course;
+            return $course->instructors->contains($user->id) || $course->eventOrganizers->contains($user->id);
         }
 
         return false;
@@ -98,24 +72,20 @@ class ChatPolicy
 
     public function removeParticipant(User $user, Chat $chat): bool
     {
-        // Admin can always remove participants
-        if ($user->hasRole('super-admin')) {
+        // Managers can always remove participants
+        if ($user->can('manage all courses')) {
             return true;
         }
 
-        // Chat creator can remove participants
-        if ($chat->created_by === $user->id) {
+        // Chat creator can remove participants if allowed
+        if ($chat->created_by === $user->id && $user->can('remove chat participants')) {
             return true;
         }
 
-        // Instructors can remove participants from course chats where they are instructors
-        if ($user->hasRole('instructor') && $chat->courseClass) {
-            return $chat->courseClass->course->instructors->contains($user->id);
-        }
-
-        // Event organizers can remove participants from course chats where they are organizers
-        if ($user->hasRole('event-organizer') && $chat->courseClass) {
-            return $chat->courseClass->course->eventOrganizers->contains($user->id);
+        // Instructors/organizers tied to the course can remove (needs permission)
+        if ($chat->courseClass && $user->can('remove chat participants')) {
+            $course = $chat->courseClass->course;
+            return $course->instructors->contains($user->id) || $course->eventOrganizers->contains($user->id);
         }
 
         return false;
@@ -136,23 +106,17 @@ class ChatPolicy
             return false;
         }
 
-        // Admin can create chat for any course
-        if ($user->hasRole('super-admin')) {
+        // Managers can create chat for any course
+        if ($user->can('manage all courses')) {
             return true;
         }
 
-        // ✅ FIXED: Allow instructors to create chat in their courses
-        if ($user->hasRole('instructor')) {
-            // Check if user is instructor of this course
+        // Allow instructors/EOs tied to the course (requires permission)
+        if ($user->can('create course chats')) {
             $isInstructor = $courseClass->course->instructors()->where('user_id', $user->id)->exists();
             if ($isInstructor) {
                 return true;
             }
-        }
-
-        // ✅ FIXED: Allow event organizers to create chat in their courses  
-        if ($user->hasRole('event-organizer')) {
-            // Check if user is event organizer of this course
             $isEventOrganizer = $courseClass->course->eventOrganizers()->where('user_id', $user->id)->exists();
             if ($isEventOrganizer) {
                 return true;

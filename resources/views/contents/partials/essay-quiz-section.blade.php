@@ -90,8 +90,8 @@
                     @endif
             </div>
 
-        {{-- JIKA BELUM ADA JAWABAN DAN USER ADALAH PESERTA --}}
-        @elseif (Auth::user()->hasRole('participant'))
+        {{-- JIKA BELUM ADA JAWABAN DAN USER DIIZINKAN MENGERJAKAN --}}
+        @elseif (Auth::user()->can('attempt quizzes'))
             @if ($questions->isEmpty())
                 {{-- Fallback untuk essay lama tanpa questions --}}
                 <form action="{{ route('essays.store', $content) }}" method="POST" class="mt-6">

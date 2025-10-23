@@ -13,7 +13,7 @@ class ParticipantController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $query = User::role('participant');
+        $query = User::permission('attempt quizzes');
 
         // Search
         if ($request->filled('search')) {
@@ -39,7 +39,7 @@ class ParticipantController extends Controller
         $participants = $query->orderBy('created_at', 'desc')->paginate(20);
 
         // Get unique institutions for filter
-        $institutions = User::role('participant')
+        $institutions = User::permission('attempt quizzes')
             ->whereNotNull('institution_name')
             ->distinct()
             ->pluck('institution_name')
@@ -71,7 +71,7 @@ class ParticipantController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $participants = User::role('participant')->get();
+        $participants = User::permission('attempt quizzes')->get();
 
         // ✅ DEBUG: Log beberapa sample data untuk debugging (bisa diaktifkan saat testing)
         if (config('app.debug') && $participants->count() > 0) {
@@ -182,7 +182,7 @@ class ParticipantController extends Controller
         $registrationTrend = [];
         for ($i = 11; $i >= 0; $i--) {
             $month = now()->subMonths($i);
-            $count = User::role('participant')
+            $count = User::permission('attempt quizzes')
                 ->whereYear('created_at', $month->year)
                 ->whereMonth('created_at', $month->month)
                 ->count();
@@ -200,7 +200,7 @@ class ParticipantController extends Controller
                 ->whereNotNull('institution_name')
                 ->whereNotNull('occupation')
                 ->count(),
-            'this_month' => User::role('participant')
+            'this_month' => User::permission('attempt quizzes')
                 ->whereYear('created_at', now()->year)
                 ->whereMonth('created_at', now()->month)
                 ->count(),

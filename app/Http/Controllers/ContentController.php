@@ -34,14 +34,17 @@ class ContentController extends Controller
         $orderedContents = $this->getOrderedContents($course);
         $unlockedContents = $this->getUnlockedContents($user, $orderedContents);
 
-        if (!$unlockedContents->contains('id', $content->id) && !$user->hasRole(['super-admin', 'instructor'])) {
+        if (
+            !$unlockedContents->contains('id', $content->id)
+            && !($user->can('update contents') || $user->can('manage own courses'))
+        ) {
             return redirect()->back()->with('error', 'Anda harus menyelesaikan materi sebelumnya terlebih dahulu.');
         }
 
         // TAMBAH load untuk essayQuestions
         $content->load('lesson.course', 'discussions.user', 'discussions.replies.user', 'quiz.questions.options', 'essayQuestions', 'images', 'documents');
 
-        if ($user->hasRole(['super-admin', 'instructor'])) {
+        if ($user->can('update contents') || $user->can('manage own courses')) {
             $unlockedContents = $orderedContents;
         }
 
@@ -256,7 +259,7 @@ class ContentController extends Controller
     // ✅ PERBAIKAN: Method untuk mendapatkan konten yang sudah terbuka
     private function getUnlockedContents(User $user, $orderedContents)
     {
-        if ($user->hasRole(['super-admin', 'instructor'])) {
+        if ($user->can('update contents') || $user->can('manage own courses')) {
             return $orderedContents;
         }
 
