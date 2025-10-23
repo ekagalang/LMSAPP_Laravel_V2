@@ -170,13 +170,24 @@
                     </label>
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 border-2 border-gray-200 dark:border-gray-600">
                         @php
-                            $roles = ['participant', 'instructor', 'event-organizer'];
+                            // Dynamic roles to support custom roles
+                            $roles = \Spatie\Permission\Models\Role::pluck('name')->toArray();
                             $selectedRoles = old('target_roles', $announcement->target_roles ?? []);
-                            $roleLabels = [
+                            $defaultRoleLabels = [
                                 'participant' => ['label' => 'Peserta', 'icon' => '👥', 'desc' => 'Semua peserta event'],
                                 'instructor' => ['label' => 'Instruktur', 'icon' => '🎓', 'desc' => 'Para pengajar dan mentor'],
-                                'event-organizer' => ['label' => 'Event Organizer', 'icon' => '📋', 'desc' => 'Penyelenggara acara']
+                                'event-organizer' => ['label' => 'Event Organizer', 'icon' => '📋', 'desc' => 'Penyelenggara acara'],
+                                'super-admin' => ['label' => 'Super Admin', 'icon' => '🛡️', 'desc' => 'Administrator sistem']
                             ];
+                            $roleLabels = [];
+                            foreach ($roles as $r) {
+                                $pretty = ucfirst(str_replace(['-', '_'], ' ', $r));
+                                $roleLabels[$r] = $defaultRoleLabels[$r] ?? [
+                                    'label' => $pretty,
+                                    'icon' => '🏷️',
+                                    'desc' => 'Peran kustom'
+                                ];
+                            }
                         @endphp
                         
                         <!-- Semua Pengguna Option -->
@@ -215,14 +226,12 @@
                                                @if(in_array($role, $selectedRoles)) checked @endif>
                                         <div class="ml-3 flex-1">
                                             <div class="flex items-center">
-                                                <span class="text-lg mr-2">{{ $roleLabels[$role]['icon'] }}</span>
+                                                <span class="text-lg mr-2">{{ $roleLabels[$role]['icon'] ?? '🏷️' }}</span>
                                                 <span class="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                                    {{ $roleLabels[$role]['label'] }}
+                                                    {{ $roleLabels[$role]['label'] ?? ucfirst($role) }}
                                                 </span>
                                             </div>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                {{ $roleLabels[$role]['desc'] }}
-                                            </p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $roleLabels[$role]['desc'] ?? 'Peran kustom' }}</p>
                                         </div>
                                     </label>
                                 </div>

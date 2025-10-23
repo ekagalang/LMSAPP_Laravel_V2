@@ -14,7 +14,7 @@ class DiscussionPolicy
      */
     public function before(User $user, string $ability): bool|null
     {
-        if ($user->hasRole('super-admin')) {
+        if ($user->can('manage all courses')) {
             return true;
         }
         return null;

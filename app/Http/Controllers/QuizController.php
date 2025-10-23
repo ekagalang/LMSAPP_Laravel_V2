@@ -42,15 +42,20 @@ class QuizController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $this->authorize('viewAny', Quiz::class);
 
-        if (!$user->can('view any quiz')) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        if ($user->hasRole('super-admin')) {
+        if ($user->can('manage all courses')) {
             $quizzes = Quiz::with('instructor', 'lesson.course')->latest()->get();
-        } elseif ($user->hasRole('instructor')) {
-            $quizzes = Quiz::where('user_id', $user->id)->with('instructor', 'lesson.course')->latest()->get();
+        } elseif ($user->can('view quizzes')) {
+            $quizzes = Quiz::where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereHas('lesson.course.instructors', function ($sub) use ($user) {
+                          $sub->where('user_id', $user->id);
+                      });
+                })
+                ->with('instructor', 'lesson.course')
+                ->latest()
+                ->get();
         } else {
             abort(403, 'Unauthorized action.');
         }
@@ -270,10 +275,10 @@ class QuizController extends Controller
         $quiz->load('lesson.course');
         $user = Auth::user();
 
-        // Super-admin bypass semua check
-        $isSuperAdmin = $user->hasRole('super-admin');
+        // Bypass for users with full course management
+        $canBypass = $user->can('manage all courses');
 
-        if (!$isSuperAdmin && !$user->hasRole('participant')) {
+        if (!$canBypass && !$user->can('attempt quizzes')) {
             abort(403, 'Anda tidak memiliki izin untuk mengerjakan kuis.');
         }
 
@@ -282,7 +287,7 @@ class QuizController extends Controller
         // =================================================================
         // Cek apakah pengguna sudah pernah lulus kuis ini dari percobaan sebelumnya.
         // Super-admin bisa mengerjakan ulang untuk testing
-        if (!$isSuperAdmin) {
+        if (!$canBypass) {
             $hasPassedQuizBefore = $user->quizAttempts()
                                         ->where('quiz_id', $quiz->id)
                                         ->where('passed', true)
@@ -308,8 +313,8 @@ class QuizController extends Controller
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
         }
 
-        // Super-admin tidak perlu enrolled
-        if (!$isSuperAdmin && (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course))) {
+        // Managers bypass enrollment check
+        if (!$canBypass && (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course))) {
             return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
         }
 
@@ -682,8 +687,8 @@ class QuizController extends Controller
     {
         $user = Auth::user();
 
-        // Bypass authorization untuk super-admin
-        if (!$user->hasRole('super-admin')) {
+        // Bypass authorization for managers
+        if (!$user->can('manage all courses')) {
             $this->authorize('start', $quiz);
         }
 
@@ -710,13 +715,13 @@ class QuizController extends Controller
     {
         $user = Auth::user();
 
-        // Bypass authorization untuk super-admin
-        if (!$user->hasRole('super-admin')) {
+        // Bypass authorization for managers
+        if (!$user->can('manage all courses')) {
             $this->authorize('start', $quiz);
         }
 
-        // Super-admin bypass check lulus
-        if (!$user->hasRole('super-admin')) {
+        // Managers bypass check
+        if (!$user->can('manage all courses')) {
             // =================================================================
             // PENAMBAHAN LOGIKA YANG SAMA DI SINI
             // =================================================================

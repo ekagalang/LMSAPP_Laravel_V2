@@ -36,18 +36,18 @@ class GradebookController extends Controller
         $user = Auth::user();
 
         $allCoursesForFilter = collect();
-        if ($user->hasRole('super-admin')) {
+        if ($user->can('manage all courses')) {
             $allCoursesForFilter = Course::orderBy('title')->get();
-        } elseif ($user->hasRole('event-organizer')) {
-            $allCoursesForFilter = $user->eventOrganizedCourses()->orderBy('title')->get();
-        } elseif ($user->hasRole('instructor')) {
-            $allCoursesForFilter = Course::whereHas('instructors', function ($query) use ($user) {
+        } else {
+            $taught = Course::whereHas('instructors', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->orderBy('title')->get();
+            $organized = $user->eventOrganizedCourses()->orderBy('title')->get();
+            $allCoursesForFilter = $taught->merge($organized)->unique('id')->values();
         }
 
         // If user is instructor, only show participants from periods they are assigned to
-        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+        if ($user->isInstructorFor($course) && !$user->can('manage all courses') && !$user->isEventOrganizerFor($course)) {
             // Get periods where this instructor is assigned for this course
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
@@ -83,7 +83,7 @@ class GradebookController extends Controller
             ->get()->pluck('contents')->flatten()->where('type', 'essay')->pluck('id');
 
         // Apply same filtering logic for participants with essays
-        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+        if ($user->isInstructorFor($course) && !$user->can('manage all courses') && !$user->isEventOrganizerFor($course)) {
             if ($instructorPeriods->isNotEmpty()) {
                 $participantsWithEssaysQuery = User::whereHas('participantPeriods', function ($query) use ($instructorPeriods) {
                     $query->whereIn('course_classes.id', $instructorPeriods);
@@ -454,16 +454,16 @@ class GradebookController extends Controller
      */
     public function instructorAnalytics(Request $request)
     {
-        // Cek authorization
-        if (!Auth::user()->hasAnyRole(['super-admin', 'event-organizer'])) {
+        // Authorization by permissions (EO or higher)
+        if (!Auth::user()->can('view instructor analytics') && !Auth::user()->can('view progress reports')) {
             abort(403, 'Unauthorized');
         }
 
         $dateFrom = $request->get('date_from', now()->subMonth()->toDateString());
         $dateTo = $request->get('date_to', now()->toDateString());
 
-        // Get all instructors with their taught courses (using course_instructor table)
-        $instructors = User::role('instructor')->with(['instructorCourses' => function($query) {
+        // Get all users who teach at least one course
+        $instructors = User::whereHas('instructorCourses')->with(['instructorCourses' => function($query) {
             $query->select('courses.id', 'courses.title');
         }])->get();
 
@@ -686,13 +686,13 @@ class GradebookController extends Controller
      */
     public function instructorDetail(Request $request, User $user)
     {
-        // Cek authorization
-        if (!Auth::user()->hasAnyRole(['super-admin', 'event-organizer'])) {
+        // Authorization by permissions (EO or higher)
+        if (!Auth::user()->can('view instructor analytics') && !Auth::user()->can('view progress reports')) {
             abort(403, 'Unauthorized');
         }
 
-        // Pastikan user adalah instruktur
-        if (!$user->hasRole('instructor')) {
+        // Pastikan user punya course yang diajar
+        if (!$user->instructorCourses()->exists()) {
             abort(404, 'Instructor not found');
         }
 
@@ -905,8 +905,8 @@ class GradebookController extends Controller
      */
     public function instructorCompare(Request $request)
     {
-        // Cek authorization
-        if (!Auth::user()->hasAnyRole(['super-admin', 'event-organizer'])) {
+        // Authorization by permissions (EO or higher)
+        if (!Auth::user()->can('view instructor analytics') && !Auth::user()->can('view progress reports')) {
             abort(403, 'Unauthorized');
         }
 
@@ -914,7 +914,7 @@ class GradebookController extends Controller
         $dateFrom = $request->get('date_from', now()->subMonth()->toDateString());
         $dateTo = $request->get('date_to', now()->toDateString());
 
-        $allInstructors = User::role('instructor')->orderBy('name')->get();
+        $allInstructors = User::whereHas('instructorCourses')->orderBy('name')->get();
         
         if (empty($instructorIds)) {
             return view('instructor-analytics.compare', compact('allInstructors', 'dateFrom', 'dateTo'));
@@ -923,7 +923,7 @@ class GradebookController extends Controller
         $compareData = [];
         foreach ($instructorIds as $instructorId) {
             $instructor = User::find($instructorId);
-            if (!$instructor || !$instructor->hasRole('instructor')) continue;
+            if (!$instructor || !$instructor->instructorCourses()->exists()) continue;
 
             $courseIds = $instructor->instructorCourses->pluck('id');
 

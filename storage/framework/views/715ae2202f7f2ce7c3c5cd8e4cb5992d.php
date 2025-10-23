@@ -58,7 +58,7 @@
                                                 
                                                 <a href="<?php echo e(route('admin.roles.edit', $role)); ?>" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                                 
-                                                <?php if(!in_array($role->name, ['super-admin', 'instructor', 'participant'])): ?>
+                                                <?php if(!in_array($role->name, ['super-admin', 'instructor', 'participant', 'event-organizer'])): ?>
                                                     
                                                     <form action="<?php echo e(route('admin.roles.destroy', $role)); ?>" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus peran ini?');">
                                                         <?php echo csrf_field(); ?>

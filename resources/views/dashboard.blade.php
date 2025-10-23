@@ -40,13 +40,13 @@
                 $user = Auth::user();
             @endphp
 
-            @if ($user->hasRole('super-admin') && isset($stats))
+            @if (isset($stats) && Gate::check('admin-only'))
                 @include('dashboard.admin', ['stats' => $stats])
-            @elseif ($user->hasRole('instructor') && isset($stats))
+            @elseif (isset($stats) && $user->can('manage own courses'))
                 @include('dashboard.instructor', ['stats' => $stats])
-            @elseif ($user->hasRole('event-organizer') && isset($stats))
+            @elseif (isset($stats) && ($user->can('view progress reports') || $user->can('view certificate management')))
                 @include('dashboard.eo', ['stats' => $stats])
-            @elseif ($user->hasRole('participant') && isset($stats))
+            @elseif (isset($stats) && $user->can('attempt quizzes'))
                 @include('dashboard.participant', ['stats' => $stats])
             @else
                 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">

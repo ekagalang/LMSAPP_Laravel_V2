@@ -16,9 +16,7 @@ class QuizPolicy
      */
     public function before(User $user, string $ability): bool|null
     {
-        if ($user->hasRole('super-admin')) {
-            return true;
-        }
+        // Super-admin handled by Gate::before in AuthServiceProvider
         return null;
     }
 
@@ -31,8 +29,8 @@ class QuizPolicy
      */
     public function start(User $user, Quiz $quiz): bool
     {
-        // Super-Admin bisa mengerjakan quiz apapun (untuk testing/review)
-        if ($user->hasRole('super-admin')) {
+        // Users with full course management can start any quiz (e.g., reviewers)
+        if ($user->can('manage all courses')) {
             return true;
         }
 
@@ -43,8 +41,8 @@ class QuizPolicy
 
         $course = $quiz->lesson->course;
 
-        // PERBAIKAN: Izinkan instruktur yang assigned ke course ini atau pemilik quiz
-        if ($user->hasRole('instructor')) {
+        // Instructors (by relation or quiz owner) may preview
+        if ($user->can('view quizzes')) {
             return $quiz->user_id === $user->id ||
                    $course->instructors()->where('user_id', $user->id)->exists();
         }
@@ -58,7 +56,7 @@ class QuizPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['instructor']);
+        return $user->can('view quizzes');
     }
 
     /**
@@ -73,14 +71,14 @@ class QuizPolicy
 
         $course = $quiz->lesson->course;
 
-        // PERBAIKAN: Instruktur bisa melihat quiz jika pemilik quiz atau assigned ke course ini
-        if ($user->hasRole('instructor')) {
+        // Instructors (by permission) can view if owner or assigned to course
+        if ($user->can('view quizzes')) {
             return $quiz->user_id === $user->id || 
                    $course->instructors()->where('user_id', $user->id)->exists();
         }
 
-        // Peserta bisa melihat kuis jika terdaftar di kursus.
-        if($user->hasRole('participant')){
+        // Participants can view if allowed to attempt and enrolled in course
+        if ($user->can('attempt quizzes')) {
             return $this->start($user, $quiz);
         }
 
@@ -92,7 +90,7 @@ class QuizPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['instructor']);
+        return $user->can('create quizzes');
     }
 
     /**
@@ -102,13 +100,16 @@ class QuizPolicy
     {
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
-            return $user->hasRole('instructor') && $quiz->user_id === $user->id;
+            return $user->can('update quizzes') && $quiz->user_id === $user->id;
         }
 
         $course = $quiz->lesson->course;
 
-        // PERBAIKAN: Instruktur bisa update quiz jika pemilik quiz atau assigned ke course ini
-        return $user->hasRole('instructor') && 
+        // Update if permitted and either owner or assigned instructor
+        if ($user->can('manage all courses')) {
+            return true;
+        }
+        return $user->can('update quizzes') && 
                ($quiz->user_id === $user->id || 
                 $course->instructors()->where('user_id', $user->id)->exists());
     }
@@ -120,13 +121,15 @@ class QuizPolicy
     {
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
-            return $user->hasRole('instructor') && $quiz->user_id === $user->id;
+            return $user->can('delete quizzes') && $quiz->user_id === $user->id;
         }
 
         $course = $quiz->lesson->course;
 
-        // PERBAIKAN: Instruktur bisa delete quiz jika pemilik quiz atau assigned ke course ini
-        return $user->hasRole('instructor') && 
+        if ($user->can('manage all courses')) {
+            return true;
+        }
+        return $user->can('delete quizzes') && 
                ($quiz->user_id === $user->id || 
                 $course->instructors()->where('user_id', $user->id)->exists());
     }
@@ -140,8 +143,8 @@ class QuizPolicy
 
         $course = $quiz->lesson->course;
 
-        // Izinkan jika pengguna adalah peserta dan terdaftar di kursus ini
-        return $user->hasRole('participant') && 
+        // Allow if user has permission and is enrolled
+        return $user->can('attempt quizzes') && 
                $user->courses()->where('course_id', $course->id)->exists();
-    }
+}
 }

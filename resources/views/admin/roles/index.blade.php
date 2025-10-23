@@ -48,7 +48,7 @@
                                                 {{-- PERBAIKAN: Arahkan ke route edit yang benar --}}
                                                 <a href="{{ route('admin.roles.edit', $role) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                                 
-                                                @if (!in_array($role->name, ['super-admin', 'instructor', 'participant']))
+                                                @if (!in_array($role->name, ['super-admin', 'instructor', 'participant', 'event-organizer']))
                                                     {{-- PERBAIKAN: Arahkan ke route destroy yang benar --}}
                                                     <form action="{{ route('admin.roles.destroy', $role) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus peran ini?');">
                                                         @csrf

@@ -31,7 +31,7 @@ class CourseController extends Controller
         $user = Auth::user();
         $query = Course::query();
 
-        if ($user->hasRole('instructor')) {
+        if (!$user->can('manage all courses') && $user->can('manage own courses')) {
             $query->whereHas('instructors', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             });
@@ -124,7 +124,7 @@ class CourseController extends Controller
         $user = Auth::user();
 
         // [LOGIKA BARU] Jika pengguna adalah peserta, coba arahkan langsung ke materi pertama.
-        if ($user && $user->hasRole('participant')) {
+        if ($user && $user->can('attempt quizzes')) {
             // Pastikan peserta terdaftar di kursus ini untuk bisa langsung masuk
             if ($course->enrolledUsers->contains($user)) {
                 // Urutkan lesson berdasarkan 'order' jika ada, jika tidak pakai 'id'
@@ -147,7 +147,7 @@ class CourseController extends Controller
         $course->load('lessons.contents', 'instructors', 'enrolledUsers');
 
         // Filter periods for instructors - only show periods they are assigned to
-        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+        if ($user->isInstructorFor($course) && !$user->can('manage all courses') && !$user->isEventOrganizerFor($course)) {
             // Replace the periods relation with filtered periods
             $course->setRelation('periods', $course->getUserInstructorPeriods($user->id));
         } else {
@@ -155,19 +155,19 @@ class CourseController extends Controller
             $course->load('periods');
         }
 
-        $availableInstructors = User::role('instructor')
+        $availableInstructors = User::permission('manage own courses')
             ->whereNotIn('id', $course->instructors->pluck('id'))
             ->orderBy('name')
             ->get();
 
-        $unEnrolledParticipants = User::role('participant')
+        $unEnrolledParticipants = User::permission('attempt quizzes')
             ->whereDoesntHave('courses', function ($query) use ($course) {
                 $query->where('course_id', $course->id);
             })
             ->orderBy('name')
             ->get();
 
-        $availableOrganizers = User::role('event-organizer')
+        $availableOrganizers = User::permission('view progress reports')
             ->whereNotIn('id', $course->eventOrganizers->pluck('id'))
             ->orderBy('name')
             ->get();
@@ -397,26 +397,14 @@ class CourseController extends Controller
 
         $user = Auth::user();
 
-        // ✅ FIX: Update query logic untuk course dropdown
-        // Include courses untuk Event Organizers
-        if ($user->hasRole('super-admin')) {
-            // Super admin bisa lihat semua courses
-            $instructorCourses = Course::with('instructors')->get();
-        } elseif ($user->hasRole('event-organizer')) {
-            // ✅ FIX: Event Organizer bisa lihat courses yang mereka kelola
-            $instructorCourses = $user->eventOrganizedCourses()
-                ->with('instructors')
-                ->orderBy('title')
-                ->get();
-        } elseif ($user->hasRole('instructor')) {
-            // Instructor hanya bisa lihat courses yang mereka ajar
-            $instructorCourses = $user->taughtCourses()
-                ->with('instructors')
-                ->orderBy('title')
-                ->get();
+        // ✅ FIX: Update query logic untuk course dropdown (permission/relationship based)
+        if ($user->can('manage all courses')) {
+            $instructorCourses = Course::with('instructors')->orderBy('title')->get();
         } else {
-            // Default: empty collection untuk roles lain
-            $instructorCourses = collect();
+            $instructorCourses = $user->taughtCourses()->with('instructors')->orderBy('title')->get()
+                ->merge($user->eventOrganizedCourses()->with('instructors')->orderBy('title')->get())
+                ->unique('id')
+                ->values();
         }
 
         // ✅ FIX: Ensure current course is included in dropdown
@@ -427,7 +415,7 @@ class CourseController extends Controller
 
         // ✅ FIX: Buat base query untuk analytics (tanpa search/pagination)
         // Filter participants by instructor's assigned periods
-        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+        if ($user->isInstructorFor($course) && !$user->can('manage all courses') && !$user->isEventOrganizerFor($course)) {
             // Get periods where this instructor is assigned for this course
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
@@ -1102,22 +1090,20 @@ class CourseController extends Controller
 
         $user = Auth::user();
 
-        // Build course list for filter dropdown similar to showProgress
-        if ($user->hasRole('super-admin')) {
+        // Build course list for filter dropdown (permission-based)
+        if ($user->can('manage all courses')) {
             $courseOptions = Course::with('instructors')->orderBy('title')->get();
-        } elseif ($user->hasRole('event-organizer')) {
-            $courseOptions = $user->eventOrganizedCourses()->with('instructors')->orderBy('title')->get();
-        } elseif ($user->hasRole('instructor')) {
-            $courseOptions = $user->taughtCourses()->with('instructors')->orderBy('title')->get();
         } else {
-            $courseOptions = collect();
+            $courseOptions = $user->taughtCourses()->with('instructors')->orderBy('title')->get()
+                ->merge($user->eventOrganizedCourses()->with('instructors')->orderBy('title')->get())
+                ->unique('id')->values();
         }
         if (!$courseOptions->contains('id', $course->id)) {
             $courseOptions->push($course);
         }
 
         // Filter participants by instructor periods (same logic as showProgress)
-        if ($user->hasRole('instructor') && !$user->hasRole(['super-admin', 'event-organizer'])) {
+        if ($user->isInstructorFor($course) && !$user->can('manage all courses') && !$user->isEventOrganizerFor($course)) {
             $instructorPeriods = $user->instructorPeriods()
                 ->where('course_id', $course->id)
                 ->pluck('course_classes.id');

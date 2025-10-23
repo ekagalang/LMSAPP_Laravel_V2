@@ -150,7 +150,7 @@
                             <?php endif; ?>
 
                             
-                            <?php if (\Illuminate\Support\Facades\Blade::check('role', 'super-admin')): ?>
+                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->any(['manage users','manage roles','view certificate templates','view activity logs','view certificate analytics','view certificate management'])): ?>
                                 <div class="hidden sm:flex sm:items-center" x-data="{ adminOpen: false }">
                                     <div class="relative">
                                         <button @click="adminOpen = ! adminOpen" 
@@ -377,7 +377,7 @@
                         </a>
                     <?php endif; ?>
 
-                    <?php if (\Illuminate\Support\Facades\Blade::check('role', 'super-admin')): ?>
+                    <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->any(['manage users','manage roles','view certificate templates','view activity logs','view certificate analytics','view certificate management'])): ?>
                         <div class="pt-4 pb-1 border-t border-gray-200">
                             <div class="px-4">
                                 <div class="font-semibold text-base text-gray-800">Admin Menu</div>

@@ -61,8 +61,8 @@
                         </a>
                     @endcan
                     
-                    <!-- Menu Admin khusus Super Admin menjadi dropdown -->
-                    @role('super-admin')
+                    <!-- Menu Admin berbasis izin -->
+                    @canany(['manage users','manage roles','view certificate templates','view activity logs','view certificate analytics','view certificate management'])
                         <div class="hidden sm:flex sm:items-center sm:ml-6">
                             <x-dropdown align="right" width="60">
                                 <x-slot name="trigger">
@@ -112,7 +112,7 @@
                                 </x-slot>
                             </x-dropdown>
                         </div>
-                    @endrole
+                    @endcanany
                 </div>
             </div>
 
@@ -215,7 +215,7 @@
                 </a>
             @endcan
 
-            @role('super-admin')
+            @canany(['manage users','manage roles','view certificate templates','view activity logs','view certificate analytics','view certificate management'])
                 <div class="pt-4 pb-1 border-t border-gray-200">
                     <div class="px-4">
                         <div class="font-semibold text-base text-gray-800">Admin Menu</div>
@@ -247,7 +247,7 @@
                         </a>
                     </div>
                 </div>
-            @endrole
+            @endcanany
         </div>
 
         <!-- Responsive Settings Options -->

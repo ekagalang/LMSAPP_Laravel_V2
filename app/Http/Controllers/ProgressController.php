@@ -21,8 +21,8 @@ class ProgressController extends Controller
     {
         $user = Auth::user();
 
-        // Authorization: only participants can view their own scores
-        if (!$user->hasRole('participant')) {
+        // Authorization: only users allowed to attempt quizzes (participants) can view their scores
+        if (!$user->can('attempt quizzes')) {
             abort(403, 'Akses ditolak. Halaman ini hanya untuk peserta.');
         }
 
@@ -503,4 +503,3 @@ class ProgressController extends Controller
         return $debug;
     }
 }
-

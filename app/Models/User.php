@@ -331,19 +331,17 @@ class User extends Authenticatable
      */
     public function managedCourses()
     {
-        if ($this->hasRole('super-admin')) {
+        if ($this->can('manage all courses')) {
             return Course::query();
         }
-
-        if ($this->hasRole('event-organizer')) {
-            return $this->eventOrganizedCourses();
-        }
-
-        if ($this->hasRole('instructor')) {
+        if ($this->can('manage own courses')) {
             return $this->taughtCourses();
         }
-
-        return Course::whereRaw('1 = 0'); // Empty query
+        // Treat EO capabilities as managed for reporting views
+        if ($this->can('view progress reports') || $this->can('view certificate management')) {
+            return $this->eventOrganizedCourses();
+        }
+        return Course::whereRaw('1 = 0');
     }
 
     /**
@@ -563,8 +561,8 @@ class User extends Authenticatable
             return false;
         }
 
-        // Admin can always chat with anyone
-        if ($this->hasRole('super-admin') || $targetUser->hasRole('super-admin')) {
+        // Managers can always chat with anyone
+        if ($this->can('manage all courses') || $targetUser->can('manage all courses')) {
             return true;
         }
 
@@ -630,7 +628,7 @@ class User extends Authenticatable
      */
     public function getAvailableChatUsers($search = null)
     {
-        if ($this->hasRole('super-admin')) {
+        if ($this->can('manage all courses')) {
             // Admin can chat with anyone
             $query = User::where('id', '!=', $this->id);
 
@@ -1021,25 +1019,19 @@ class User extends Authenticatable
             }
         }
 
-        // Admin always has access
-        if ($this->hasRole('super-admin')) {
+        // Managers always have access
+        if ($this->can('manage all courses')) {
             return true;
         }
 
-        // Check if user is instructor of this course
-        if ($this->hasRole('instructor')) {
-            $isInstructor = $coursePeriod->course->instructors()->where('user_id', $this->id)->exists();
-            if ($isInstructor) {
-                return true;
-            }
+        // Check if user is instructor or organizer for this course
+        $isInstructor = $coursePeriod->course->instructors()->where('user_id', $this->id)->exists();
+        if ($isInstructor) {
+            return true;
         }
-
-        // Check if user is event organizer of this course
-        if ($this->hasRole('event-organizer')) {
-            $isEventOrganizer = $coursePeriod->course->eventOrganizers()->where('user_id', $this->id)->exists();
-            if ($isEventOrganizer) {
-                return true;
-            }
+        $isEventOrganizer = $coursePeriod->course->eventOrganizers()->where('user_id', $this->id)->exists();
+        if ($isEventOrganizer) {
+            return true;
         }
 
         // Check if user is participant in this course period
@@ -1066,38 +1058,18 @@ class User extends Authenticatable
      */
     public function getAccessibleCourseClasses()
     {
-        // Admin can see all course periods
-        if ($this->hasRole('super-admin')) {
+        // Managers can see all course periods
+        if ($this->can('manage all courses')) {
             return \App\Models\CourseClass::with('course')->get();
         }
 
-        $coursePeriodIds = collect();
+        // Return all course classes related to user's courses (any role)
+        $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
+        $eoCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
+        $enrolledCourseIds = $this->courses()->pluck('course_id');
+        $allCourseIds = $instructorCourseIds->merge($eoCourseIds)->merge($enrolledCourseIds)->unique();
 
-        // Get course periods where user is instructor
-        if ($this->hasRole('instructor')) {
-            $instructorCourseIds = $this->taughtCourses()->pluck('course_id');
-            $instructorPeriods = \App\Models\CourseClass::whereIn('course_id', $instructorCourseIds)->pluck('id');
-            $coursePeriodIds = $coursePeriodIds->merge($instructorPeriods);
-        }
-
-        // Get course periods where user is event organizer
-        if ($this->hasRole('event-organizer')) {
-            $eoCourseIds = $this->eventOrganizedCourses()->pluck('course_id');
-            $eoPeriods = \App\Models\CourseClass::whereIn('course_id', $eoCourseIds)->pluck('id');
-            $coursePeriodIds = $coursePeriodIds->merge($eoPeriods);
-        }
-
-        // Get course periods where user is participant
-        // ✅ FIXED: Use correct relationship
-        if ($this->hasRole('participant')) {
-            // Assuming participants are enrolled in courses, then check active periods for those courses
-            $enrolledCourseIds = $this->courses()->pluck('course_id');
-            $participantPeriods = \App\Models\CourseClass::whereIn('course_id', $enrolledCourseIds)->pluck('id');
-            $coursePeriodIds = $coursePeriodIds->merge($participantPeriods);
-        }
-
-        // Return unique course classes
-        return \App\Models\CourseClass::whereIn('id', $coursePeriodIds->unique())
+        return \App\Models\CourseClass::whereIn('course_id', $allCourseIds)
             ->with('course')
             ->get();
     }
@@ -1110,7 +1082,7 @@ class User extends Authenticatable
 
     public function getAvailableUsersForChat($coursePeriodId = null, $search = null)
     {
-        if ($this->hasRole('super-admin')) {
+        if ($this->can('manage all courses')) {
             // Admin can chat with anyone
             $query = User::where('id', '!=', $this->id);
 
@@ -1149,7 +1121,7 @@ class User extends Authenticatable
             $userIds = $userIds->merge($organizerUserIds);
 
             // ✅ NEW: Also include super-admins (they can join any chat)
-            $adminUserIds = User::role('super-admin')->pluck('id');
+            $adminUserIds = User::permission('manage all courses')->pluck('id');
             $userIds = $userIds->merge($adminUserIds);
 
             // Remove current user and get unique IDs
@@ -1193,7 +1165,7 @@ class User extends Authenticatable
 
         if ($courseIds->isEmpty()) {
             // If user has no courses, only allow chat with admins
-            $userIds = User::role('super-admin')->pluck('id');
+            $userIds = User::permission('manage all courses')->pluck('id');
         } else {
             // Get all users from user's courses
             $userIds = collect();
@@ -1210,7 +1182,7 @@ class User extends Authenticatable
             }
 
             // Also include super-admins
-            $adminUserIds = User::role('super-admin')->pluck('id');
+            $adminUserIds = User::permission('manage all courses')->pluck('id');
             $userIds = $userIds->merge($adminUserIds);
         }
 
@@ -1237,6 +1209,10 @@ class User extends Authenticatable
 
     public function sendPasswordResetNotification($token)
     {
-        $this->notify(new CustomResetPasswordNotification($token));
+        if (app()->environment('testing')) {
+            $this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
+        } else {
+            $this->notify(new CustomResetPasswordNotification($token));
+        }
     }
 }

@@ -15,6 +15,28 @@ class ActivityLogController extends Controller
     {
         $query = ActivityLog::with('user');
 
+        // Category filter (groups of actions)
+        $category = $request->query('category');
+        if ($category) {
+            switch ($category) {
+                case 'http':
+                    $query->where('action', 'like', 'http_%');
+                    break;
+                case 'model':
+                    $query->where('action', 'like', 'model.%');
+                    break;
+                case 'instructor':
+                    $query->where('action', 'like', 'instructor_%');
+                    break;
+                case 'event_organizer':
+                    $query->where('action', 'like', 'event_organizer_%');
+                    break;
+                case 'participants':
+                    $query->where('action', 'like', 'participants_%');
+                    break;
+            }
+        }
+
         // Filter by action
         if ($request->has('action') && $request->action != '') {
             $query->where('action', $request->action);
@@ -61,7 +83,16 @@ class ActivityLogController extends Controller
             ->orderBy('action')
             ->pluck('action');
 
-        return view('activity-logs.index', compact('logs', 'users', 'actions'));
+        // Categories available for quick filtering
+        $categories = [
+            'http' => 'HTTP Requests',
+            'model' => 'Model Changes',
+            'instructor' => 'Instructors',
+            'event_organizer' => 'Event Organizers',
+            'participants' => 'Participants',
+        ];
+
+        return view('activity-logs.index', compact('logs', 'users', 'actions', 'categories', 'category'));
     }
 
     /**

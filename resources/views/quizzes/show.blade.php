@@ -214,7 +214,7 @@
 
                     <!-- Action Button for Participants -->
                     @auth
-                        @if (Auth::user()->hasRole('participant'))
+                        @can('attempt quizzes')
                             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                                 @if ($quiz->status == 'published')
                                     <div class="text-center mb-4">
@@ -249,14 +249,14 @@
                                     </div>
                                 @endif
                             </div>
-                        @endif
+                        @endcan
                     @endauth
                 </div>
             </div>
 
             <!-- Questions Preview for Admin/Instructors -->
             @auth
-                @if (!Auth::user()->hasRole('participant'))
+                @can('update quizzes')
                     <div class="mt-12">
                         <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                             <!-- Header -->
@@ -358,7 +358,7 @@
                             </div>
                         </div>
                     </div>
-                @endif
+                @endcan
             @endauth
         </div>
     </div>

@@ -10,6 +10,8 @@ use App\Models\CoursePeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\ChatCreatedNotification;
 
 class ChatController extends Controller
 {
@@ -39,7 +41,13 @@ class ChatController extends Controller
             $chat->unread_count = 0; // Placeholder - implement based on your message read tracking
         });
 
-        return view('chat.index', compact('chats'));
+        $chatNotificationCount = 0;
+        try {
+            $types = [\App\Notifications\ChatMessageNotification::class, \App\Notifications\ChatCreatedNotification::class];
+            $chatNotificationCount = auth()->user()->unreadNotifications()->whereIn('type', $types)->count();
+        } catch (\Throwable $e) {}
+
+        return view('chat.index', compact('chats', 'chatNotificationCount'));
     }
 
     /**
@@ -59,6 +67,15 @@ class ChatController extends Controller
                     ->limit(50); // Load last 50 messages
             }
         ]);
+
+        // Mark chat message notifications for this chat as read
+        try {
+            $user = $request->user();
+            $user->unreadNotifications()
+                ->where('type', \App\Notifications\ChatMessageNotification::class)
+                ->whereJsonContains('data->chat_id', $chat->id)
+                ->update(['read_at' => now()]);
+        } catch (\Throwable $e) {}
 
         // If AJAX request, return JSON
         if ($request->wantsJson() || $request->ajax()) {
@@ -222,6 +239,17 @@ class ChatController extends Controller
             DB::commit();
             \Log::info('Database transaction committed');
 
+            // Notify participants (exclude creator)
+            try {
+                $recipientIds = $chat->participants()->pluck('users.id')->filter(fn($id) => (int)$id !== (int)auth()->id());
+                if ($recipientIds->isNotEmpty()) {
+                    $recipients = User::whereIn('id', $recipientIds)->get();
+                    if ($recipients->isNotEmpty()) {
+                        Notification::send($recipients, new ChatCreatedNotification($chat, auth()->user()));
+                    }
+                }
+            } catch (\Throwable $e) { \Log::warning('Chat notify error: '.$e->getMessage()); }
+
             // Load fresh data
             $chat->load(['participants:id,name', 'activeParticipants']);
             \Log::info('Chat data reloaded');
@@ -366,6 +394,49 @@ class ChatController extends Controller
         });
 
         return response()->json($courseClasses);
+    }
+
+    /**
+     * Add participants to an existing chat (JSON)
+     */
+    public function addParticipants(Request $request, Chat $chat)
+    {
+        Gate::authorize('addParticipant', $chat);
+
+        $validated = $request->validate([
+            'participant_ids' => ['required', 'array', 'min:1'],
+            'participant_ids.*' => ['exists:users,id']
+        ]);
+
+        DB::transaction(function () use ($chat, $validated) {
+            $ids = collect($validated['participant_ids'])->map(fn($id) => (int) $id)->unique()->filter();
+            foreach ($ids as $id) {
+                if (!$chat->participants()->where('user_id', $id)->exists()) {
+                    $chat->participants()->attach($id, ['joined_at' => now(), 'is_active' => true]);
+                }
+            }
+            $chat->touch();
+        });
+
+        return response()->json(['message' => 'Participants added']);
+    }
+
+    /**
+     * Remove a participant from chat (JSON)
+     */
+    public function removeParticipant(Request $request, Chat $chat, User $user)
+    {
+        Gate::authorize('removeParticipant', $chat);
+
+        // Prevent removing self via this path; client should leave instead
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'Use leave chat to remove yourself'], 422);
+        }
+
+        $chat->participants()->detach($user->id);
+        $chat->touch();
+
+        return response()->json(['message' => 'Participant removed']);
     }
 
 

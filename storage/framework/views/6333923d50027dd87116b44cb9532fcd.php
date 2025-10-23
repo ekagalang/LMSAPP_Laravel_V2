@@ -99,13 +99,63 @@
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                                <?php $__currentLoopData = $permissions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $permission): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <div class="flex items-center">
-                                        <input type="checkbox" name="permissions[]" id="permission_<?php echo e($permission->id); ?>" value="<?php echo e($permission->name); ?>"
-                                               class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                                        <label for="permission_<?php echo e($permission->id); ?>" class="ml-2 text-sm text-gray-600"><?php echo e($permission->name); ?></label>
+
+                            <?php
+                                $categories = [
+                                    'Users & Roles' => ['users','roles'],
+                                    'Courses' => ['course','courses'],
+                                    'Classes / Periods' => ['class','classes','period'],
+                                    'Lessons' => ['lesson','lessons'],
+                                    'Contents' => ['content','contents','zoom'],
+                                    'Attendance' => ['attendance'],
+                                    'Quizzes & Essays' => ['quiz','quizzes','essay'],
+                                    'Discussions' => ['discussion','discussions'],
+                                    'Certificates' => ['certificate ' , 'certificates '],
+                                    'Certificate Templates' => ['certificate template','certificate templates'],
+                                    'Announcements' => ['announcement','announcements'],
+                                    'Reports / Analytics' => ['report','reports','analytics','progress'],
+                                    'Activity Logs' => ['activity log','activity logs'],
+                                    'File Control' => ['file','files','upload'],
+                                ];
+                                $permsByGroup = [];
+                                foreach ($permissions as $permission) {
+                                    $name = $permission->name;
+                                    $group = 'Lainnya';
+                                    foreach ($categories as $label => $keywords) {
+                                        foreach ($keywords as $kw) {
+                                            if (\Illuminate\Support\Str::contains($name, $kw)) { $group = $label; break 2; }
+                                        }
+                                    }
+                                    $permsByGroup[$group][] = $permission;
+                                }
+                                ksort($permsByGroup);
+                            ?>
+
+                            <div class="mt-3">
+                                <input type="text" id="permissionSearch" placeholder="Cari permission..." class="w-full md:w-1/2 border-gray-300 rounded-md" />
+                            </div>
+
+                            <div class="mt-3 space-y-6" id="permissionGroups">
+                                <?php $__currentLoopData = $permsByGroup; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $group => $perms): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <div class="border rounded-lg">
+                                        <div class="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
+                                            <h3 class="text-sm font-semibold text-gray-700"><?php echo e($group); ?></h3>
+                                            <div class="text-xs text-gray-600">
+                                                <label class="inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" class="group-toggle rounded border-gray-300 text-indigo-600" data-group="group_<?php echo e(\Illuminate\Support\Str::slug($group,'_')); ?>">
+                                                    <span class="ml-2">Pilih Semua</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4" id="group_<?php echo e(\Illuminate\Support\Str::slug($group,'_')); ?>">
+                                            <?php $__currentLoopData = $perms; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $permission): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <div class="flex items-center permission-item" data-name="<?php echo e(strtolower($permission->name)); ?>">
+                                                    <input type="checkbox" name="permissions[]" id="permission_<?php echo e($permission->id); ?>" value="<?php echo e($permission->name); ?>"
+                                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                                                    <label for="permission_<?php echo e($permission->id); ?>" class="ml-2 text-sm text-gray-600"><?php echo e($permission->name); ?></label>
+                                                </div>
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        </div>
                                     </div>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </div>
@@ -144,6 +194,33 @@
             </div>
         </div>
     </div>
+    <?php $__env->startPush('scripts'); ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle select all per group
+            document.querySelectorAll('.group-toggle').forEach(toggle => {
+                toggle.addEventListener('change', function() {
+                    const groupId = this.getAttribute('data-group');
+                    const container = document.getElementById(groupId);
+                    if (!container) return;
+                    container.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = this.checked; });
+                });
+            });
+
+            // Permission search filter
+            const search = document.getElementById('permissionSearch');
+            if (search) {
+                search.addEventListener('input', function() {
+                    const q = this.value.toLowerCase();
+                    document.querySelectorAll('.permission-item').forEach(item => {
+                        const name = item.getAttribute('data-name');
+                        item.style.display = name.includes(q) ? '' : 'none';
+                    });
+                });
+            }
+        });
+    </script>
+    <?php $__env->stopPush(); ?>
  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>

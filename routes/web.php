@@ -52,29 +52,61 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/certificate/{code}', [CertificateController::class, 'show'])->name('certificate.show');
 
     // Upload image teks editor
-    Route::post('/images/upload', [ImageUploadController::class, 'store'])->name('images.upload');
+    Route::post('/images/upload', [ImageUploadController::class, 'store'])
+        ->name('images.upload')
+        ->middleware('permission:upload files');
 
     // File Control routes
-    Route::get('/file-control', [FileControlController::class, 'index'])->name('file-control.index');
-    Route::post('/file-control/upload', [FileControlController::class, 'upload'])->name('file-control.upload');
-    Route::post('/file-control/delete', [FileControlController::class, 'delete'])->name('file-control.delete');
-    Route::get('/file-control/files', [FileControlController::class, 'getFiles'])->name('file-control.files');
+    Route::get('/file-control', [FileControlController::class, 'index'])
+        ->name('file-control.index')
+        ->middleware('permission:view files');
+    Route::post('/file-control/upload', [FileControlController::class, 'upload'])
+        ->name('file-control.upload')
+        ->middleware('permission:upload files');
+    Route::post('/file-control/delete', [FileControlController::class, 'delete'])
+        ->name('file-control.delete')
+        ->middleware('permission:delete files');
+    Route::get('/file-control/files', [FileControlController::class, 'getFiles'])
+        ->name('file-control.files')
+        ->middleware('permission:view files');
 
     // Activity Logs
-    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
-    Route::get('/activity-logs/{id}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
-    Route::post('/activity-logs/clear', [ActivityLogController::class, 'clear'])->name('activity-logs.clear');
-    Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])
+        ->name('activity-logs.index')
+        ->middleware('permission:view activity logs');
+    Route::get('/activity-logs/{id}', [ActivityLogController::class, 'show'])
+        ->name('activity-logs.show')
+        ->middleware('permission:view activity logs');
+    Route::post('/activity-logs/clear', [ActivityLogController::class, 'clear'])
+        ->name('activity-logs.clear')
+        ->middleware('permission:clear activity logs');
+    Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])
+        ->name('activity-logs.export')
+        ->middleware('permission:export activity logs');
 
     // Attendance Management
     // IMPORTANT: Specific routes BEFORE generic routes to avoid conflicts
-    Route::get('/attendance/content/{content}/export', [AttendanceController::class, 'export'])->name('attendance.export');
-    Route::get('/attendance/content/{content}', [AttendanceController::class, 'index'])->name('attendance.index');
-    Route::post('/attendance/content/{content}/mark', [AttendanceController::class, 'mark'])->name('attendance.mark');
-    Route::post('/attendance/content/{content}/bulk-mark', [AttendanceController::class, 'bulkMark'])->name('attendance.bulk-mark');
-    Route::put('/attendance/record/{attendance}', [AttendanceController::class, 'update'])->name('attendance.update');
-    Route::delete('/attendance/record/{attendance}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
-    Route::get('/course/{course}/attendance-report', [AttendanceController::class, 'courseReport'])->name('attendance.course-report');
+    Route::get('/attendance/content/{content}/export', [AttendanceController::class, 'export'])
+        ->name('attendance.export')
+        ->middleware('permission:export attendance');
+    Route::get('/attendance/content/{content}', [AttendanceController::class, 'index'])
+        ->name('attendance.index')
+        ->middleware('permission:view attendance');
+    Route::post('/attendance/content/{content}/mark', [AttendanceController::class, 'mark'])
+        ->name('attendance.mark')
+        ->middleware('permission:mark attendance');
+    Route::post('/attendance/content/{content}/bulk-mark', [AttendanceController::class, 'bulkMark'])
+        ->name('attendance.bulk-mark')
+        ->middleware('permission:bulk mark attendance');
+    Route::put('/attendance/record/{attendance}', [AttendanceController::class, 'update'])
+        ->name('attendance.update')
+        ->middleware('permission:update attendance');
+    Route::delete('/attendance/record/{attendance}', [AttendanceController::class, 'destroy'])
+        ->name('attendance.destroy')
+        ->middleware('permission:delete attendance');
+    Route::get('/course/{course}/attendance-report', [AttendanceController::class, 'courseReport'])
+        ->name('attendance.course-report')
+        ->middleware('permission:view attendance reports');
 
     // Profile Pengguna
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -82,9 +114,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // DUPLICATION ROUTES
-    Route::post('/courses/{course}/duplicate', [CourseController::class, 'duplicate'])->name('courses.duplicate');
-    Route::post('/courses/{course}/lessons/{lesson}/duplicate', [LessonController::class, 'duplicate'])->name('lessons.duplicate');
-    Route::post('/lessons/{lesson}/contents/{content}/duplicate', [ContentController::class, 'duplicate'])->name('contents.duplicate');
+    Route::post('/courses/{course}/duplicate', [CourseController::class, 'duplicate'])
+        ->name('courses.duplicate')
+        ->middleware('permission:duplicate courses');
+    Route::post('/courses/{course}/lessons/{lesson}/duplicate', [LessonController::class, 'duplicate'])
+        ->name('lessons.duplicate')
+        ->middleware('permission:duplicate lessons');
+    Route::post('/lessons/{lesson}/contents/{content}/duplicate', [ContentController::class, 'duplicate'])
+        ->name('contents.duplicate')
+        ->middleware('permission:duplicate contents');
 
     // ✅ PERBAIKAN: Mengubah URL rute AJAX agar tidak konflik
     Route::get('/ajax/quizzes/get-full-quiz-form-partial', fn() => view('quizzes.partials.full-quiz-form')->render())->name('quiz-full-form-partial');
@@ -104,26 +142,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])->name('announcements.show');
 
     // Kursus, Pelajaran, dan Konten
-    Route::resource('courses', CourseController::class);
-    Route::post('/courses/{course}/enroll', [CourseController::class, 'enrollParticipant'])->name('courses.enroll');
-    Route::delete('/courses/{course}/unenroll-mass', [CourseController::class, 'unenrollParticipants'])->name('courses.unenroll_mass');
-    Route::post('/courses/{course}/add-instructor', [CourseController::class, 'addInstructor'])->name('courses.addInstructor');
-    Route::delete('/courses/{course}/remove-instructor', [CourseController::class, 'removeInstructor'])->name('courses.removeInstructor');
+    Route::resource('courses', CourseController::class)->middleware('permission:view courses|manage all courses');
+    Route::post('/courses/{course}/enroll', [CourseController::class, 'enrollParticipant'])->name('courses.enroll')->middleware('permission:add class participants');
+    Route::delete('/courses/{course}/unenroll-mass', [CourseController::class, 'unenrollParticipants'])->name('courses.unenroll_mass')->middleware('permission:remove class participants');
+    Route::post('/courses/{course}/add-instructor', [CourseController::class, 'addInstructor'])->name('courses.addInstructor')->middleware('permission:assign instructors');
+    Route::delete('/courses/{course}/remove-instructor', [CourseController::class, 'removeInstructor'])->name('courses.removeInstructor')->middleware('permission:assign instructors');
 
     // Course Token Management
-    Route::get('/courses/{course}/tokens', [CourseController::class, 'tokens'])->name('courses.tokens');
-    Route::post('/courses/{course}/token/generate', [CourseController::class, 'generateToken'])->name('courses.token.generate');
-    Route::post('/courses/{course}/token/regenerate', [CourseController::class, 'regenerateToken'])->name('courses.token.regenerate');
-    Route::post('/courses/{course}/token/toggle', [CourseController::class, 'toggleToken'])->name('courses.token.toggle');
+    Route::get('/courses/{course}/tokens', [CourseController::class, 'tokens'])->name('courses.tokens')->middleware('permission:manage course tokens');
+    Route::post('/courses/{course}/token/generate', [CourseController::class, 'generateToken'])->name('courses.token.generate')->middleware('permission:manage course tokens');
+    Route::post('/courses/{course}/token/regenerate', [CourseController::class, 'regenerateToken'])->name('courses.token.regenerate')->middleware('permission:manage course tokens');
+    Route::post('/courses/{course}/token/toggle', [CourseController::class, 'toggleToken'])->name('courses.token.toggle')->middleware('permission:manage course tokens');
 
     Route::get('/courses/{course}/progress', [CourseController::class, 'showProgress'])->name('courses.progress');
     Route::get('/courses/{course}/progress/pdf', [CourseController::class, 'downloadProgressPdf'])->name('courses.progress.pdf');
     Route::get('/courses/{course}/participant/{user}/progress', [CourseController::class, 'showParticipantProgress'])->name('courses.participant.progress');
 
-    Route::resource('courses.lessons', LessonController::class)->except(['index', 'show']);
-    Route::post('lessons/update-order', [LessonController::class, 'updateOrder'])->name('lessons.update_order');
-    Route::post('contents/update-order', [ContentController::class, 'updateOrder'])->name('contents.update_order');
-    Route::resource('lessons.contents', ContentController::class)->except(['index', 'show']);
+    Route::resource('courses.lessons', LessonController::class)->except(['index', 'show'])->middleware('permission:manage own courses');
+    Route::post('lessons/update-order', [LessonController::class, 'updateOrder'])->name('lessons.update_order')->middleware('permission:update lessons');
+    Route::post('contents/update-order', [ContentController::class, 'updateOrder'])->name('contents.update_order')->middleware('permission:update contents');
+    Route::resource('lessons.contents', ContentController::class)->except(['index', 'show'])->middleware('permission:manage own courses');
     Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
     Route::post('lessons/{lesson}/complete', [ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');
 
@@ -143,75 +181,97 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
     Route::post('/essays/{content}/autosave', [EssaySubmissionController::class, 'autosave'])->name('essays.autosave');
     Route::get('/essays/{content}/drafts', [EssaySubmissionController::class, 'getDrafts'])->name('essays.get_drafts');
-    Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
+    Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index')->middleware('permission:view quizzes');
 
     Route::post('/contents/{content}/essay-questions', [EssayQuestionController::class, 'store'])
-        ->name('essay.questions.store');
+        ->name('essay.questions.store')
+        ->middleware('permission:manage essay questions');
 
     Route::delete('/essay-questions/{question}', [EssayQuestionController::class, 'destroy'])
-        ->name('essay.questions.destroy');
+        ->name('essay.questions.destroy')
+        ->middleware('permission:manage essay questions');
 
     Route::put('/contents/{content}/essay-questions/order', [EssayQuestionController::class, 'updateOrder'])
-        ->name('essay.questions.update-order');
+        ->name('essay.questions.update-order')
+        ->middleware('permission:manage essay questions');
 
     Route::put('/essay-questions/{question}', [EssayQuestionController::class, 'update'])
-        ->name('essay.questions.update');
+        ->name('essay.questions.update')
+        ->middleware('permission:manage essay questions');
 
     // Route untuk Forum Diskusi
-    Route::get('/courses/{course}/discussions', [App\Http\Controllers\DiscussionController::class, 'index'])->name('courses.discussions.index');
-    Route::post('/contents/{content}/discussions', [App\Http\Controllers\DiscussionController::class, 'store'])->name('discussions.store');
-    Route::post('/discussions/{discussion}/replies', [App\Http\Controllers\DiscussionController::class, 'storeReply'])->name('discussions.replies.store');
+    Route::get('/courses/{course}/discussions', [App\Http\Controllers\DiscussionController::class, 'index'])->name('courses.discussions.index')->middleware('permission:view discussions');
+    Route::post('/contents/{content}/discussions', [App\Http\Controllers\DiscussionController::class, 'store'])->name('discussions.store')->middleware('permission:create discussions');
+    Route::post('/discussions/{discussion}/replies', [App\Http\Controllers\DiscussionController::class, 'storeReply'])->name('discussions.replies.store')->middleware('permission:reply discussions');
 
     // Route Assign EO
-    Route::post('/courses/{course}/add-eo', [CourseController::class, 'addEventOrganizer'])->name('courses.addEo');
-    Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo');
+    Route::post('/courses/{course}/add-eo', [CourseController::class, 'addEventOrganizer'])->name('courses.addEo')->middleware('permission:assign event organizers');
+    Route::delete('/courses/{course}/remove-eo', [CourseController::class, 'removeEventOrganizer'])->name('courses.removeEo')->middleware('permission:assign event organizers');
 
     // Token Enrollment routes
     Route::post('/enroll', [TokenEnrollmentController::class, 'enroll'])
-        ->name('enroll');
+        ->name('enroll')
+        ->middleware('permission:enroll courses');
     Route::post('/enroll/course', [TokenEnrollmentController::class, 'enrollCourse'])
-        ->name('enroll.course');
+        ->name('enroll.course')
+        ->middleware('permission:enroll courses');
     Route::post('/enroll/class', [TokenEnrollmentController::class, 'enrollClass'])
-        ->name('enroll.class');
+        ->name('enroll.class')
+        ->middleware('permission:enroll courses');
 
     // Course Class routes
     Route::get('/courses/{course}/periods', [CourseClassController::class, 'index'])
-        ->name('course-periods.index');
+        ->name('course-periods.index')
+        ->middleware('permission:view classes');
     Route::get('/courses/{course}/periods/create', [CourseClassController::class, 'create'])
-        ->name('course-periods.create');
+        ->name('course-periods.create')
+        ->middleware('permission:create classes');
     Route::post('/courses/{course}/periods', [CourseClassController::class, 'store'])
-        ->name('course-periods.store');
+        ->name('course-periods.store')
+        ->middleware('permission:create classes');
     Route::get('/courses/{course}/periods/{period}', [CourseClassController::class, 'show'])
-        ->name('course-periods.show');
+        ->name('course-periods.show')
+        ->middleware('permission:view classes');
     Route::get('/courses/{course}/periods/{period}/edit', [CourseClassController::class, 'edit'])
-        ->name('course-periods.edit');
+        ->name('course-periods.edit')
+        ->middleware('permission:update classes');
     Route::put('/courses/{course}/periods/{period}', [CourseClassController::class, 'update'])
-        ->name('course-periods.update');
+        ->name('course-periods.update')
+        ->middleware('permission:update classes');
     Route::delete('/courses/{course}/periods/{period}', [CourseClassController::class, 'destroy'])
-        ->name('course-periods.destroy');
+        ->name('course-periods.destroy')
+        ->middleware('permission:delete classes');
     Route::post('/courses/{course}/periods/{period}/duplicate', [CourseClassController::class, 'duplicate'])
-        ->name('course-periods.duplicate');
+        ->name('course-periods.duplicate')
+        ->middleware('permission:duplicate classes');
 
     // Class management routes
     Route::get('/courses/{course}/periods/{period}/manage', [CourseClassController::class, 'manage'])
-        ->name('course-periods.manage');
+        ->name('course-periods.manage')
+        ->middleware('permission:update classes');
     Route::post('/courses/{course}/periods/{period}/instructors', [CourseClassController::class, 'addInstructor'])
-        ->name('course-periods.add-instructor');
+        ->name('course-periods.add-instructor')
+        ->middleware('permission:assign class instructors');
     Route::delete('/courses/{course}/periods/{period}/instructors/{user}', [CourseClassController::class, 'removeInstructor'])
-        ->name('course-periods.remove-instructor');
+        ->name('course-periods.remove-instructor')
+        ->middleware('permission:remove class instructors');
     Route::post('/courses/{course}/periods/{period}/participants', [CourseClassController::class, 'addParticipant'])
-        ->name('course-periods.add-participant');
+        ->name('course-periods.add-participant')
+        ->middleware('permission:add class participants');
     Route::delete('/courses/{course}/periods/{period}/participants/{user}', [CourseClassController::class, 'removeParticipant'])
-        ->name('course-periods.remove-participant');
+        ->name('course-periods.remove-participant')
+        ->middleware('permission:remove class participants');
     Route::delete('/courses/{course}/periods/{period}/participants', [CourseClassController::class, 'bulkRemoveParticipants'])
-        ->name('course-periods.bulk-remove-participants');
+        ->name('course-periods.bulk-remove-participants')
+        ->middleware('permission:remove class participants');
     Route::post('/courses/{course}/periods/{period}/enroll', [CourseClassController::class, 'enroll'])
-        ->name('course-periods.enroll');
+        ->name('course-periods.enroll')
+        ->middleware('permission:enroll class participants');
 
     // Class Token Management
-    Route::post('/courses/{course}/periods/{period}/token/generate', [CourseClassController::class, 'generateToken'])->name('course-periods.token.generate');
-    Route::post('/courses/{course}/periods/{period}/token/regenerate', [CourseClassController::class, 'regenerateToken'])->name('course-periods.token.regenerate');
-    Route::post('/courses/{course}/periods/{period}/token/toggle', [CourseClassController::class, 'toggleToken'])->name('course-periods.token.toggle');
+    Route::post('/courses/{course}/periods/{period}/token/generate', [CourseClassController::class, 'generateToken'])->name('course-periods.token.generate')->middleware('permission:manage class tokens');
+    Route::post('/courses/{course}/periods/{period}/token/regenerate', [CourseClassController::class, 'regenerateToken'])->name('course-periods.token.regenerate')->middleware('permission:manage class tokens');
+    Route::post('/courses/{course}/periods/{period}/token/toggle', [CourseClassController::class, 'toggleToken'])->name('course-periods.token.toggle')->middleware('permission:manage class tokens');
 
     // ============================================================================
     // 🔥 UPDATED CHAT ROUTES - Layout Terpadu dengan Sidebar + Main Chat Area
@@ -246,6 +306,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/course-classes/available', [App\Http\Controllers\Api\ChatController::class, 'availableCourseClasses'])
             ->name('chats.periods');
+
+        // Chat participants management
+        Route::post('/chats/{chat}/participants', [App\Http\Controllers\Api\ChatController::class, 'addParticipants'])
+            ->name('chats.participants.add');
+        Route::delete('/chats/{chat}/participants/{user}', [App\Http\Controllers\Api\ChatController::class, 'removeParticipant'])
+            ->name('chats.participants.remove');
     });
 
     // ============================================================================
@@ -255,7 +321,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Export PDF
     Route::get('/courses/{course}/export-progress-pdf', [ProgressController::class, 'exportCourseProgressPdf'])
         ->name('courses.exportProgressPdf')
-        ->middleware('auth');
+        ->middleware('permission:generate reports');
 
     // Participant: My Scores page (per course)
     Route::get('/courses/{course}/my-scores', [ProgressController::class, 'myScores'])
@@ -263,46 +329,48 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Course Scores (Admin/Instruktur/EO) - view-only participant scores per course
     Route::get('/courses/{course}/scores', [CourseController::class, 'showScores'])
-        ->name('courses.scores');
+        ->name('courses.scores')
+        ->middleware('permission:view progress reports');
 
     // Prasyarat
     Route::post('/contents/{content}/complete-and-continue', [ContentController::class, 'completeAndContinue'])->name('contents.complete_and_continue')->middleware('auth');
 
     // Grup Route untuk Admin, Instruktur, dan EO
-    Route::middleware(['role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::resource('roles', RoleController::class);
-        Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
-        Route::resource('roles', RoleController::class)->except(['show']);
+    Route::middleware(['permission:manage users|manage roles|view certificate templates|view activity logs|view announcements|view certificate analytics|view certificate management'])->prefix('admin')->name('admin.')->group(function () {
+        // Add explicit permission middleware so these can be opened to admin-like roles later safely
+        Route::resource('roles', RoleController::class)->middleware('permission:manage roles');
+        Route::resource('users', UserController::class)->except(['create', 'store', 'show'])->middleware('permission:manage users');
+        Route::resource('roles', RoleController::class)->except(['show'])->middleware('permission:manage roles');
 
         // Participants
-        Route::get('/participants', [\App\Http\Controllers\Admin\ParticipantController::class, 'index'])->name('participants.index');
-        Route::get('/participants/analytics', [\App\Http\Controllers\Admin\ParticipantController::class, 'analytics'])->name('participants.analytics');
-        Route::get('/participants/{user}', [\App\Http\Controllers\Admin\ParticipantController::class, 'show'])->name('participants.show');
+        Route::get('/participants', [\App\Http\Controllers\Admin\ParticipantController::class, 'index'])->name('participants.index')->middleware('permission:manage users');
+        Route::get('/participants/analytics', [\App\Http\Controllers\Admin\ParticipantController::class, 'analytics'])->name('participants.analytics')->middleware('permission:manage users');
+        Route::get('/participants/{user}', [\App\Http\Controllers\Admin\ParticipantController::class, 'show'])->name('participants.show')->middleware('permission:manage users');
 
         // Sertifikat
-        Route::get('certificate-templates/create/enhanced', [CertificateTemplateController::class, 'createEnhanced'])->name('certificate-templates.create-enhanced');
-        Route::get('certificate-templates/create/advanced', [CertificateTemplateController::class, 'createAdvanced'])->name('certificate-templates.create-advanced');
-        Route::get('certificate-templates/{certificateTemplate}/edit/enhanced', [CertificateTemplateController::class, 'editEnhanced'])->name('certificate-templates.edit-enhanced');
-        Route::get('certificate-templates/{certificateTemplate}/edit/advanced', [CertificateTemplateController::class, 'editAdvanced'])->name('certificate-templates.edit-advanced');
-        Route::get('certificate-templates/{certificateTemplate}/preview', [CertificateTemplateController::class, 'preview'])->name('certificate-templates.preview');
-        Route::post('certificate-templates/{certificateTemplate}/preview', [CertificateTemplateController::class, 'generatePreview'])->name('certificate-templates.generate-preview');
-        Route::post('certificate-templates/{certificateTemplate}/duplicate', [CertificateTemplateController::class, 'duplicate'])->name('certificate-templates.duplicate');
-        Route::resource('certificate-templates', CertificateTemplateController::class);
+        Route::get('certificate-templates/create/enhanced', [CertificateTemplateController::class, 'createEnhanced'])->name('certificate-templates.create-enhanced')->middleware('permission:create certificate templates');
+        Route::get('certificate-templates/create/advanced', [CertificateTemplateController::class, 'createAdvanced'])->name('certificate-templates.create-advanced')->middleware('permission:create certificate templates');
+        Route::get('certificate-templates/{certificateTemplate}/edit/enhanced', [CertificateTemplateController::class, 'editEnhanced'])->name('certificate-templates.edit-enhanced')->middleware('permission:update certificate templates');
+        Route::get('certificate-templates/{certificateTemplate}/edit/advanced', [CertificateTemplateController::class, 'editAdvanced'])->name('certificate-templates.edit-advanced')->middleware('permission:update certificate templates');
+        Route::get('certificate-templates/{certificateTemplate}/preview', [CertificateTemplateController::class, 'preview'])->name('certificate-templates.preview')->middleware('permission:preview certificate templates');
+        Route::post('certificate-templates/{certificateTemplate}/preview', [CertificateTemplateController::class, 'generatePreview'])->name('certificate-templates.generate-preview')->middleware('permission:preview certificate templates');
+        Route::post('certificate-templates/{certificateTemplate}/duplicate', [CertificateTemplateController::class, 'duplicate'])->name('certificate-templates.duplicate')->middleware('permission:duplicate certificate templates');
+        Route::resource('certificate-templates', CertificateTemplateController::class)->middleware('permission:view certificate templates|create certificate templates|update certificate templates|delete certificate templates|duplicate certificate templates|preview certificate templates');
 
         // [BARU] Route untuk Manajemen Pengumuman
-        Route::resource('announcements', AnnouncementController::class);
+        Route::resource('announcements', AnnouncementController::class)->middleware('permission:view announcements|create announcements|update announcements|delete announcements|publish announcements');
         Route::patch('announcements/{announcement}/toggle-status', [AnnouncementController::class, 'toggleStatus'])
-            ->name('announcements.toggle-status');
+            ->name('announcements.toggle-status')->middleware('permission:publish announcements|update announcements');
 
         // [PERBAIKAN] Mendefinisikan rute pengguna secara eksplisit
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::get('/users/{user}/reset-password', [UserController::class, 'resetPasswordForm'])->name('users.reset-password-form');
-        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('permission:manage users');
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->middleware('permission:manage users');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('permission:manage users');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('permission:manage users');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('permission:manage users');
+        Route::get('/users/{user}/reset-password', [UserController::class, 'resetPasswordForm'])->name('users.reset-password-form')->middleware('permission:manage users');
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password')->middleware('permission:manage users');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('permission:manage users');
 
         // Bulk Import User
         Route::get('/users/import', [UserImportController::class, 'show'])->name('users.import.show');
@@ -310,14 +378,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
         // Pengumuman
-        Route::resource('announcements', AdminAnnouncementController::class);
+        Route::resource('announcements', AdminAnnouncementController::class)->middleware('permission:view announcements|create announcements|update announcements|delete announcements|publish announcements');
         Route::patch('announcements/{announcement}/toggle-status', [AdminAnnouncementController::class, 'toggleStatus'])
-            ->name('announcements.toggle-status');
+            ->name('announcements.toggle-status')
+            ->middleware('permission:publish announcements|update announcements');
 
         // Automatic Grading Completion
-        Route::get('/auto-grade', [\App\Http\Controllers\Admin\AutoGradeController::class, 'index'])->name('auto-grade.index');
-        Route::post('/auto-grade/complete', [\App\Http\Controllers\Admin\AutoGradeController::class, 'processAutoGrade'])->name('auto-grade.complete');
-        Route::post('/auto-grade/complete-all', [\App\Http\Controllers\Admin\AutoGradeController::class, 'processAutoGradeAll'])->name('auto-grade.complete-all');
+        Route::get('/auto-grade', [\App\Http\Controllers\Admin\AutoGradeController::class, 'index'])->name('auto-grade.index')->middleware('permission:grade essays|grade quizzes');
+        Route::post('/auto-grade/complete', [\App\Http\Controllers\Admin\AutoGradeController::class, 'processAutoGrade'])->name('auto-grade.complete')->middleware('permission:grade essays|grade quizzes');
+        Route::post('/auto-grade/complete-all', [\App\Http\Controllers\Admin\AutoGradeController::class, 'processAutoGradeAll'])->name('auto-grade.complete-all')->middleware('permission:grade essays|grade quizzes');
 
         // Force Complete (mark all contents completed)
         Route::get('/force-complete', [\App\Http\Controllers\Admin\ForceCompleteController::class, 'index'])->name('force-complete.index');
@@ -361,49 +430,57 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/essay-submissions/{submission}/result', [EssaySubmissionController::class, 'showResult'])->name('essays.result');
 
-    Route::middleware(['permission:view progress reports'])->prefix('event-organizer')->name('eo.')->group(function () {
+    Route::middleware(['permission:view courses|view progress reports'])->prefix('event-organizer')->name('eo.')->group(function () {
         Route::get('/courses', [EventOrganizerController::class, 'index'])->name('courses.index');
     });
 
-    Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create');
-    Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate');
-    Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store');
+    Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create')->middleware('permission:issue certificates');
+    Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate')->middleware('permission:issue certificates');
+    Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store')->middleware('permission:issue certificates');
 
     Route::get('/certificates', [CertificateController::class, 'index'])
-        ->name('certificates.index');
+        ->name('certificates.index')
+        ->middleware('permission:view certificates');
 
     Route::get('/certificates/{certificate}/download', [CertificateController::class, 'download'])
-        ->name('certificates.download');
+        ->name('certificates.download')
+        ->middleware('permission:download certificates');
 
     // Course-specific certificate management (for instructors/organizers)
     Route::get('/courses/{course}/certificates', [CertificateController::class, 'courseIndex'])
-        ->name('courses.certificates.index');
+        ->name('courses.certificates.index')
+        ->middleware('permission:view certificates');
 
     Route::post('/courses/{course}/users/{user}/certificates/generate', [CertificateController::class, 'generate'])
-        ->name('courses.certificates.generate');
+        ->name('courses.certificates.generate')
+        ->middleware('permission:issue certificates');
 
     Route::post('/courses/{course}/certificates/bulk-generate', [CertificateController::class, 'bulkGenerate'])
-        ->name('courses.certificates.bulk-generate');
+        ->name('courses.certificates.bulk-generate')
+        ->middleware('permission:bulk issue certificates');
 
     Route::post('/certificates/{certificate}/regenerate', [CertificateController::class, 'regenerate'])
-        ->name('certificates.regenerate');
+        ->name('certificates.regenerate')
+        ->middleware('permission:regenerate certificates');
     Route::get('/certificates/{certificate}', [CertificateController::class, 'destroy'])
-        ->name('certificates.show');
+        ->name('certificates.show')
+        ->middleware('permission:view certificates');
 
     Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])
-        ->name('certificates.destroy');
+        ->name('certificates.destroy')
+        ->middleware('permission:delete certificates');
 
     // Certificate Management Routes
-    Route::middleware(['permission:view progress reports'])->prefix('certificate-management')->name('certificate-management.')->group(function () {
+    Route::middleware(['permission:view certificate management|view progress reports'])->prefix('certificate-management')->name('certificate-management.')->group(function () {
         Route::get('/', [CertificateController::class, 'managementIndex'])->name('index');
-        Route::get('/analytics', [CertificateController::class, 'analytics'])->name('analytics');
-        Route::get('/by-course/{course}', [CertificateController::class, 'byCourse'])->name('by-course');
-        Route::post('/bulk-action', [CertificateController::class, 'bulkAction'])->name('bulk-action');
-        Route::post('/{certificate}/update-template', [CertificateController::class, 'updateTemplate'])->name('update-template');
+        Route::get('/analytics', [CertificateController::class, 'analytics'])->name('analytics')->middleware('permission:view certificate analytics|view progress reports');
+        Route::get('/by-course/{course}', [CertificateController::class, 'byCourse'])->name('by-course')->middleware('permission:view certificate management|view progress reports');
+        Route::post('/bulk-action', [CertificateController::class, 'bulkAction'])->name('bulk-action')->middleware('permission:bulk issue certificates');
+        Route::post('/{certificate}/update-template', [CertificateController::class, 'updateTemplate'])->name('update-template')->middleware('permission:update certificate template');
     });
 
     // Instructor Analytics Routes
-    Route::middleware(['permission:view progress reports'])->prefix('instructor-analytics')->name('instructor-analytics.')->group(function () {
+    Route::middleware(['permission:view instructor analytics|view progress reports'])->prefix('instructor-analytics')->name('instructor-analytics.')->group(function () {
         Route::get('/', [GradebookController::class, 'instructorAnalytics'])->name('index');
         Route::get('/instructor/{user}', [GradebookController::class, 'instructorDetail'])->name('detail');
         Route::get('/compare', [GradebookController::class, 'instructorCompare'])->name('compare');

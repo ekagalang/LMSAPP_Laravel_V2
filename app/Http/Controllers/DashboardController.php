@@ -31,31 +31,45 @@ class DashboardController extends Controller
         $announcements = $this->getDashboardAnnouncements($user);
 
         try {
-            if ($user->hasRole('super-admin')) {
+            // Map role -> dashboard view name
+            $roleViewMap = [
+                'super-admin' => 'dashboard.admin',
+                'instructor' => 'dashboard.instructor',
+                'event-organizer' => 'dashboard.eo',
+                'participant' => 'dashboard.participant',
+            ];
+
+            // Decide target view based on first matching role in map
+            $targetView = null;
+            foreach ($user->getRoleNames() as $roleName) {
+                if (isset($roleViewMap[$roleName])) {
+                    $targetView = $roleViewMap[$roleName];
+                    break;
+                }
+            }
+
+            // Compute stats by capability and choose view; map directly by capability
+            if (\Gate::check('admin-only')) {
                 $stats = $this->getAdminStats();
                 return view('dashboard.admin', compact('stats', 'announcements'));
-            }
-
-            if ($user->hasRole('instructor')) {
+            } elseif ($user->can('manage own courses')) {
                 $stats = $this->getInstructorStats($user);
                 return view('dashboard.instructor', compact('stats', 'announcements'));
-            }
-
-            if ($user->hasRole('event-organizer')) {
+            } elseif ($user->can('view progress reports') || $user->can('view certificate management')) {
                 $stats = $this->getEoStats($user);
                 return view('dashboard.eo', compact('stats', 'announcements'));
+            } elseif ($user->can('attempt quizzes')) {
+                $stats = $this->getParticipantStats($user);
+                $completedCertificates = Certificate::where('user_id', $user->id)
+                    ->with('course')
+                    ->latest('issued_at')
+                    ->get();
+                return view('dashboard.participant', compact('stats', 'announcements', 'completedCertificates'));
+            } else {
+                // Unknown/custom role: use generic stats and view
+                $stats = $this->getGenericStats($user);
+                return view('dashboard.generic', compact('stats', 'announcements'));
             }
-
-            // For Participant
-            $stats = $this->getParticipantStats($user);
-
-            $completedCertificates = Certificate::where('user_id', $user->id)
-                ->with('course') // Eager load relasi course
-                ->latest('issued_at')
-                ->get();
-            // <-- LOGIKA BARU SELESAI -->
-
-            return view('dashboard.participant', compact('stats', 'announcements', 'completedCertificates'));
         } catch (\Exception $e) {
             Log::error('Dashboard error: ' . $e->getMessage());
 
@@ -64,14 +78,16 @@ class DashboardController extends Controller
             $announcements = collect(); // Empty collection sebagai fallback
             $completedCertificates = collect();
 
-            if ($user->hasRole('super-admin')) {
+            if (\Gate::check('admin-only')) {
                 return view('dashboard.admin', compact('stats', 'announcements'));
-            } elseif ($user->hasRole('instructor')) {
+            } elseif ($user->can('manage own courses')) {
                 return view('dashboard.instructor', compact('stats', 'announcements'));
-            } elseif ($user->hasRole('event-organizer')) {
+            } elseif ($user->can('view progress reports') || $user->can('view certificate management')) {
                 return view('dashboard.eo', compact('stats', 'announcements'));
-            } else {
+            } elseif ($user->can('attempt quizzes')) {
                 return view('dashboard.participant', compact('stats', 'announcements'));
+            } else {
+                return view('dashboard.generic', compact('stats', 'announcements'));
             }
         }
     }
@@ -172,14 +188,24 @@ class DashboardController extends Controller
         ];
     }
 
+    private function getGenericStats(User $user)
+    {
+        // Use participant stats as a reasonable default for custom roles
+        try {
+            return $this->getParticipantStats($user);
+        } catch (\Throwable $t) {
+            return $this->getEmptyStats();
+        }
+    }
+
     private function getAdminStats()
     {
         try {
-            // Total users by role
+            // Total users by capability (role-agnostic)
             $totalUsers = User::count();
-            $totalParticipants = User::role('participant')->count();
-            $totalInstructors = User::role('instructor')->count();
-            $totalEventOrganizers = User::role('event-organizer')->count();
+            $totalParticipants = User::permission('attempt quizzes')->count();
+            $totalInstructors = User::permission('manage own courses')->count();
+            $totalEventOrganizers = User::permission('view progress reports')->count();
 
             // Course statistics
             $totalCourses = Course::count();

@@ -12,7 +12,10 @@ class CertificatePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['super-admin', 'instructor', 'event-organizer', 'participant']);
+        return $user->can('view certificates')
+            || $user->can('download certificates')
+            || $user->can('view certificate management')
+            || $user->can('view certificate analytics');
     }
 
     /**
@@ -20,8 +23,8 @@ class CertificatePolicy
      */
     public function view(User $user, Certificate $certificate): bool
     {
-        // Super admin can view all certificates
-        if ($user->hasRole('super-admin')) {
+        // Users with full course management can view all certificates
+        if ($user->can('manage all courses')) {
             return true;
         }
 
@@ -31,12 +34,12 @@ class CertificatePolicy
         }
 
         // Instructors can view certificates for courses they teach
-        if ($user->hasRole('instructor')) {
+        if ($user->can('view certificates')) {
             return $certificate->course->instructors()->where('user_id', $user->id)->exists();
         }
 
         // Event organizers can view certificates for courses they organize
-        if ($user->hasRole('event-organizer')) {
+        if ($user->can('view certificate management') || $user->can('view certificate analytics')) {
             return $certificate->course->eventOrganizers()->where('user_id', $user->id)->exists();
         }
 
@@ -48,7 +51,7 @@ class CertificatePolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['super-admin', 'instructor', 'event-organizer']);
+        return $user->can('issue certificates') || $user->can('bulk issue certificates');
     }
 
     /**
@@ -56,19 +59,15 @@ class CertificatePolicy
      */
     public function update(User $user, Certificate $certificate): bool
     {
-        // Super admin can update all certificates
-        if ($user->hasRole('super-admin')) {
+        // Users with full course management can update all certificates
+        if ($user->can('manage all courses')) {
             return true;
         }
 
-        // Instructors can update certificates for courses they teach
-        if ($user->hasRole('instructor')) {
-            return $certificate->course->instructors()->where('user_id', $user->id)->exists();
-        }
-
-        // Event organizers can update certificates for courses they organize
-        if ($user->hasRole('event-organizer')) {
-            return $certificate->course->eventOrganizers()->where('user_id', $user->id)->exists();
+        // Instructors/EOs with cert capabilities
+        if ($user->can('regenerate certificates') || $user->can('issue certificates')) {
+            return $certificate->course->instructors()->where('user_id', $user->id)->exists() ||
+                   $certificate->course->eventOrganizers()->where('user_id', $user->id)->exists();
         }
 
         return false;
@@ -79,19 +78,15 @@ class CertificatePolicy
      */
     public function delete(User $user, Certificate $certificate): bool
     {
-        // Super admin can delete all certificates
-        if ($user->hasRole('super-admin')) {
+        // Users with full course management can delete all certificates
+        if ($user->can('manage all courses')) {
             return true;
         }
 
-        // Instructors can delete certificates for courses they teach
-        if ($user->hasRole('instructor')) {
-            return $certificate->course->instructors()->where('user_id', $user->id)->exists();
-        }
-
-        // Event organizers can delete certificates for courses they organize
-        if ($user->hasRole('event-organizer')) {
-            return $certificate->course->eventOrganizers()->where('user_id', $user->id)->exists();
+        // Instructors/EOs with delete capability
+        if ($user->can('delete certificates')) {
+            return $certificate->course->instructors()->where('user_id', $user->id)->exists() ||
+                   $certificate->course->eventOrganizers()->where('user_id', $user->id)->exists();
         }
 
         return false;
@@ -110,6 +105,6 @@ class CertificatePolicy
      */
     public function forceDelete(User $user, Certificate $certificate): bool
     {
-        return $user->hasRole('super-admin');
+        return $user->can('delete certificates');
     }
 }
