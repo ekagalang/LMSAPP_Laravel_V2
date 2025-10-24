@@ -194,6 +194,8 @@ class DashboardController extends Controller
         try {
             return $this->getParticipantStats($user);
         } catch (\Throwable $t) {
+            Log::error('Error in getGenericStats for user ' . $user->id . ': ' . $t->getMessage());
+            Log::error('Stack trace: ' . $t->getTraceAsString());
             return $this->getEmptyStats();
         }
     }
@@ -351,6 +353,12 @@ class DashboardController extends Controller
     private function getParticipantStats($user)
     {
         try {
+            // Safety check: ensure user has the courses relationship
+            if (!method_exists($user, 'courses')) {
+                Log::warning('User model does not have courses() method for user ID: ' . $user->id);
+                return $this->getEmptyStats();
+            }
+
             // Get enrolled courses - using the correct relationship
             $enrolledCourses = $user->courses()->with(['lessons.contents', 'instructors'])->get();
             $courseIds = $enrolledCourses->pluck('id');
@@ -547,7 +555,9 @@ class DashboardController extends Controller
                 ],
             ];
         } catch (\Exception $e) {
-            Log::error('Error in getParticipantStats: ' . $e->getMessage());
+            Log::error('Error in getParticipantStats for user ' . $user->id . ': ' . $e->getMessage());
+            Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return $this->getEmptyStats();
         }
     }

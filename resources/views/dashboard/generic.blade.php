@@ -34,19 +34,19 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white shadow-sm rounded-lg p-5">
                     <p class="text-sm text-gray-500">Kursus Diikuti</p>
-                    <p class="text-2xl font-bold">{{ $stats['courses']['total'] ?? 0 }}</p>
+                    <p class="text-2xl font-bold">{{ isset($stats['courses']['total']) ? $stats['courses']['total'] : 0 }}</p>
                 </div>
                 <div class="bg-white shadow-sm rounded-lg p-5">
                     <p class="text-sm text-gray-500">Progress Rata-rata</p>
-                    <p class="text-2xl font-bold">{{ $stats['courses']['overall_progress'] ?? 0 }}%</p>
+                    <p class="text-2xl font-bold">{{ isset($stats['courses']['overall_progress']) ? $stats['courses']['overall_progress'] : 0 }}%</p>
                 </div>
                 <div class="bg-white shadow-sm rounded-lg p-5">
                     <p class="text-sm text-gray-500">Diskusi</p>
-                    <p class="text-2xl font-bold">{{ $stats['discussions']['total'] ?? 0 }}</p>
+                    <p class="text-2xl font-bold">{{ isset($stats['discussions']['total']) ? $stats['discussions']['total'] : (isset($stats['discussions']['started']) ? $stats['discussions']['started'] : 0) }}</p>
                 </div>
                 <div class="bg-white shadow-sm rounded-lg p-5">
                     <p class="text-sm text-gray-500">Kuis Selesai</p>
-                    <p class="text-2xl font-bold">{{ $stats['quizzes']['completed'] ?? 0 }}</p>
+                    <p class="text-2xl font-bold">{{ isset($stats['quizzes']['completed']) ? $stats['quizzes']['completed'] : 0 }}</p>
                 </div>
             </div>
 
