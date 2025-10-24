@@ -152,24 +152,18 @@ class RolesAndPermissionsSeeder extends Seeder
 
 
         // --- ✅ TAHAP 3: Berikan Izin Default untuk Setiap Peran ---
+        // Jangan overwrite di production kecuali diizinkan
+        $overwrite = (bool) env('SEED_ROLES_OVERWRITE', false);
 
-        // Izin untuk Participant
-        $participantRole->syncPermissions([
-            'view courses',
-            'view announcements',
-            'enroll courses',
-            'attempt quizzes',
-            'view quizzes',
-            'create discussions',
-            'reply discussions',
-            'view certificates',
-            'download certificates',
-        ]);
+        $participantDefaults = [
+            'view courses', 'view announcements', 'enroll courses', 'attempt quizzes', 'view quizzes',
+            'create discussions', 'reply discussions', 'view certificates', 'download certificates',
+            // Chats
+            'create chats', 'send chat messages',
+        ];
 
-        // Izin untuk Instructor
-        $instructorRole->syncPermissions([
-            'view courses',
-            'manage own courses',
+        $instructorDefaults = [
+            'view courses', 'manage own courses',
             // File Control
             'view files', 'upload files', 'delete files',
             // Classes / Periods
@@ -187,35 +181,36 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage essay questions', 'view essay submissions', 'grade essays',
             // Discussions & Attendance
             'manage discussions', 'view attendance', 'mark attendance', 'bulk mark attendance', 'update attendance', 'export attendance', 'view attendance reports',
-            // Chats
-            'create chats', 'send chat messages', 'create course chats', 'add chat participants', 'remove chat participants',
             // Certificates (course-level)
             'view certificates', 'issue certificates', 'bulk issue certificates', 'regenerate certificates', 'download certificates',
             // Reports / Analytics
             'view progress reports', 'view instructor analytics',
-        ]);
-
-        // Izin untuk Event Organizer
-        $eventOrganizerRole->syncPermissions([
-            'view courses',
-            'view classes',
-            // File Control (limited)
-            'view files',
-            'view progress reports', 'view instructor analytics', 'generate reports',
-            'assist discussions',
-            // Attendance & Certificates (view/analytics level)
-            'view attendance reports',
-            'view certificate management', 'view certificate analytics',
             // Chats
             'create chats', 'send chat messages', 'create course chats', 'add chat participants', 'remove chat participants',
-        ]);
+        ];
 
-        // Izin untuk Participant
-        $participantRole->givePermissionTo([
-            'create chats', 'send chat messages'
-        ]);
+        $eventOrganizerDefaults = [
+            'view courses', 'view classes', 'view files',
+            'view progress reports', 'view instructor analytics', 'generate reports', 'assist discussions',
+            'view attendance reports', 'view certificate management', 'view certificate analytics',
+            // Chats
+            'create chats', 'send chat messages', 'create course chats', 'add chat participants', 'remove chat participants',
+        ];
 
-        // Super Admin secara otomatis mendapatkan semua akses melalui AuthServiceProvider,
-        // jadi tidak perlu ditetapkan di sini.
+        $applyDefaults = function (Role $role, array $defaults) use ($overwrite) {
+            if ($overwrite) {
+                $role->syncPermissions($defaults);
+                return;
+            }
+            if ($role->permissions()->count() === 0) {
+                $role->givePermissionTo($defaults);
+            }
+        };
+
+        $applyDefaults($participantRole, $participantDefaults);
+        $applyDefaults($instructorRole, $instructorDefaults);
+        $applyDefaults($eventOrganizerRole, $eventOrganizerDefaults);
+
+        // Super Admin: full akses via Gate::before
     }
 }

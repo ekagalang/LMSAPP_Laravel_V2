@@ -79,6 +79,10 @@
                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
                                             {{ __('Manajemen Pengguna') }}
                                         </a>
+                                        <a href="{{ route('admin.tools.index') }}"
+                                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
+                                            {{ __('Tools') }}
+                                        </a>
                                         <a href="{{ route('admin.participants.index') }}"
                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition duration-150 ease-in-out">
                                             {{ __('Data Peserta') }}

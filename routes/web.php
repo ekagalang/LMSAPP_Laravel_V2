@@ -338,8 +338,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Grup Route untuk Admin, Instruktur, dan EO
     Route::middleware(['permission:manage users|manage roles|view certificate templates|view activity logs|view announcements|view certificate analytics|view certificate management'])->prefix('admin')->name('admin.')->group(function () {
         // Add explicit permission middleware so these can be opened to admin-like roles later safely
-        Route::resource('roles', RoleController::class)->middleware('permission:manage roles');
-        Route::resource('users', UserController::class)->except(['create', 'store', 'show'])->middleware('permission:manage users');
         Route::resource('roles', RoleController::class)->except(['show'])->middleware('permission:manage roles');
 
         // Participants
@@ -357,12 +355,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('certificate-templates/{certificateTemplate}/duplicate', [CertificateTemplateController::class, 'duplicate'])->name('certificate-templates.duplicate')->middleware('permission:duplicate certificate templates');
         Route::resource('certificate-templates', CertificateTemplateController::class)->middleware('permission:view certificate templates|create certificate templates|update certificate templates|delete certificate templates|duplicate certificate templates|preview certificate templates');
 
-        // [BARU] Route untuk Manajemen Pengumuman
-        Route::resource('announcements', AnnouncementController::class)->middleware('permission:view announcements|create announcements|update announcements|delete announcements|publish announcements');
-        Route::patch('announcements/{announcement}/toggle-status', [AnnouncementController::class, 'toggleStatus'])
-            ->name('announcements.toggle-status')->middleware('permission:publish announcements|update announcements');
+        // Tools (Admin Utilities)
+        Route::get('/tools', [\App\Http\Controllers\Admin\ToolsController::class, 'index'])
+            ->name('tools.index')
+            ->middleware('permission:manage users|manage roles');
+        Route::post('/tools/permissions/refresh', [\App\Http\Controllers\Admin\ToolsController::class, 'refreshPermissionCache'])
+            ->name('tools.permissions.refresh')
+            ->middleware('permission:manage users|manage roles');
+        Route::get('/tools/roles/export', [\App\Http\Controllers\Admin\ToolsController::class, 'exportRoleMatrix'])
+            ->name('tools.roles.export')
+            ->middleware('permission:manage users|manage roles');
 
-        // [PERBAIKAN] Mendefinisikan rute pengguna secara eksplisit
+        // [BARU] Route untuk Manajemen Pengumuman (use admin controller)
+
+        // [PERBAIKAN] Mendefinisikan rute pengguna secara eksplisit (avoid duplicating resource routes)
         Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('permission:manage users');
         Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->middleware('permission:manage users');
         Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('permission:manage users');
@@ -508,3 +514,13 @@ Route::middleware('auth:sanctum')->prefix('api')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+        // Tools (Admin Utilities)
+        Route::get('/tools', [\App\Http\Controllers\Admin\ToolsController::class, 'index'])
+            ->name('tools.index')
+            ->middleware('permission:manage users|manage roles');
+        Route::post('/tools/permissions/refresh', [\App\Http\Controllers\Admin\ToolsController::class, 'refreshPermissionCache'])
+            ->name('tools.permissions.refresh')
+            ->middleware('permission:manage users|manage roles');
+        Route::get('/tools/roles/export', [\App\Http\Controllers\Admin\ToolsController::class, 'exportRoleMatrix'])
+            ->name('tools.roles.export')
+            ->middleware('permission:manage users|manage roles');
