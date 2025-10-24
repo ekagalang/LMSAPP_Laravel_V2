@@ -230,19 +230,19 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ number_format($stat['discussion_replies']) }}</div>
-                                        @if($stat['recent_discussions'] > 0)
+                                        <div class="text-sm font-medium text-gray-900">{{ number_format($stat['discussion_replies'] ?? 0) }}</div>
+                                        @if(isset($stat['recent_discussions']) && $stat['recent_discussions'] > 0)
                                             <div class="text-xs text-green-600">+{{ $stat['recent_discussions'] }} minggu ini</div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ number_format($stat['essay_graded']) }}</div>
-                                        @if($stat['recent_grading'] > 0)
+                                        <div class="text-sm font-medium text-gray-900">{{ number_format($stat['essay_graded'] ?? 0) }}</div>
+                                        @if(isset($stat['recent_grading']) && $stat['recent_grading'] > 0)
                                             <div class="text-xs text-green-600">+{{ $stat['recent_grading'] }} minggu ini</div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($stat['essay_pending'] > 0)
+                                        @if(isset($stat['essay_pending']) && $stat['essay_pending'] > 0)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                                 {{ number_format($stat['essay_pending']) }} pending
                                             </span>
@@ -251,7 +251,7 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($stat['recent_activity'] > 0)
+                                        @if(isset($stat['recent_activity']) && $stat['recent_activity'] > 0)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 {{ number_format($stat['recent_activity']) }} aktivitas
                                             </span>
@@ -263,11 +263,12 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            <div class="text-sm font-medium text-gray-900">{{ number_format($stat['total_activity']) }}</div>
+                                            <div class="text-sm font-medium text-gray-900">{{ number_format($stat['total_activity'] ?? 0) }}</div>
                                             <div class="ml-2 w-16 bg-gray-200 rounded-full h-2">
                                                 @php
                                                     $maxActivity = collect($instructorStats)->max('total_activity');
-                                                    $percentage = $maxActivity > 0 ? ($stat['total_activity'] / $maxActivity) * 100 : 0;
+                                                    $totalActivity = $stat['total_activity'] ?? 0;
+                                                    $percentage = $maxActivity > 0 ? ($totalActivity / $maxActivity) * 100 : 0;
                                                 @endphp
                                                 <div class="bg-green-600 h-2 rounded-full" style="width: {{ $percentage }}%"></div>
                                             </div>

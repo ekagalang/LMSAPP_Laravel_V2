@@ -470,6 +470,7 @@ class GradebookController extends Controller
         $instructorStats = [];
 
         foreach ($instructors as $instructor) {
+            // Initialize all values to prevent undefined key errors
             $totalDiscussionReplies = 0;
             $totalEssayGraded = 0;
             $totalEssayPending = 0;
