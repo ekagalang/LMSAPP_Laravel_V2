@@ -299,10 +299,23 @@
     </div>
 
     <script>
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
         // Show log details
         function showLogDetails(id) {
             fetch(`/activity-logs/${id}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const meta = data.metadata || {};
                     let content = `
@@ -398,8 +411,22 @@
                     document.getElementById('detailsModal').classList.remove('hidden');
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to load log details');
+                    console.error('Error loading log details:', error);
+                    document.getElementById('detailsContent').innerHTML = `
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-red-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <h3 class="text-sm font-medium text-red-800">Failed to load log details</h3>
+                                    <p class="mt-1 text-sm text-red-700">Error: ${error.message}</p>
+                                    <p class="mt-1 text-xs text-red-600">Please check your network connection or try again later.</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('detailsModal').classList.remove('hidden');
                 });
         }
 
