@@ -166,6 +166,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('lessons/{lesson}/complete', [ProgressController::class, 'markLessonAsCompleted'])->name('lessons.complete');
 
     // Kuis & Esai
+    // IMPORTANT: Specific routes must come BEFORE dynamic routes with parameters
+    Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index')->middleware('permission:view quizzes');
+    Route::get('/quizzes/download-template', [QuizController::class, 'downloadTemplate'])->name('quizzes.download-template');
+    Route::get('/quizzes/import/form', [QuizController::class, 'showImport'])->name('quizzes.import-form')->middleware('permission:manage own courses');
+    Route::post('/quizzes/import', [QuizController::class, 'import'])->name('quizzes.import')->middleware('permission:manage own courses');
+
+    // Dynamic routes with parameters come AFTER specific routes
     Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])->name('quizzes.show');
     Route::get('/quizzes/{quiz}/start', [QuizController::class, 'start'])->name('quizzes.start');
     Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])->name('quizzes.start_attempt');
@@ -178,10 +185,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/quizzes/{quiz}/attempt/{attempt}/submit', [QuizController::class, 'submitAttempt'])->name('quizzes.submit_attempt');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [QuizController::class, 'showResult'])->name('quizzes.result');
     Route::get('/quizzes/{quiz}/leaderboard', [QuizController::class, 'leaderboard'])->name('quizzes.leaderboard');
+
     Route::post('/essays/{content}/submit', [EssaySubmissionController::class, 'store'])->name('essays.store');
     Route::post('/essays/{content}/autosave', [EssaySubmissionController::class, 'autosave'])->name('essays.autosave');
     Route::get('/essays/{content}/drafts', [EssaySubmissionController::class, 'getDrafts'])->name('essays.get_drafts');
-    Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index')->middleware('permission:view quizzes');
 
     Route::post('/contents/{content}/essay-questions', [EssayQuestionController::class, 'store'])
         ->name('essay.questions.store')

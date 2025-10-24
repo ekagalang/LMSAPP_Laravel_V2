@@ -757,4 +757,177 @@ class QuizController extends Controller
 
         return view('quizzes.attempt', compact('quiz', 'attempt'));
     }
+
+    /**
+     * Show import form
+     */
+    public function showImport()
+    {
+        $this->authorize('create', Quiz::class);
+
+        $lessons = Lesson::whereHas('course', function ($query) {
+            $query->where('user_id', Auth::id())
+                  ->orWhereHas('instructors', function ($q) {
+                      $q->where('user_id', Auth::id());
+                  });
+        })->get();
+
+        return view('quizzes.import', compact('lessons'));
+    }
+
+    /**
+     * Import quizzes from Excel
+     */
+    public function import(Request $request)
+    {
+        $this->authorize('create', Quiz::class);
+
+        $request->validate([
+            'lesson_id' => 'required|exists:lessons,id',
+            'file' => 'required|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            $import = new \App\Imports\QuizImport($request->lesson_id, Auth::id());
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+            $errors = $import->getErrors();
+            $successCount = $import->getSuccessCount();
+
+            if ($successCount > 0) {
+                $message = "{$successCount} quiz berhasil diimport.";
+
+                if (count($errors) > 0) {
+                    $message .= " Namun terdapat " . count($errors) . " error.";
+                    session()->flash('import_errors', $errors);
+                }
+
+                return redirect()->route('quizzes.index')
+                    ->with('success', $message);
+            } else {
+                return redirect()->back()
+                    ->with('error', 'Tidak ada quiz yang berhasil diimport.')
+                    ->with('import_errors', $errors);
+            }
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Download Excel template
+     */
+    public function downloadTemplate()
+    {
+        // Skip authorization for template download - anyone can download template
+        // $this->authorize('create', Quiz::class);
+
+        $headers = [
+            'quiz_title',
+            'quiz_description',
+            'passing_percentage',
+            'time_limit',
+            'show_answers_after_attempt',
+            'enable_leaderboard',
+            'status',
+            'question_text',
+            'question_type',
+            'marks',
+            'option_1',
+            'option_2',
+            'option_3',
+            'option_4',
+            'option_5',
+            'option_6',
+            'option_7',
+            'option_8',
+            'option_9',
+            'option_10',
+            'correct_answer',
+        ];
+
+        $sampleData = [
+            [
+                'quiz_title' => 'Sample Quiz - Matematika Dasar',
+                'quiz_description' => 'Quiz ini berisi pertanyaan matematika dasar',
+                'passing_percentage' => 70,
+                'time_limit' => 30,
+                'show_answers_after_attempt' => 'yes',
+                'enable_leaderboard' => 'yes',
+                'status' => 'draft',
+                'question_text' => 'Berapa hasil dari 2 + 2?',
+                'question_type' => 'multiple_choice',
+                'marks' => 10,
+                'option_1' => '3',
+                'option_2' => '4',
+                'option_3' => '5',
+                'option_4' => '6',
+                'option_5' => '',
+                'option_6' => '',
+                'option_7' => '',
+                'option_8' => '',
+                'option_9' => '',
+                'option_10' => '',
+                'correct_answer' => '4',
+            ],
+            [
+                'quiz_title' => 'Sample Quiz - Matematika Dasar',
+                'quiz_description' => 'Quiz ini berisi pertanyaan matematika dasar',
+                'passing_percentage' => 70,
+                'time_limit' => 30,
+                'show_answers_after_attempt' => 'yes',
+                'enable_leaderboard' => 'yes',
+                'status' => 'draft',
+                'question_text' => 'Apakah 5 adalah bilangan prima?',
+                'question_type' => 'true_false',
+                'marks' => 10,
+                'option_1' => '',
+                'option_2' => '',
+                'option_3' => '',
+                'option_4' => '',
+                'option_5' => '',
+                'option_6' => '',
+                'option_7' => '',
+                'option_8' => '',
+                'option_9' => '',
+                'option_10' => '',
+                'correct_answer' => 'true',
+            ],
+            [
+                'quiz_title' => 'Sample Quiz - Matematika Dasar',
+                'quiz_description' => 'Quiz ini berisi pertanyaan matematika dasar',
+                'passing_percentage' => 70,
+                'time_limit' => 30,
+                'show_answers_after_attempt' => 'yes',
+                'enable_leaderboard' => 'yes',
+                'status' => 'draft',
+                'question_text' => 'Berapa hasil dari 10 x 5?',
+                'question_type' => 'multiple_choice',
+                'marks' => 10,
+                'option_1' => '45',
+                'option_2' => '50',
+                'option_3' => '55',
+                'option_4' => '60',
+                'option_5' => '',
+                'option_6' => '',
+                'option_7' => '',
+                'option_8' => '',
+                'option_9' => '',
+                'option_10' => '',
+                'correct_answer' => '50',
+            ],
+        ];
+
+        try {
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\QuizTemplateExport($headers, $sampleData),
+                'quiz_import_template.xlsx'
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal download template: ' . $e->getMessage());
+        }
+    }
 }

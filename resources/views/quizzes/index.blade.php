@@ -12,7 +12,7 @@
                     </div>
                 </div>
                 @can('manage-courses')
-                    <a href="{{ route('quizzes.create') }}" 
+                    <a href="{{ route('quizzes.create') }}"
                        class="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all duration-200 flex items-center space-x-2">
                         <i class="fas fa-plus"></i>
                         <span>Buat Kuis Baru</span>

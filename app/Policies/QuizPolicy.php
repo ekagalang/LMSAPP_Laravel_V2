@@ -41,14 +41,17 @@ class QuizPolicy
 
         $course = $quiz->lesson->course;
 
-        // Instructors (by relation or quiz owner) may preview
-        if ($user->can('view quizzes')) {
-            return $quiz->user_id === $user->id ||
-                   $course->instructors()->where('user_id', $user->id)->exists();
-        }
+        // Check if user is enrolled in the course
+        $isEnrolled = $user->courses()->where('course_id', $course->id)->exists();
 
-        // Izinkan peserta jika terdaftar di kursus
-        return $user->courses()->where('course_id', $course->id)->exists();
+        // Instructors and quiz owners can preview (must also check if instructor of this course)
+        $isInstructor = $user->can('view quizzes') && (
+            $quiz->user_id === $user->id ||
+            $course->instructors()->where('user_id', $user->id)->exists()
+        );
+
+        // Allow if enrolled OR is instructor
+        return $isEnrolled || $isInstructor;
     }
 
     /**
