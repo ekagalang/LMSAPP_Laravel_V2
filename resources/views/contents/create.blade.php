@@ -379,24 +379,110 @@
                         <div id="quiz_form_fields" class="content-field hidden">
                             <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-100">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4">🧠 Pengaturan Kuis</h3>
-                                
-                                <div class="mb-4">
-                                    <label for="time_limit" class="block text-sm font-semibold text-gray-700 mb-2">
-                                        ⏱️ Durasi Pengerjaan (Menit)
+
+                                <!-- Quiz Creation Method Toggle -->
+                                <div class="mb-6">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                        📋 Cara Membuat Kuis
                                     </label>
-                                    <input 
-                                        type="text"                      {{-- 1. Ubah tipe --}}
-                                        inputmode="numeric"              {{-- Keyboard numerik di mobile --}}
-                                        name="time_limit"                {{-- 2. Ganti nama agar sesuai Controller --}}
-                                        id="time_limit"                  {{-- Ganti id agar sesuai label --}}
-                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"  {{-- 3. Tambah filter JS --}}
-                                        class="w-full max-w-xs px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
-                                        placeholder="Contoh: 60"
-                                        value="{{ old('time_limit') }}"> {{-- Sesuaikan juga 'old' helper --}}
-                                    <p class="text-sm text-gray-500 mt-2">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="quiz_method" value="manual" class="sr-only" onchange="toggleQuizMethod()" checked>
+                                            <div class="p-4 border-2 border-gray-200 rounded-xl hover:border-orange-300 transition-all duration-300 text-center quiz-method-card">
+                                                <div class="text-3xl mb-2">✍️</div>
+                                                <h4 class="font-semibold text-gray-900">Manual</h4>
+                                                <p class="text-xs text-gray-500 mt-1">Buat nanti di edit</p>
+                                            </div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="quiz_method" value="import" class="sr-only" onchange="toggleQuizMethod()">
+                                            <div class="p-4 border-2 border-gray-200 rounded-xl hover:border-orange-300 transition-all duration-300 text-center quiz-method-card">
+                                                <div class="text-3xl mb-2">📊</div>
+                                                <h4 class="font-semibold text-gray-900">Import Excel</h4>
+                                                <p class="text-xs text-gray-500 mt-1">Upload file Excel</p>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
 
-                                <p class="text-center text-gray-600 italic">Pengaturan pertanyaan lebih lanjut tersedia dalam mode edit.</p>
+                                <!-- Manual Method Fields -->
+                                <div id="manual_quiz_fields">
+                                    <div class="mb-4">
+                                        <label for="time_limit" class="block text-sm font-semibold text-gray-700 mb-2">
+                                            ⏱️ Durasi Pengerjaan (Menit)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            inputmode="numeric"
+                                            name="time_limit"
+                                            id="time_limit"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                            class="w-full max-w-xs px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                                            placeholder="Contoh: 60"
+                                            value="{{ old('time_limit') }}">
+                                        <p class="text-sm text-gray-500 mt-2">Biarkan kosong atau isi 0 jika tidak ada batas waktu.</p>
+                                    </div>
+
+                                    <p class="text-center text-gray-600 italic">Pengaturan pertanyaan lebih lanjut tersedia dalam mode edit.</p>
+                                </div>
+
+                                <!-- Import Method Fields -->
+                                <div id="import_quiz_fields" class="hidden">
+                                    <!-- Download Template Section -->
+                                    <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 mb-4 text-white">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="bg-white/20 p-3 rounded-lg">
+                                                    <i class="fas fa-download text-xl"></i>
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-bold">Template Excel</h4>
+                                                    <p class="text-xs text-green-100">Download template terlebih dahulu</p>
+                                                </div>
+                                            </div>
+                                            <a href="{{ route('quizzes.download-template') }}" target="_blank"
+                                               class="bg-white text-green-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-all duration-200 flex items-center space-x-2">
+                                                <i class="fas fa-file-excel"></i>
+                                                <span>Download</span>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <!-- File Upload Section -->
+                                    <div class="mb-4">
+                                        <label for="quiz_excel_file" class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-file-upload mr-2 text-orange-600"></i>Upload File Excel
+                                        </label>
+                                        <div class="flex items-center justify-center w-full">
+                                            <label for="quiz_excel_file" class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-all duration-200">
+                                                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                                                    <p class="mb-1 text-sm text-gray-500"><span class="font-semibold">Klik untuk upload</span> atau drag and drop</p>
+                                                    <p class="text-xs text-gray-500">File Excel (XLSX, XLS) maksimal 2MB</p>
+                                                    <p class="text-xs text-gray-400 mt-2" id="quiz_file_name"></p>
+                                                </div>
+                                                <input id="quiz_excel_file" name="quiz_excel_file" type="file" class="hidden" accept=".xlsx,.xls" onchange="updateQuizFileName(this)" />
+                                            </label>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-2">
+                                            <i class="fas fa-info-circle text-blue-500"></i>
+                                            File Excel harus sesuai dengan format template yang telah didownload
+                                        </p>
+                                    </div>
+
+                                    <!-- Instructions -->
+                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-blue-900 mb-2 flex items-center">
+                                            <i class="fas fa-lightbulb mr-2"></i>Panduan Cepat
+                                        </h5>
+                                        <ul class="text-sm text-blue-800 space-y-1">
+                                            <li>• Download template Excel terlebih dahulu</li>
+                                            <li>• Isi data quiz sesuai format yang ada</li>
+                                            <li>• Satu quiz bisa memiliki banyak pertanyaan</li>
+                                            <li>• Upload file Excel yang sudah diisi</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -671,5 +757,47 @@
         document.querySelectorAll('input[name="type"]').forEach(input => {
             input.addEventListener('change', toggleContentTypeFields);
         });
+
+        // Toggle quiz method (manual vs import)
+        function toggleQuizMethod() {
+            const method = document.querySelector('input[name="quiz_method"]:checked').value;
+            const manualFields = document.getElementById('manual_quiz_fields');
+            const importFields = document.getElementById('import_quiz_fields');
+
+            if (method === 'manual') {
+                manualFields.classList.remove('hidden');
+                importFields.classList.add('hidden');
+                // Clear excel file input
+                document.getElementById('quiz_excel_file').value = '';
+                document.getElementById('quiz_file_name').textContent = '';
+            } else {
+                manualFields.classList.add('hidden');
+                importFields.classList.remove('hidden');
+            }
+
+            // Update card styling
+            document.querySelectorAll('.quiz-method-card').forEach(card => {
+                card.classList.remove('border-orange-500', 'bg-orange-50', 'shadow-lg');
+            });
+            const selectedCard = document.querySelector('input[name="quiz_method"]:checked').parentElement.querySelector('.quiz-method-card');
+            selectedCard.classList.add('border-orange-500', 'bg-orange-50', 'shadow-lg');
+        }
+
+        // Update quiz file name display
+        function updateQuizFileName(input) {
+            const fileName = input.files[0]?.name;
+            const fileNameDisplay = document.getElementById('quiz_file_name');
+            if (fileName) {
+                fileNameDisplay.textContent = 'File terpilih: ' + fileName;
+                fileNameDisplay.classList.remove('text-gray-400');
+                fileNameDisplay.classList.add('text-orange-600', 'font-semibold');
+            }
+        }
     </script>
+
+    <style>
+        .quiz-method-card input:checked + div {
+            @apply border-orange-500 bg-orange-50 shadow-lg;
+        }
+    </style>
 </x-app-layout>

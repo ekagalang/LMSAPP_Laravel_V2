@@ -484,9 +484,15 @@ class ContentController extends Controller
         }
 
         if ($request->input('type') === 'quiz') {
-            $rules['quiz'] = 'required|array';
-            $rules['quiz.title'] = 'required|string|max:255';
-            $rules['time_limit'] = 'nullable|integer|min:0';
+            // If importing from Excel
+            if ($request->hasFile('quiz_excel_file')) {
+                $rules['quiz_excel_file'] = 'required|file|mimes:xlsx,xls,csv|max:2048';
+            } else {
+                // Manual quiz creation
+                $rules['quiz'] = 'required|array';
+                $rules['quiz.title'] = 'required|string|max:255';
+                $rules['time_limit'] = 'nullable|integer|min:0';
+            }
         }
 
         if ($request->input('type') === 'zoom') {
@@ -678,11 +684,43 @@ class ContentController extends Controller
                 $content->order = $request->input('order', $content->order ?? 1);
             }
 
-            if ($validated['type'] === 'quiz' && $request->has('quiz')) {
-                $quizData = $request->input('quiz');
-                $quizData['time_limit'] = $validated['time_limit'] ?? null;
-                $quiz = $this->saveQuiz($quizData, $lesson, $content->quiz_id);
-                $content->quiz_id = $quiz->id;
+            if ($validated['type'] === 'quiz') {
+                // Check if import from Excel
+                if ($request->hasFile('quiz_excel_file')) {
+                    try {
+                        $import = new \App\Imports\QuizImport($lesson->id, Auth::id());
+                        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('quiz_excel_file'));
+
+                        $errors = $import->getErrors();
+                        $successCount = $import->getSuccessCount();
+
+                        if ($successCount > 0) {
+                            // Get the first imported quiz to link with this content
+                            $importedQuiz = \App\Models\Quiz::where('lesson_id', $lesson->id)
+                                ->where('user_id', Auth::id())
+                                ->latest()
+                                ->first();
+
+                            if ($importedQuiz) {
+                                $content->quiz_id = $importedQuiz->id;
+                            }
+
+                            if (count($errors) > 0) {
+                                session()->flash('import_errors', $errors);
+                            }
+                        } else {
+                            throw new \Exception('No quiz was successfully imported. ' . implode('; ', $errors));
+                        }
+                    } catch (\Exception $e) {
+                        throw new \Exception('Import failed: ' . $e->getMessage());
+                    }
+                } elseif ($request->has('quiz')) {
+                    // Manual quiz creation
+                    $quizData = $request->input('quiz');
+                    $quizData['time_limit'] = $validated['time_limit'] ?? null;
+                    $quiz = $this->saveQuiz($quizData, $lesson, $content->quiz_id);
+                    $content->quiz_id = $quiz->id;
+                }
             } else {
                 if ($content->quiz) $content->quiz->delete();
                 $content->quiz_id = null;
