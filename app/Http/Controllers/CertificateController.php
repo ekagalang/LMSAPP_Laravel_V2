@@ -775,7 +775,7 @@ class CertificateController extends Controller
 
             $certificate->update(['path' => $filePath]);
 
-            $message = $request->has('certificate_template_id') && $request->certificate_template_id 
+            $message = $request->has('certificate_template_id') && $request->certificate_template_id
                 ? 'Sertifikat berhasil diperbarui dengan template baru.'
                 : 'Sertifikat berhasil diperbarui dengan template terbaru.';
 
@@ -783,6 +783,112 @@ class CertificateController extends Controller
         } catch (\Exception $e) {
             \Log::error("Failed to update certificate template for {$certificate->id}: " . $e->getMessage());
             return back()->with('error', 'Gagal memperbarui sertifikat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Start bulk download all certificates with filters (async)
+     */
+    public function downloadAll(Request $request)
+    {
+        $this->authorize('viewAny', Certificate::class);
+
+        $request->validate([
+            'course_id' => 'nullable|exists:courses,id',
+            'search' => 'nullable|string|max:255'
+        ]);
+
+        // Generate unique batch ID
+        $batchId = 'bulk_' . uniqid() . '_' . now()->timestamp;
+
+        // Dispatch job to handle the download in background
+        \App\Jobs\BulkDownloadCertificatesJob::dispatch(
+            $batchId,
+            $request->course_id,
+            $request->search
+        );
+
+        return response()->json([
+            'success' => true,
+            'batch_id' => $batchId,
+            'message' => 'Download sedang diproses. Harap tunggu...'
+        ]);
+    }
+
+    /**
+     * Check download status
+     */
+    public function downloadStatus($batchId)
+    {
+        $statusFile = storage_path('app/temp/download_status_' . $batchId . '.json');
+
+        if (!file_exists($statusFile)) {
+            return response()->json([
+                'status' => 'not_found',
+                'message' => 'Status tidak ditemukan'
+            ], 404);
+        }
+
+        $status = json_decode(file_get_contents($statusFile), true);
+
+        return response()->json($status);
+    }
+
+    /**
+     * Download the prepared ZIP file
+     */
+    public function downloadZip($batchId)
+    {
+        $this->authorize('viewAny', Certificate::class);
+
+        $statusFile = storage_path('app/temp/download_status_' . $batchId . '.json');
+
+        if (!file_exists($statusFile)) {
+            abort(404, 'Download tidak ditemukan');
+        }
+
+        $status = json_decode(file_get_contents($statusFile), true);
+
+        if ($status['status'] !== 'completed' || !isset($status['zip_path'])) {
+            abort(400, 'Download belum selesai atau gagal');
+        }
+
+        $zipPath = $status['zip_path'];
+
+        if (!file_exists($zipPath)) {
+            abort(404, 'File ZIP tidak ditemukan');
+        }
+
+        // Get the filename from path
+        $zipFileName = basename($zipPath);
+
+        // Download and schedule cleanup
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Cleanup old download files (can be scheduled)
+     */
+    public function cleanupDownloads()
+    {
+        $tempDir = storage_path('app/temp');
+
+        if (!is_dir($tempDir)) {
+            return;
+        }
+
+        $files = glob($tempDir . '/*');
+        $now = time();
+        $maxAge = 3600; // 1 hour
+
+        foreach ($files as $file) {
+            if (is_file($file) && ($now - filemtime($file) > $maxAge)) {
+                @unlink($file);
+            } elseif (is_dir($file) && ($now - filemtime($file) > $maxAge)) {
+                // Remove directory and its contents
+                array_map('unlink', glob($file . '/*'));
+                @rmdir($file);
+            }
         }
     }
 }

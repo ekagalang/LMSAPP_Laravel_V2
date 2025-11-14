@@ -1,0 +1,160 @@
+================================================================================
+SETUP FITUR BULK DOWNLOAD SERTIFIKAT (1000+ SERTIFIKAT)
+================================================================================
+
+FITUR BARU:
+-----------
+1. Download semua sertifikat sesuai filter (course, search)
+2. Batch processing untuk handle 1000+ sertifikat
+3. Progress indicator real-time
+4. Background job untuk tidak membebani server
+5. Auto cleanup file temporary setelah 1 jam
+
+CARA MENJALANKAN:
+=================
+
+1. JALANKAN QUEUE WORKER (WAJIB):
+   -------------------------------
+   Buka terminal/cmd baru dan jalankan:
+
+   php artisan queue:work --timeout=1800
+
+   ATAU untuk development (auto-reload):
+
+   php artisan queue:work --timeout=1800 --tries=1
+
+   CATATAN:
+   - Command ini HARUS tetap berjalan di background
+   - Jika server restart, jalankan ulang command ini
+   - Untuk production, setup sebagai service (systemd/supervisor)
+
+2. JALANKAN SCHEDULER (OPSIONAL - untuk auto cleanup):
+   ----------------------------------------------------
+   Untuk auto cleanup file temporary, tambahkan di crontab:
+
+   * * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1
+
+   Atau jalankan manual setiap jam:
+
+   php artisan certificates:cleanup-downloads
+
+3. SETUP UNTUK PRODUCTION (Windows Service):
+   -----------------------------------------
+   Gunakan NSSM (Non-Sucking Service Manager):
+
+   a. Download NSSM dari https://nssm.cc/download
+   b. Install service:
+
+      nssm install LaravelQueue "C:\path\to\php.exe" "artisan queue:work --timeout=1800"
+      nssm set LaravelQueue AppDirectory "C:\path\to\project"
+      nssm start LaravelQueue
+
+CARA MENGGUNAKAN FITUR:
+========================
+
+1. Buka halaman Certificate Management
+2. Klik tombol "Download Semua (X sertifikat)"
+3. Konfirmasi dialog yang muncul
+4. Progress bar akan muncul dan menampilkan:
+   - Jumlah sertifikat yang sedang diproses
+   - Progress bar visual
+   - Status proses
+5. Setelah selesai, file ZIP akan otomatis terdownload
+6. File temporary akan otomatis dihapus setelah 1 jam
+
+OPTIMASI UNTUK 1000+ SERTIFIKAT:
+=================================
+
+1. Batch Size: 50 sertifikat per batch (dapat diubah di BulkDownloadCertificatesJob.php line 87)
+2. Delay: 100ms setiap 50 sertifikat untuk mencegah overload
+3. Timeout: 30 menit maksimal (dapat diubah di BulkDownloadCertificatesJob.php line 20)
+4. Memory: Process dalam chunk untuk efisiensi memory
+
+FILES YANG DIMODIFIKASI:
+=========================
+
+1. resources/views/certificate-management/index.blade.php
+   - Tambah tombol "Download Semua"
+   - Tambah progress indicator
+   - Tambah JavaScript untuk polling status
+
+2. app/Http/Controllers/CertificateController.php
+   - Method: downloadAll() - untuk start download
+   - Method: downloadStatus() - untuk cek status
+   - Method: downloadZip() - untuk download file
+   - Method: cleanupDownloads() - untuk cleanup manual
+
+3. app/Jobs/BulkDownloadCertificatesJob.php
+   - Job baru untuk handle batch processing
+   - Process dalam chunk untuk efisiensi
+   - Update status secara berkala
+
+4. routes/web.php
+   - POST /certificate-management/download-all
+   - GET /certificate-management/download-status/{batchId}
+   - GET /certificate-management/download-zip/{batchId}
+
+5. app/Console/Commands/CleanupDownloadsCommand.php
+   - Command untuk cleanup file temporary
+
+6. routes/console.php
+   - Schedule cleanup command setiap jam
+
+TROUBLESHOOTING:
+================
+
+MASALAH: Download tidak jalan
+SOLUSI: Pastikan queue worker sudah berjalan (php artisan queue:work)
+
+MASALAH: Timeout saat download banyak sertifikat
+SOLUSI: Tingkatkan timeout di BulkDownloadCertificatesJob.php line 20
+
+MASALAH: File ZIP tidak ditemukan
+SOLUSI: Cek apakah folder storage/app/temp/ ada dan writable
+
+MASALAH: Progress stuck
+SOLUSI:
+1. Cek log di storage/logs/laravel.log
+2. Cek status job: php artisan queue:failed
+3. Retry failed job: php artisan queue:retry all
+
+STRUKTUR FILE TEMPORARY:
+=========================
+
+storage/app/temp/
+├── bulk_download_{batchId}/
+│   └── certificates_YYYY-MM-DD_HHmmss.zip
+└── download_status_{batchId}.json
+
+PERMISSION YANG DIPERLUKAN:
+============================
+
+User harus memiliki permission:
+- view certificate management
+- view progress reports
+
+MONITORING:
+===========
+
+1. Cek log aplikasi:
+   tail -f storage/logs/laravel.log | grep "Bulk Download"
+
+2. Cek failed jobs:
+   php artisan queue:failed
+
+3. Cek queue worker status (production):
+   supervisorctl status laravel-worker
+
+CATATAN PENTING:
+================
+
+1. File ZIP akan otomatis dihapus setelah didownload
+2. File temporary akan dihapus setelah 1 jam via scheduled task
+3. Setiap batch download mendapat unique batch ID
+4. Progress di-update setiap 10 sertifikat
+5. Maximum 1800 detik (30 menit) per job
+
+CONTACT:
+========
+
+Jika ada masalah, cek log atau hubungi developer.

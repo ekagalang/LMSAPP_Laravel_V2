@@ -3,10 +3,14 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Schedule cleanup command to run every hour
+Schedule::command('certificates:cleanup-downloads')->hourly();
 
 // Audit permission middleware coverage across named routes
 Artisan::command('permissions:audit {--format=table : Output format: table|csv|json} {--missing-only : Show only routes without permission middleware} {--name= : Filter by route name contains} {--method= : Filter by HTTP method} {--path= : Filter by URI contains}', function () {

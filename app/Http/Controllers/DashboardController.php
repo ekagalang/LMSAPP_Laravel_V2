@@ -812,23 +812,34 @@ class DashboardController extends Controller
     {
         try {
             return Cache::remember('eo_stats_' . $user->id, 60, function () use ($user) {
-                // Upcoming zoom sessions
-                $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
-                    ->whereHas('lesson.course.eventOrganizers', function ($query) use ($user) {
-                        $query->where('user_id', $user->id);
-                    })
-                    ->where(function ($query) {
-                        $query->where('is_scheduled', false)
-                            ->orWhere(function ($subQuery) {
-                                $subQuery->where('is_scheduled', true)
-                                    ->where('scheduled_start', '>=', now())
-                                    ->where('scheduled_start', '<=', now()->addDays(7));
-                            });
-                    })
-                    ->with(['lesson.course:id,title'])
-                    ->orderBy('scheduled_start', 'asc')
-                    ->take(5)
-                    ->get(['id', 'lesson_id', 'title', 'body', 'is_scheduled', 'scheduled_start', 'scheduled_end']);
+                // Ensure user has eventOrganizedCourses method
+                if (!method_exists($user, 'eventOrganizedCourses')) {
+                    Log::error('User model missing eventOrganizedCourses method for EO user: ' . $user->id);
+                    throw new \Exception('Missing eventOrganizedCourses relationship');
+                }
+
+                // Upcoming zoom sessions with error handling
+                $upcomingZoomSessions = collect();
+                try {
+                    $upcomingZoomSessions = \App\Models\Content::where('type', 'zoom')
+                        ->whereHas('lesson.course.eventOrganizers', function ($query) use ($user) {
+                            $query->where('user_id', $user->id);
+                        })
+                        ->where(function ($query) {
+                            $query->where('is_scheduled', false)
+                                ->orWhere(function ($subQuery) {
+                                    $subQuery->where('is_scheduled', true)
+                                        ->where('scheduled_start', '>=', now())
+                                        ->where('scheduled_start', '<=', now()->addDays(7));
+                                });
+                        })
+                        ->with(['lesson.course:id,title'])
+                        ->orderBy('scheduled_start', 'asc')
+                        ->take(5)
+                        ->get(['id', 'lesson_id', 'title', 'body', 'is_scheduled', 'scheduled_start', 'scheduled_end']);
+                } catch (\Exception $e) {
+                    Log::warning('Error fetching zoom sessions for EO: ' . $e->getMessage());
+                }
 
                 // Course stats
                 $totalCourses = $user->eventOrganizedCourses()->count();
@@ -843,46 +854,62 @@ class DashboardController extends Controller
                     ->limit(10)
                     ->get();
 
-                // Participant stats
-                $totalParticipants = DB::table('course_user')
-                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
-                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
-                    ->where('course_event_organizer.user_id', $user->id)
-                    ->distinct('course_user.user_id')
-                    ->count('course_user.user_id');
+                // Participant stats with error handling
+                $totalParticipants = 0;
+                $recentEnrollments = 0;
+                try {
+                    $totalParticipants = DB::table('course_user')
+                        ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                        ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                        ->where('course_event_organizer.user_id', $user->id)
+                        ->distinct('course_user.user_id')
+                        ->count('course_user.user_id');
 
-                $recentEnrollments = DB::table('course_user')
-                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
-                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
-                    ->where('course_event_organizer.user_id', $user->id)
-                    ->where('course_user.created_at', '>=', now()->subDays(30))
-                    ->count();
+                    $recentEnrollments = DB::table('course_user')
+                        ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                        ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                        ->where('course_event_organizer.user_id', $user->id)
+                        ->where('course_user.created_at', '>=', now()->subDays(30))
+                        ->count();
+                } catch (\Exception $e) {
+                    Log::warning('Error fetching participant stats for EO: ' . $e->getMessage());
+                }
 
-                // Discussion stats
-                $totalDiscussions = DB::table('discussions')
-                    ->join('contents', 'discussions.content_id', '=', 'contents.id')
-                    ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
-                    ->join('courses', 'lessons.course_id', '=', 'courses.id')
-                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
-                    ->where('course_event_organizer.user_id', $user->id)
-                    ->count();
+                // Discussion stats with error handling
+                $totalDiscussions = 0;
+                try {
+                    $totalDiscussions = DB::table('discussions')
+                        ->join('contents', 'discussions.content_id', '=', 'contents.id')
+                        ->join('lessons', 'contents.lesson_id', '=', 'lessons.id')
+                        ->join('courses', 'lessons.course_id', '=', 'courses.id')
+                        ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                        ->where('course_event_organizer.user_id', $user->id)
+                        ->count();
+                } catch (\Exception $e) {
+                    Log::warning('Error fetching discussion stats for EO: ' . $e->getMessage());
+                }
 
-                // Recent users (by enrollments in last 7 days)
-                $recentUsers = User::select(
-                        'users.id',
-                        'users.name',
-                        'users.email',
-                        DB::raw('MAX(course_user.created_at) as last_enrolled_at')
-                    )
-                    ->join('course_user', 'users.id', '=', 'course_user.user_id')
-                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
-                    ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
-                    ->where('course_event_organizer.user_id', $user->id)
-                    ->where('course_user.created_at', '>=', now()->subDays(7))
-                    ->groupBy('users.id', 'users.name', 'users.email')
-                    ->orderByDesc('last_enrolled_at')
-                    ->limit(5)
-                    ->get();
+                // Recent users (by enrollments in last 7 days) with error handling
+                $recentUsers = collect();
+                try {
+                    $recentUsers = User::select(
+                            'users.id',
+                            'users.name',
+                            'users.email',
+                            DB::raw('MAX(course_user.created_at) as last_enrolled_at')
+                        )
+                        ->join('course_user', 'users.id', '=', 'course_user.user_id')
+                        ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                        ->join('course_event_organizer', 'courses.id', '=', 'course_event_organizer.course_id')
+                        ->where('course_event_organizer.user_id', $user->id)
+                        ->where('course_user.created_at', '>=', now()->subDays(7))
+                        ->groupBy('users.id', 'users.name', 'users.email')
+                        ->orderByDesc('last_enrolled_at')
+                        ->limit(5)
+                        ->get();
+                } catch (\Exception $e) {
+                    Log::warning('Error fetching recent users for EO: ' . $e->getMessage());
+                }
 
                 return [
                     'overview' => [
@@ -917,7 +944,17 @@ class DashboardController extends Controller
                 ];
             });
         } catch (\Exception $e) {
-            Log::error('Error in getEoStats: ' . $e->getMessage());
+            Log::error('Error in getEoStats for user ' . $user->id . ': ' . $e->getMessage());
+            Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            // Clear cache for this user to prevent repeated errors
+            try {
+                Cache::forget('eo_stats_' . $user->id);
+            } catch (\Exception $cacheError) {
+                Log::error('Failed to clear cache for EO user: ' . $cacheError->getMessage());
+            }
+
             return $this->getEmptyStats();
         }
     }

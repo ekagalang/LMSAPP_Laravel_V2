@@ -490,6 +490,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/by-course/{course}', [CertificateController::class, 'byCourse'])->name('by-course')->middleware('permission:view certificate management|view progress reports');
         Route::post('/bulk-action', [CertificateController::class, 'bulkAction'])->name('bulk-action')->middleware('permission:bulk issue certificates');
         Route::post('/{certificate}/update-template', [CertificateController::class, 'updateTemplate'])->name('update-template')->middleware('permission:update certificate template');
+
+        // Bulk download all certificates (async)
+        Route::post('/download-all', [CertificateController::class, 'downloadAll'])->name('download-all')->middleware('permission:view certificate management|view progress reports');
+        Route::get('/download-status/{batchId}', [CertificateController::class, 'downloadStatus'])->name('download-status')->middleware('permission:view certificate management|view progress reports');
+        Route::get('/download-zip/{batchId}', [CertificateController::class, 'downloadZip'])->name('download-zip')->middleware('permission:view certificate management|view progress reports');
     });
 
     // Instructor Analytics Routes
