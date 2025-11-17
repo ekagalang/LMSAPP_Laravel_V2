@@ -10,7 +10,8 @@
       "Read(//c/tools/php84/**)",
       "Bash(findstr:*)",
       "Bash(rm:*)",
-      "Bash(composer require:*)"
+      "Bash(composer require:*)",
+      "Bash(NUL)"
     ],
     "deny": [],
     "ask": []

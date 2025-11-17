@@ -166,6 +166,7 @@ class DashboardController extends Controller
                 'total' => 0,
                 'recent_enrollments' => 0,
             ],
+            // For admin, instructor, and participant dashboards (plural)
             'recent_activities' => [
                 'courses' => collect(),
                 'users' => collect(),
@@ -173,6 +174,10 @@ class DashboardController extends Controller
                 'completions' => collect(),
                 'next_contents' => collect(),
                 'students' => collect(),
+            ],
+            // For EO dashboard (singular)
+            'recent_activity' => [
+                'users' => collect(),
             ],
             'trends' => [
                 'monthly_enrollments' => collect(),
@@ -185,6 +190,7 @@ class DashboardController extends Controller
                 'draft' => 0,
             ],
             'course_performance' => collect(),
+            'upcoming_zoom_sessions' => collect(),
         ];
     }
 
