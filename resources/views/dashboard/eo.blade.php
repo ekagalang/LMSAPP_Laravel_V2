@@ -233,7 +233,7 @@
                                                 <p class="text-xs text-gray-500">{{ $user->email }}</p>
                                             </div>
                                             <div class="text-right">
-                                                <p class="text-xs text-gray-500">{{ $user->created_at->diffForHumans() }}</p>
+                                                <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($user->last_enrolled_at)->diffForHumans() }}</p>
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     Peserta Baru
                                                 </span>

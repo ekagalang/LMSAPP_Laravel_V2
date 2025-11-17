@@ -163,24 +163,57 @@
         </div>
 
         <!-- Bulk Actions -->
-        <div class="bg-white shadow rounded-lg mb-6" id="bulk-actions" style="display: none;">
+        <div class="bg-white shadow rounded-lg mb-6">
             <div class="p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">
-                    Aksi Massal - <span id="selected-count">0</span> sertifikat dipilih
+                    Aksi Massal
                 </h3>
-                <div class="flex gap-4">
-                    <button onclick="bulkAction('download')"
-                            class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                        📥 Download Terpilih (ZIP)
-                    </button>
-                    <button onclick="bulkAction('update_template')"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                        🔄 Update Template
-                    </button>
-                    <button onclick="bulkAction('delete')"
-                            class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                        🗑️ Hapus Terpilih
-                    </button>
+                <div class="flex flex-wrap gap-4">
+                    <!-- Actions for selected certificates -->
+                    <div id="selected-actions" style="display: none;" class="flex gap-4 items-center border-r pr-4">
+                        <span class="text-sm text-gray-600">
+                            <span id="selected-count">0</span> sertifikat dipilih
+                        </span>
+                        <button onclick="bulkAction('download')"
+                                class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                            📥 Download Terpilih
+                        </button>
+                        <button onclick="bulkAction('update_template')"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                            🔄 Update Template
+                        </button>
+                        <button onclick="bulkAction('delete')"
+                                class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                            🗑️ Hapus Terpilih
+                        </button>
+                    </div>
+
+                    <!-- Actions for all certificates -->
+                    <div class="flex gap-4">
+                        <button onclick="downloadAllCertificates()"
+                                class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                            📦 Download Semua ({{ $certificates->total() }} sertifikat)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Download Progress Indicator -->
+                <div id="download-progress" style="display: none;" class="mt-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                        <div class="flex items-center">
+                            <svg class="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-blue-800 font-medium" id="progress-text">Memproses download...</span>
+                        </div>
+                        <div class="mt-2 w-full bg-blue-200 rounded-full h-2">
+                            <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-blue-600 mt-2">
+                            File akan otomatis terdownload setelah selesai. Harap jangan menutup halaman ini.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -375,14 +408,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleBulkActions() {
         const checkedBoxes = document.querySelectorAll('.certificate-checkbox:checked');
         const selectedCountSpan = document.getElementById('selected-count');
+        const selectedActionsDiv = document.getElementById('selected-actions');
 
         if (checkedBoxes.length > 0) {
-            bulkActionsDiv.style.display = 'block';
+            selectedActionsDiv.style.display = 'flex';
             if (selectedCountSpan) {
                 selectedCountSpan.textContent = checkedBoxes.length;
             }
         } else {
-            bulkActionsDiv.style.display = 'none';
+            selectedActionsDiv.style.display = 'none';
         }
     }
 });
@@ -515,6 +549,101 @@ function deleteCertificate(certificateId) {
     
     document.body.appendChild(form);
     form.submit();
+}
+
+// Download all certificates with current filters
+function downloadAllCertificates() {
+    const params = new URLSearchParams(window.location.search);
+    const courseId = params.get('course_id') || '';
+    const search = params.get('search') || '';
+
+    const totalCount = {{ $certificates->total() }};
+
+    if (totalCount === 0) {
+        alert('Tidak ada sertifikat yang bisa didownload');
+        return;
+    }
+
+    if (!confirm(`Anda akan mendownload ${totalCount} sertifikat. Proses ini mungkin memakan waktu. Lanjutkan?`)) {
+        return;
+    }
+
+    // Show progress indicator
+    document.getElementById('download-progress').style.display = 'block';
+    document.getElementById('progress-text').textContent = 'Mempersiapkan download...';
+    document.getElementById('progress-bar').style.width = '0%';
+
+    // Start batch download process
+    startBatchDownload(courseId, search, totalCount);
+}
+
+async function startBatchDownload(courseId, search, totalCount) {
+    try {
+        // Request server to prepare the download in batches
+        const response = await fetch('{{ route("certificate-management.download-all") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                course_id: courseId,
+                search: search
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Poll for download status
+            pollDownloadStatus(data.batch_id, totalCount);
+        } else {
+            document.getElementById('download-progress').style.display = 'none';
+            alert(data.message || 'Gagal memulai download');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('download-progress').style.display = 'none';
+        alert('Terjadi kesalahan saat memulai download');
+    }
+}
+
+async function pollDownloadStatus(batchId, totalCount) {
+    const pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`{{ url('certificate-management/download-status') }}/${batchId}`);
+            const data = await response.json();
+
+            if (data.status === 'processing') {
+                const progress = Math.round((data.processed / totalCount) * 100);
+                document.getElementById('progress-bar').style.width = progress + '%';
+                document.getElementById('progress-text').textContent =
+                    `Memproses ${data.processed} dari ${totalCount} sertifikat...`;
+            } else if (data.status === 'completed') {
+                clearInterval(pollInterval);
+                document.getElementById('progress-bar').style.width = '100%';
+                document.getElementById('progress-text').textContent = 'Download siap!';
+
+                // Trigger download
+                window.location.href = `{{ url('certificate-management/download-zip') }}/${batchId}`;
+
+                // Hide progress after a delay
+                setTimeout(() => {
+                    document.getElementById('download-progress').style.display = 'none';
+                    document.getElementById('progress-bar').style.width = '0%';
+                }, 3000);
+            } else if (data.status === 'failed') {
+                clearInterval(pollInterval);
+                document.getElementById('download-progress').style.display = 'none';
+                alert('Download gagal: ' + (data.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+            clearInterval(pollInterval);
+            document.getElementById('download-progress').style.display = 'none';
+            alert('Terjadi kesalahan saat memantau progress download');
+        }
+    }, 2000); // Poll every 2 seconds
 }
 </script>
 </x-app-layout>
