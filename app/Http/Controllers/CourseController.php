@@ -31,10 +31,28 @@ class CourseController extends Controller
         $user = Auth::user();
         $query = Course::query();
 
-        if (!$user->can('manage all courses') && $user->can('manage own courses')) {
+        // Admin/Super Admin - lihat semua kursus
+        if ($user->can('manage all courses')) {
+            // No filter needed, show all courses
+        }
+        // Instructor - lihat kursus yang dia ajar
+        elseif ($user->can('manage own courses')) {
             $query->whereHas('instructors', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             });
+        }
+        // Event Organizer - lihat kursus yang dia kelola
+        elseif ($user->can('view progress reports')) {
+            $query->whereHas('eventOrganizers', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+        // Participant - lihat kursus yang dia ikuti (enrolled) dan published
+        else {
+            $query->where('status', 'published')
+                ->whereHas('enrolledUsers', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                });
         }
 
         $courses = $query->with('instructors')->latest()->paginate(10);
