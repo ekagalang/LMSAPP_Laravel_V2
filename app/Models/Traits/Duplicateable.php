@@ -31,7 +31,7 @@ trait Duplicateable
                     $newModel->enrollment_token = null;
                     $newModel->token_enabled = false;
                     $newModel->token_expires_at = null;
-                    $newModel->token_type = null;
+                    // Note: token_type tidak ada di courses table (hanya di course_classes)
 
                     \Log::info('Reset token fields for duplicated course', [
                         'original_course_id' => $this->id,
