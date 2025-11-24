@@ -34,12 +34,18 @@ class QuizPolicy
             return true;
         }
 
+        // ✅ CRITICAL FIX: Force refresh lesson relationship from database
+        // Ini penting untuk quiz yang baru diduplikasi agar tidak menggunakan cached/stale data
+        $quiz->unsetRelation('lesson');
+        $quiz->load('lesson.course');
+
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             \Log::warning('Quiz policy failed: Quiz not connected to lesson/course', [
                 'quiz_id' => $quiz->id,
                 'lesson_id' => $quiz->lesson_id,
                 'has_lesson' => !is_null($quiz->lesson),
+                'lesson_loaded' => $quiz->relationLoaded('lesson'),
             ]);
             return false;
         }
@@ -84,6 +90,10 @@ class QuizPolicy
      */
     public function view(User $user, Quiz $quiz): bool
     {
+        // ✅ CRITICAL FIX: Force refresh lesson relationship
+        $quiz->unsetRelation('lesson');
+        $quiz->load('lesson.course');
+
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             return false;
@@ -118,6 +128,10 @@ class QuizPolicy
      */
     public function update(User $user, Quiz $quiz): bool
     {
+        // ✅ CRITICAL FIX: Force refresh lesson relationship
+        $quiz->unsetRelation('lesson');
+        $quiz->load('lesson.course');
+
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             return $user->can('update quizzes') && $quiz->user_id === $user->id;
@@ -139,6 +153,10 @@ class QuizPolicy
      */
     public function delete(User $user, Quiz $quiz): bool
     {
+        // ✅ CRITICAL FIX: Force refresh lesson relationship
+        $quiz->unsetRelation('lesson');
+        $quiz->load('lesson.course');
+
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             return $user->can('delete quizzes') && $quiz->user_id === $user->id;
@@ -156,6 +174,10 @@ class QuizPolicy
 
     public function attempt(User $user, Quiz $quiz)
     {
+        // ✅ CRITICAL FIX: Force refresh lesson relationship
+        $quiz->unsetRelation('lesson');
+        $quiz->load('lesson.course');
+
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
             return false;
