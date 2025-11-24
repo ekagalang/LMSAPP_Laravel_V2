@@ -33,6 +33,7 @@ class Course extends Model
      * Define which relations to duplicate.
      * PERBAIKAN: Hanya duplikasi lessons, TIDAK duplikasi users (instructors, eventOrganizers, participants)
      * agar course duplikat tidak membawa data user dari course asli.
+     * Ini untuk kelas/batch baru dengan peserta baru.
      * @var array
      */
     protected $duplicateRelations = ['lessons'];
