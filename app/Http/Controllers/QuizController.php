@@ -505,9 +505,19 @@ class QuizController extends Controller
             }
         }
 
+        // ✅ FIX: Hitung pass_marks dari passing_percentage
+        // Kolom pass_marks sudah dihapus, gunakan passing_percentage
+        // ⚠️ CRITICAL FIX: Load questions jika belum ter-load untuk menghindari totalMarks = 0
+        if (!$quiz->relationLoaded('questions')) {
+            $quiz->load('questions');
+        }
+
+        $totalMarks = $quiz->questions->sum('marks');
+        $passingMarks = ($totalMarks * ($quiz->passing_percentage ?? 70)) / 100;
+
         $attempt->update([
             'score' => $score,
-            'passed' => ($score >= $quiz->pass_marks),
+            'passed' => ($score >= $passingMarks),
             'completed_at' => now(),
         ]);
 
@@ -598,8 +608,17 @@ class QuizController extends Controller
             }
         }
 
+        // ✅ FIX: Hitung pass_marks dari passing_percentage
+        // ⚠️ CRITICAL FIX: Load questions jika belum ter-load untuk menghindari totalMarks = 0
+        if (!$quiz->relationLoaded('questions')) {
+            $quiz->load('questions');
+        }
+
+        $totalMarks = $quiz->questions->sum('marks');
+        $passingMarks = ($totalMarks * ($quiz->passing_percentage ?? 70)) / 100;
+
         $attempt->score = $score;
-        $attempt->passed = ($score >= $quiz->pass_marks);
+        $attempt->passed = ($score >= $passingMarks);
         $attempt->completed_at = now();
         $attempt->save();
 
@@ -637,7 +656,13 @@ class QuizController extends Controller
         
         // Ambil skor dari attempt yang sudah disimpan
         $score = $attempt->score;
-        $total_marks = $quiz->total_marks;
+        // ✅ FIX: Hitung total_marks dari questions karena kolom total_marks sudah dihapus
+        // ⚠️ CRITICAL FIX: Load questions jika belum ter-load
+        if (!$quiz->relationLoaded('questions')) {
+            $quiz->load('questions');
+        }
+
+        $total_marks = $quiz->questions->sum('marks');
         $score_percentage = ($total_marks > 0) ? ($score / $total_marks) * 100 : 0;
         
         // Cek apakah attempt saat ini lulus

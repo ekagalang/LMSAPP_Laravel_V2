@@ -161,10 +161,19 @@ class BulkForceCompleteJob implements ShouldQueue
 
         $quiz = $content->quiz;
 
+        // ✅ FIX: Hitung pass_marks dari passing_percentage
+        // ⚠️ CRITICAL FIX: Load questions jika belum ter-load
+        if (!$quiz->relationLoaded('questions')) {
+            $quiz->load('questions');
+        }
+
+        $totalMarks = $quiz->questions->sum('marks') ?: 100;
+        $passingMarks = ($totalMarks * ($quiz->passing_percentage ?? 70)) / 100;
+
         QuizAttempt::create([
             'quiz_id' => $quiz->id,
             'user_id' => $user->id,
-            'score' => max($quiz->pass_marks, 0),
+            'score' => max($passingMarks, 0),
             'passed' => true,
             'started_at' => now(),
             'completed_at' => now(),

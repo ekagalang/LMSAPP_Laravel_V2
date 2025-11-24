@@ -36,6 +36,43 @@
     }"
     class="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
 
+        <!-- Alert Messages -->
+        @if(session('success'))
+            <div class="fixed top-4 right-4 z-50 max-w-md" x-data="{ show: true }" x-show="show" x-transition>
+                <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-lg shadow-lg">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-green-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <p class="ml-3 text-sm text-green-700">{{ session('success') }}</p>
+                        <button @click="show = false" class="ml-auto text-green-400 hover:text-green-600">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if(session('warning'))
+            <div class="fixed top-4 right-4 z-50 max-w-md" x-data="{ show: true }" x-show="show" x-transition>
+                <div class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg shadow-lg">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-amber-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <p class="ml-3 text-sm text-amber-700">{{ session('warning') }}</p>
+                        <button @click="show = false" class="ml-auto text-amber-400 hover:text-amber-600">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- [BARU] Form tersembunyi untuk menandai selesai (hanya untuk konten non-tugas) -->
         @if(!$isTask)
         <form id="complete-form" action="{{ route('contents.complete_and_continue', $content->id) }}" method="POST" style="display: none;">
@@ -319,12 +356,22 @@
                 </div>
                 <div class="flex items-center space-x-3">
                     <div x-show="!contentCompleted">
-                        @if(!$isTask)<button @click="markAsCompleted()" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            <span class="text-sm">Tandai Selesai</span>
-                        </button>
+                        @if(!$isTask)
+                            @if($canComplete)
+                                <button @click="markAsCompleted()" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span class="text-sm">Tandai Selesai</span>
+                                </button>
+                            @else
+                                <button disabled class="inline-flex items-center px-4 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed opacity-60">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                    </svg>
+                                    <span class="text-sm">Absensi Diperlukan</span>
+                                </button>
+                            @endif
                         @endif
                     </div>
                     <div x-show="contentCompleted">
@@ -1258,10 +1305,24 @@
                                     </a>
                                 @endif
                             @elseif(!$isContentEffectivelyCompleted && !$isTask)
-                                <button @click="markAsCompleted()"
-                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 hover:scale-105">
-                                    Tandai Selesai
-                                </button>
+                                @if($canComplete)
+                                    <button @click="markAsCompleted()"
+                                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 hover:scale-105">
+                                        Tandai Selesai
+                                    </button>
+                                @else
+                                    <div class="w-full p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <div class="flex items-start gap-3">
+                                            <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <div>
+                                                <p class="text-sm font-medium text-amber-800">Absensi Diperlukan</p>
+                                                <p class="text-xs text-amber-700 mt-1">Anda perlu melakukan absensi terlebih dahulu untuk dapat melanjutkan ke konten berikutnya.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             @else
                                 <!-- TAMBAHAN: Pesan untuk quiz yang belum diselesaikan -->
                                 <div class="w-full text-center py-3">
@@ -1323,10 +1384,24 @@
                                     </button>
                                 </form>
                             @elseif (!$isContentEffectivelyCompleted && !$isTask)
-                                <button @click="markAsCompleted()"
-                                        class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">
-                                    Tandai Selesai untuk Lanjut
-                                </button>
+                                @if($canComplete)
+                                    <button @click="markAsCompleted()"
+                                            class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:scale-105">
+                                        Tandai Selesai untuk Lanjut
+                                    </button>
+                                @else
+                                    <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <div class="flex items-start gap-3">
+                                            <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <div>
+                                                <p class="text-sm font-medium text-amber-800">Absensi Diperlukan</p>
+                                                <p class="text-xs text-amber-700 mt-1">Anda perlu melakukan absensi terlebih dahulu sebelum dapat melanjutkan.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             @else
                                 {{-- TAMBAHAN: Pesan untuk desktop --}}
                                 <div class="text-center py-3">
@@ -1402,14 +1477,25 @@
                     <!-- Completion Action -->
                     <div class="pt-4 border-t border-gray-100">
                         <div x-show="!contentCompleted" class="space-y-3">
-                            <p class="text-sm text-gray-600 text-center">Tandai konten ini sebagai selesai?</p>
-                            <button @click="markAsCompleted(); showProgress = false"
-                                    class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 hover:scale-105">
-                                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                Tandai Selesai
-                            </button>
+                            @if($canComplete)
+                                <p class="text-sm text-gray-600 text-center">Tandai konten ini sebagai selesai?</p>
+                                <button @click="markAsCompleted(); showProgress = false"
+                                        class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 hover:scale-105">
+                                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Tandai Selesai
+                                </button>
+                            @else
+                                <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <p class="text-xs text-amber-800 text-center">
+                                        <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Absensi diperlukan
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                         <div x-show="contentCompleted" class="text-center">
                             <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 font-medium rounded-xl">

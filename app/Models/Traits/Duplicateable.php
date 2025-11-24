@@ -25,6 +25,19 @@ trait Duplicateable
                     $newModel->title .= ' (Copy)';
                 }
 
+                // ✅ FIX: Reset unique/token fields untuk Course model
+                // Ini mencegah duplicate key error pada enrollment_token
+                if ($this instanceof \App\Models\Course) {
+                    $newModel->enrollment_token = null;
+                    $newModel->token_enabled = false;
+                    $newModel->token_expires_at = null;
+                    $newModel->token_type = null;
+
+                    \Log::info('Reset token fields for duplicated course', [
+                        'original_course_id' => $this->id,
+                    ]);
+                }
+
                 // Save the replicated model to get a new ID
                 $newModel->push();
 
@@ -39,6 +52,7 @@ trait Duplicateable
                     'model_type' => get_class($this),
                     'original_id' => $this->id,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
                 throw $e;
             }
@@ -52,6 +66,7 @@ trait Duplicateable
                     \Log::info('Starting quiz duplication for content', [
                         'content_id' => $this->id,
                         'quiz_id' => $this->quiz->id,
+                        'lesson_id' => $this->lesson_id ?? 'N/A',
                     ]);
 
                     $originalQuiz = $this->quiz;
@@ -64,6 +79,12 @@ trait Duplicateable
                     // Ini penting agar authorization/policy tetap bekerja
                     // Quiz harus dimiliki oleh instructor yang sama, bukan admin yang duplikasi
                     $newQuiz->user_id = $originalQuiz->user_id;
+
+                    // ✅ FIX CRITICAL: Update lesson_id ke lesson baru dari content baru
+                    // Ini sangat penting untuk authorization - QuizPolicy mengecek quiz->lesson->course
+                    // Tanpa ini, quiz akan menunjuk ke lesson LAMA dan participant course BARU tidak bisa akses (403)
+                    $newQuiz->lesson_id = $newModel->lesson_id;
+
                     $newQuiz->save();
 
                     // Hubungkan konten baru dengan kuis baru
@@ -89,6 +110,9 @@ trait Duplicateable
                         'original_quiz_id' => $originalQuiz->id,
                         'new_quiz_id' => $newQuiz->id,
                         'questions_count' => $questionsCount,
+                        'original_lesson_id' => $originalQuiz->lesson_id,
+                        'new_lesson_id' => $newQuiz->lesson_id,
+                        'user_id' => $newQuiz->user_id,
                     ]);
                 } catch (\Exception $e) {
                     \Log::error('Failed to duplicate quiz', [

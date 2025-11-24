@@ -58,7 +58,32 @@ class ContentController extends Controller
             }
         }
 
-        return view('contents.show', compact('content', 'course', 'unlockedContents', 'hasPassedQuizBefore', 'orderedContents'));
+        // ✅ FIX: Cek attendance status untuk content ini
+        $attendanceStatus = null;
+        $canComplete = true; // Default bisa complete
+
+        if ($content->attendance_required) {
+            $attendance = $user->attendances()
+                ->where('content_id', $content->id)
+                ->first();
+
+            if (!$attendance) {
+                $attendanceStatus = 'not_marked';
+                $canComplete = false;
+            } elseif (!in_array($attendance->status, ['present', 'excused'])) {
+                $attendanceStatus = 'absent';
+                $canComplete = false;
+            } elseif ($content->min_attendance_minutes &&
+                      $attendance->duration_minutes < $content->min_attendance_minutes) {
+                $attendanceStatus = 'insufficient_duration';
+                $canComplete = false;
+            } else {
+                $attendanceStatus = 'ok';
+                $canComplete = true;
+            }
+        }
+
+        return view('contents.show', compact('content', 'course', 'unlockedContents', 'hasPassedQuizBefore', 'orderedContents', 'attendanceStatus', 'canComplete'));
     }
 
     /**
@@ -69,6 +94,26 @@ class ContentController extends Controller
         $user = Auth::user();
         $lesson = $content->lesson;
         $course = $lesson->course;
+
+        // ✅ FIX: Cek apakah content memerlukan attendance
+        if ($content->attendance_required) {
+            $attendance = $user->attendances()
+                ->where('content_id', $content->id)
+                ->first();
+
+            // Jika belum ada attendance atau belum hadir
+            if (!$attendance || !in_array($attendance->status, ['present', 'excused'])) {
+                return redirect()->route('contents.show', $content->id)
+                    ->with('warning', 'Anda perlu melakukan absensi terlebih dahulu sebelum dapat melanjutkan ke konten berikutnya.');
+            }
+
+            // Cek minimum duration jika diperlukan
+            if ($content->min_attendance_minutes &&
+                $attendance->duration_minutes < $content->min_attendance_minutes) {
+                return redirect()->route('contents.show', $content->id)
+                    ->with('warning', 'Anda perlu mengikuti konten ini minimal ' . $content->min_attendance_minutes . ' menit sebelum dapat melanjutkan.');
+            }
+        }
 
         // Tandai konten saat ini sebagai selesai
         $user->completedContents()->syncWithoutDetaching([
