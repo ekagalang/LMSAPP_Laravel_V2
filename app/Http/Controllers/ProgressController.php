@@ -37,7 +37,9 @@ class ProgressController extends Controller
                 $q->where('id', $course->id);
             })
             ->with(['quiz' => function ($q) {
-                $q->select('id', 'title', 'total_marks', 'pass_marks', 'lesson_id');
+                // ✅ FIX: Ganti total_marks dan pass_marks dengan passing_percentage
+                // Kolom total_marks dan pass_marks sudah dihapus di migration 2025_10_03_133115
+                $q->select('id', 'title', 'passing_percentage', 'lesson_id')->with('questions');
             }, 'quiz.lesson.course'])
             ->orderByDesc('completed_at')
             ->get();
@@ -50,11 +52,11 @@ class ProgressController extends Controller
                 $quiz = $attemptsSorted->first()->quiz;
 
                 $attemptItems = $attemptsSorted->map(function ($attempt) use ($quiz) {
-                    $totalMarks = (int) ($quiz->total_marks ?? 0);
-                    if ($totalMarks <= 0) {
-                        $sumMarks = (int) ($quiz->questions()->sum('marks'));
-                        $totalMarks = max(1, $sumMarks);
-                    }
+                    // ✅ FIX: Hitung total_marks dari sum marks di questions
+                    // Karena kolom total_marks sudah tidak ada, kita hitung dari questions
+                    $totalMarks = (int) ($quiz->questions->sum('marks'));
+                    $totalMarks = max(1, $totalMarks); // Minimal 1 untuk avoid division by zero
+
                     $percentage = round(((int)$attempt->score / $totalMarks) * 100, 2);
 
                     return [

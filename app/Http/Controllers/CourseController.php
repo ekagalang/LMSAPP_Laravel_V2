@@ -1184,14 +1184,18 @@ class CourseController extends Controller
                         $attemptsData = [];
                         $latestScore = 0;
                         $isPassed = false;
-                        $passMarks = (int) ($quiz->pass_marks ?? 0);
-                        
+
+                        // ✅ FIX: Hitung pass_marks dari passing_percentage
+                        // ⚠️ CRITICAL FIX: Load questions jika belum ter-load
+                        if (!$quiz->relationLoaded('questions')) {
+                            $quiz->load('questions');
+                        }
+
+                        $totalMarks = $quiz->questions->sum('marks') ?: 1;
+                        $passMarks = ($totalMarks * ($quiz->passing_percentage ?? 70)) / 100;
+
                         foreach ($attempts as $index => $attempt) {
-                            $totalMarks = (int) ($quiz->total_marks ?? 0);
-                            if ($totalMarks <= 0) {
-                                $totalMarks = $quiz->questions->sum('marks') ?: 1;
-                            }
-                            
+                            // ✅ FIX: total_marks sudah dihitung di atas
                             $percentage = $totalMarks > 0 ? round(($attempt->score / $totalMarks) * 100, 2) : 0;
                             $attemptPassed = $attempt->passed || ($passMarks > 0 && $attempt->score >= $passMarks);
                             
@@ -1327,11 +1331,20 @@ class CourseController extends Controller
         $this->authorize('duplicate', Course::class);
 
         try {
+            // ✅ FIX: Increase execution time untuk course dengan banyak content
+            // Ini mencegah timeout pada course yang besar
+            set_time_limit(300); // 5 menit
+
+            // Load relations untuk logging dan validasi
+            $course->loadCount(['lessons', 'contents']);
+
             // ✅ FIX: Add detailed logging untuk debugging
             \Log::info('Starting course duplication', [
                 'course_id' => $course->id,
                 'course_title' => $course->title,
                 'user_id' => Auth::id(),
+                'lessons_count' => $course->lessons_count ?? 0,
+                'contents_count' => $course->contents_count ?? 0,
             ]);
 
             $newCourse = $course->duplicate();
@@ -1343,7 +1356,28 @@ class CourseController extends Controller
             ]);
 
             return redirect()->route('courses.index')
-                ->with('success', "Course \"{$course->title}\" has been duplicated successfully.");
+                ->with('success', "Course \"{$course->title}\" berhasil diduplikasi.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            // ✅ FIX: Handle database-specific errors
+            \Log::error('Course duplication failed - Database Error', [
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'user_id' => Auth::id(),
+                'error_message' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+                'sql' => $e->getSql() ?? 'N/A',
+            ]);
+
+            $errorMessage = 'Gagal menduplikasi course: Terjadi kesalahan database.';
+
+            // Cek jika error karena duplicate key
+            if (str_contains($e->getMessage(), 'Duplicate entry') ||
+                str_contains($e->getMessage(), 'UNIQUE constraint')) {
+                $errorMessage .= ' Kemungkinan ada data yang conflict (misal: enrollment token).';
+            }
+
+            return redirect()->route('courses.index')
+                ->with('error', $errorMessage);
         } catch (\Exception $e) {
             // ✅ FIX: Log detailed error information
             \Log::error('Course duplication failed', [
@@ -1357,7 +1391,7 @@ class CourseController extends Controller
             ]);
 
             // ✅ FIX: Return more detailed error message for debugging
-            $errorMessage = 'Failed to duplicate course: ' . $e->getMessage();
+            $errorMessage = 'Gagal menduplikasi course: ' . $e->getMessage();
 
             return redirect()->route('courses.index')
                 ->with('error', $errorMessage);
