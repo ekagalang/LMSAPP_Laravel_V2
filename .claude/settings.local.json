@@ -12,7 +12,8 @@
       "Bash(rm:*)",
       "Bash(composer require:*)",
       "Bash(NUL)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(storage/logs/laravel.log)"
     ],
     "deny": [],
     "ask": []
