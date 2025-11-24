@@ -20,6 +20,25 @@ trait Duplicateable
                 // Replicate the model instance without its relations
                 $newModel = $this->replicate();
 
+                // ✅ FIX: Remove any attributes that don't exist in the database
+                // Ini mencegah error "Unknown column" saat insert
+                // Apply to all models to ensure no schema mismatch
+                $tableName = $newModel->getTable();
+                $tableColumns = \Schema::getColumnListing($tableName);
+                $modelAttributes = array_keys($newModel->getAttributes());
+
+                // Remove attributes that don't exist in database
+                foreach ($modelAttributes as $attr) {
+                    if (!in_array($attr, $tableColumns)) {
+                        unset($newModel->$attr);
+                        \Log::warning('Removed non-existent column from model', [
+                            'model' => get_class($newModel),
+                            'table' => $tableName,
+                            'column' => $attr,
+                        ]);
+                    }
+                }
+
                 // Append "(Copy)" to the title if it exists and $addCopyToTitle is true
                 if ($addCopyToTitle && isset($newModel->title)) {
                     $newModel->title .= ' (Copy)';
@@ -31,16 +50,19 @@ trait Duplicateable
                     $newModel->enrollment_token = null;
                     $newModel->token_enabled = false;
                     $newModel->token_expires_at = null;
-
-                    // ✅ CRITICAL FIX: Unset token_type karena kolom ini tidak ada di courses table
-                    // token_type ada di fillable tapi tidak ada di database schema
-                    // Jika tidak di-unset, replicate() akan copy attribute ini dan push() akan gagal
-                    unset($newModel->token_type);
+                    $newModel->token_type = 'random'; // Reset to default
 
                     \Log::info('Reset token fields for duplicated course', [
                         'original_course_id' => $this->id,
                     ]);
                 }
+
+                // ✅ DEBUG: Log attributes sebelum push untuk melihat apa yang akan di-insert
+                \Log::info('Model attributes before push()', [
+                    'model_type' => get_class($this),
+                    'attributes' => $newModel->getAttributes(),
+                    'fillable' => $newModel->getFillable(),
+                ]);
 
                 // Save the replicated model to get a new ID
                 $newModel->push();
