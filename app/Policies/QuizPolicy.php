@@ -36,6 +36,11 @@ class QuizPolicy
 
         // Pastikan kuis terhubung ke kursus
         if (!$quiz->lesson || !$quiz->lesson->course) {
+            \Log::warning('Quiz policy failed: Quiz not connected to lesson/course', [
+                'quiz_id' => $quiz->id,
+                'lesson_id' => $quiz->lesson_id,
+                'has_lesson' => !is_null($quiz->lesson),
+            ]);
             return false;
         }
 
@@ -49,6 +54,18 @@ class QuizPolicy
             $quiz->user_id === $user->id ||
             $course->instructors()->where('user_id', $user->id)->exists()
         );
+
+        // ✅ DEBUG: Log authorization decision
+        \Log::info('Quiz policy start() check', [
+            'user_id' => $user->id,
+            'quiz_id' => $quiz->id,
+            'quiz_lesson_id' => $quiz->lesson_id,
+            'lesson_id' => $quiz->lesson->id ?? null,
+            'course_id' => $course->id ?? null,
+            'is_enrolled' => $isEnrolled,
+            'is_instructor' => $isInstructor,
+            'result' => $isEnrolled || $isInstructor,
+        ]);
 
         // Allow if enrolled OR is instructor
         return $isEnrolled || $isInstructor;

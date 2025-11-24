@@ -1356,7 +1356,7 @@ class CourseController extends Controller
             ]);
 
             return redirect()->route('courses.index')
-                ->with('success', "Course \"{$course->title}\" berhasil diduplikasi.");
+                ->with('success', "Course \"{$course->title}\" berhasil diduplikasi dengan {$course->lessons_count} lessons. Silakan tambahkan participants untuk kelas/batch baru.");
         } catch (\Illuminate\Database\QueryException $e) {
             // ✅ FIX: Handle database-specific errors
             \Log::error('Course duplication failed - Database Error', [

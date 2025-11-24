@@ -710,6 +710,10 @@ class QuizController extends Controller
 
     public function start(Quiz $quiz)
     {
+        // ✅ FIX: Eager load lesson and course untuk authorization
+        // Ini penting untuk quiz yang baru diduplikasi agar lesson relationship fresh dari database
+        $quiz->load('lesson.course');
+
         $user = Auth::user();
 
         // Bypass authorization for managers

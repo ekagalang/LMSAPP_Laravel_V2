@@ -97,6 +97,19 @@ trait Duplicateable
 
                     $originalQuiz = $this->quiz;
                     $newQuiz = $originalQuiz->replicate();
+
+                    // ✅ FIX: Remove any attributes that don't exist in quizzes table
+                    $quizTableColumns = \Schema::getColumnListing('quizzes');
+                    $quizAttributes = array_keys($newQuiz->getAttributes());
+                    foreach ($quizAttributes as $attr) {
+                        if (!in_array($attr, $quizTableColumns)) {
+                            unset($newQuiz->$attr);
+                            \Log::warning('Removed non-existent column from Quiz model', [
+                                'column' => $attr,
+                            ]);
+                        }
+                    }
+
                     // Hanya tambahkan "(Copy)" jika ini adalah duplikasi langsung, bukan child
                     if ($addCopyToTitle) {
                         $newQuiz->title .= ' (Copy)';
