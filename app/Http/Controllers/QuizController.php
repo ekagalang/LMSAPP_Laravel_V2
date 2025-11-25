@@ -309,12 +309,36 @@ class QuizController extends Controller
         // PERUBAHAN SELESAI DI SINI
         // =================================================================
 
+        // ✅ DEBUG: Log quiz access attempt
+        \Log::info('Quiz access attempt', [
+            'user_id' => $user->id,
+            'quiz_id' => $quiz->id,
+            'quiz_status' => $quiz->status,
+            'quiz_lesson_id' => $quiz->lesson_id,
+            'lesson_id' => $quiz->lesson->id ?? 'null',
+            'lesson_course_id' => $quiz->lesson->course_id ?? 'null',
+            'course_id' => $quiz->lesson->course->id ?? 'null',
+            'is_enrolled' => $quiz->lesson && $quiz->lesson->course ? $user->isEnrolled($quiz->lesson->course) : false,
+        ]);
+
         if ($quiz->status !== 'published') {
+            \Log::warning('Quiz access denied - not published', [
+                'user_id' => $user->id,
+                'quiz_id' => $quiz->id,
+                'status' => $quiz->status,
+            ]);
             return redirect()->back()->with('error', 'Kuis ini belum dipublikasikan.');
         }
 
         // Managers bypass enrollment check
         if (!$canBypass && (!$quiz->lesson || !$quiz->lesson->course || !$user->isEnrolled($quiz->lesson->course))) {
+            \Log::warning('Quiz access denied - not enrolled or missing lesson/course', [
+                'user_id' => $user->id,
+                'quiz_id' => $quiz->id,
+                'has_lesson' => !is_null($quiz->lesson),
+                'has_course' => $quiz->lesson ? !is_null($quiz->lesson->course) : false,
+                'is_enrolled' => $quiz->lesson && $quiz->lesson->course ? $user->isEnrolled($quiz->lesson->course) : false,
+            ]);
             return redirect()->back()->with('error', 'Anda harus terdaftar di kursus ini untuk memulai kuis.');
         }
 

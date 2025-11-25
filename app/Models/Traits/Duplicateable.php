@@ -124,6 +124,13 @@ trait Duplicateable
                     // Tanpa ini, quiz akan menunjuk ke lesson LAMA dan participant course BARU tidak bisa akses (403)
                     $newQuiz->lesson_id = $newModel->lesson_id;
 
+                    // ✅ FIX CRITICAL: Ensure status is published
+                    // Saat quiz diduplikasi, status harus tetap published agar bisa diakses participant
+                    // QuizController mengecek status published sebelum allow access
+                    if ($originalQuiz->status === 'published') {
+                        $newQuiz->status = 'published';
+                    }
+
                     $newQuiz->save();
 
                     // Hubungkan konten baru dengan kuis baru
@@ -243,7 +250,13 @@ trait Duplicateable
                             try {
                                 // Child models should not have "(Copy)" added to their titles
                                 $newChild = $relatedModel->duplicate(false);
-                                $newModel->{$relationName}()->save($newChild);
+
+                                // ✅ CRITICAL FIX: Update foreign key manually setelah duplikasi
+                                // Karena duplicate() sudah save record dengan foreign key lama,
+                                // kita perlu update foreign key ke parent baru secara manual
+                                $foreignKeyName = $newModel->{$relationName}()->getForeignKeyName();
+                                $newChild->{$foreignKeyName} = $newModel->id;
+                                $newChild->save();
                             } catch (\Exception $e) {
                                 \Log::error('Failed to duplicate child in collection', [
                                     'relation_name' => $relationName,
