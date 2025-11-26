@@ -92,7 +92,8 @@ trait Duplicateable
                     \Log::info('Starting quiz duplication for content', [
                         'content_id' => $this->id,
                         'quiz_id' => $this->quiz->id,
-                        'lesson_id' => $this->lesson_id ?? 'N/A',
+                        'old_lesson_id' => $this->lesson_id,
+                        'new_lesson_id' => $newModel->lesson_id,
                     ]);
 
                     $originalQuiz = $this->quiz;
@@ -122,7 +123,13 @@ trait Duplicateable
                     // ✅ FIX CRITICAL: Update lesson_id ke lesson baru dari content baru
                     // Ini sangat penting untuk authorization - QuizPolicy mengecek quiz->lesson->course
                     // Tanpa ini, quiz akan menunjuk ke lesson LAMA dan participant course BARU tidak bisa akses (403)
-                    $newQuiz->lesson_id = $newModel->lesson_id;
+                    //
+                    // MASALAH: Saat Content di-duplicate, $newModel->lesson_id masih berisi lesson_id LAMA
+                    // karena replicate() menyalin semua attributes. Foreign key baru di-set SETELAH quiz diduplikasi.
+                    //
+                    // SOLUSI SEMENTARA: Set ke lesson_id dari quiz original (yang masih lama)
+                    // Nanti akan kita update di bagian bawah setelah Content foreign key di-update
+                    $newQuiz->lesson_id = $originalQuiz->lesson_id;
 
                     // ✅ FIX CRITICAL: Ensure status is published
                     // Saat quiz diduplikasi, status harus tetap published agar bisa diakses participant
@@ -257,6 +264,22 @@ trait Duplicateable
                                 $foreignKeyName = $newModel->{$relationName}()->getForeignKeyName();
                                 $newChild->{$foreignKeyName} = $newModel->id;
                                 $newChild->save();
+
+                                // ✅ CRITICAL FIX: Update quiz->lesson_id setelah Content->lesson_id di-update
+                                // Ini untuk fix 403 error saat peserta baru mengakses quiz di course hasil duplikasi
+                                if ($relatedModel instanceof \App\Models\Content && $newChild->quiz) {
+                                    $quiz = $newChild->quiz;
+                                    $oldQuizLessonId = $quiz->lesson_id;
+                                    $quiz->lesson_id = $newChild->lesson_id;
+                                    $quiz->save();
+
+                                    \Log::info('Updated quiz lesson_id after content foreign key update', [
+                                        'quiz_id' => $quiz->id,
+                                        'old_lesson_id' => $oldQuizLessonId,
+                                        'new_lesson_id' => $quiz->lesson_id,
+                                        'content_id' => $newChild->id,
+                                    ]);
+                                }
                             } catch (\Exception $e) {
                                 \Log::error('Failed to duplicate child in collection', [
                                     'relation_name' => $relationName,
