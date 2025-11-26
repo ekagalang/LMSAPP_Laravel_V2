@@ -2,7 +2,7 @@
     <div class="p-6 text-gray-900 dark:text-gray-100">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-semibold">Sertifikat Saya</h3>
-            <a href="{{ route('certificates.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center">
+            <a href="<?php echo e(route('certificates.index')); ?>" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center">
                 Lihat Daftar Sertifikat
                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -10,8 +10,8 @@
             </a>
         </div>
 
-        {{-- Section: Sertifikat Siap Dicetak --}}
-        @if($eligibleForCertificates->isNotEmpty())
+        
+        <?php if($eligibleForCertificates->isNotEmpty()): ?>
             <div class="mb-6">
                 <h4 class="text-lg font-semibold text-yellow-700 dark:text-yellow-500 mb-3 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,14 +20,14 @@
                     Sertifikat Siap Dicetak
                 </h4>
                 <div class="space-y-3">
-                    @foreach($eligibleForCertificates as $course)
+                    <?php $__currentLoopData = $eligibleForCertificates; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $course): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <div class="flex items-center justify-between p-4 border-2 border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/20 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors">
                             <div class="flex-1">
-                                <p class="font-bold text-gray-800 dark:text-white">{{ $course->title }}</p>
+                                <p class="font-bold text-gray-800 dark:text-white"><?php echo e($course->title); ?></p>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">Kursus telah diselesaikan - Siap untuk dicetak</p>
                             </div>
                             <div>
-                                <a href="{{ route('my-certificates.generate', $course) }}"
+                                <a href="<?php echo e(route('my-certificates.generate', $course)); ?>"
                                    class="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
                                    title="Cetak Sertifikat Sekarang">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,13 +37,13 @@
                                 </a>
                             </div>
                         </div>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
             </div>
-        @endif
+        <?php endif; ?>
 
-        {{-- Section: Sertifikat Sudah Diterbitkan --}}
-        @if($completedCertificates->isNotEmpty())
+        
+        <?php if($completedCertificates->isNotEmpty()): ?>
             <div>
                 <h4 class="text-lg font-semibold text-green-700 dark:text-green-500 mb-3 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,14 +52,14 @@
                     Sertifikat Sudah Diterbitkan
                 </h4>
                 <div class="space-y-3">
-                    @foreach($completedCertificates as $certificate)
+                    <?php $__currentLoopData = $completedCertificates; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $certificate): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <div class="flex items-center justify-between p-4 border border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
                             <div class="flex-1">
-                                <p class="font-bold text-gray-800 dark:text-white">{{ $certificate->course->title }}</p>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Diterbitkan pada: {{ $certificate->issued_at->format('d F Y') }}</p>
+                                <p class="font-bold text-gray-800 dark:text-white"><?php echo e($certificate->course->title); ?></p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Diterbitkan pada: <?php echo e($certificate->issued_at->format('d F Y')); ?></p>
                             </div>
                             <div class="flex gap-2">
-                                <a href="{{ route('certificates.download', $certificate) }}"
+                                <a href="<?php echo e(route('certificates.download', $certificate)); ?>"
                                    class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-800 focus:outline-none focus:border-green-700 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150"
                                    title="Download Sertifikat">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@
                                     </svg>
                                     Cetak
                                 </a>
-                                <a href="{{ route('certificates.verify', $certificate->certificate_code) }}"
+                                <a href="<?php echo e(route('certificates.verify', $certificate->certificate_code)); ?>"
                                    target="_blank"
                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500 active:bg-indigo-700 focus:outline-none focus:border-indigo-700 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150"
                                    title="Lihat Sertifikat">
@@ -79,13 +79,13 @@
                                 </a>
                             </div>
                         </div>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
             </div>
-        @endif
+        <?php endif; ?>
 
-        {{-- Empty State --}}
-        @if($completedCertificates->isEmpty() && $eligibleForCertificates->isEmpty())
+        
+        <?php if($completedCertificates->isEmpty() && $eligibleForCertificates->isEmpty()): ?>
             <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                 <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
@@ -93,6 +93,7 @@
                 <p>Anda belum memiliki sertifikat.</p>
                 <p class="text-sm mt-1">Selesaikan kursus untuk mendapatkan sertifikat Anda.</p>
             </div>
-        @endif
+        <?php endif; ?>
     </div>
 </div>
+<?php /**PATH C:\Users\PC2\Videos\IT\Code\LMSCOK\ABC\Cok\LMSAPP_Laravel_V2\resources\views/dashboard/partials/my-certificates.blade.php ENDPATH**/ ?>

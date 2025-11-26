@@ -60,11 +60,24 @@ class DashboardController extends Controller
                 return view('dashboard.eo', compact('stats', 'announcements'));
             } elseif ($user->can('attempt quizzes')) {
                 $stats = $this->getParticipantStats($user);
+
+                // Get certificates that have been issued
                 $completedCertificates = Certificate::where('user_id', $user->id)
                     ->with('course')
                     ->latest('issued_at')
                     ->get();
-                return view('dashboard.participant', compact('stats', 'announcements', 'completedCertificates'));
+
+                // Get courses that are eligible for certificate but not yet generated
+                $eligibleForCertificates = $user->courses()
+                    ->whereNotNull('certificate_template_id')
+                    ->with(['certificateTemplate', 'lessons.contents'])
+                    ->get()
+                    ->filter(function ($course) use ($user) {
+                        return $user->isEligibleForCertificate($course)
+                            && !$user->hasCertificateForCourse($course);
+                    });
+
+                return view('dashboard.participant', compact('stats', 'announcements', 'completedCertificates', 'eligibleForCertificates'));
             } else {
                 // Unknown/custom role: use generic stats and view
                 $stats = $this->getGenericStats($user);
@@ -85,7 +98,9 @@ class DashboardController extends Controller
             } elseif ($user->can('view progress reports') || $user->can('view certificate management')) {
                 return view('dashboard.eo', compact('stats', 'announcements'));
             } elseif ($user->can('attempt quizzes')) {
-                return view('dashboard.participant', compact('stats', 'announcements'));
+                $completedCertificates = collect();
+                $eligibleForCertificates = collect();
+                return view('dashboard.participant', compact('stats', 'announcements', 'completedCertificates', 'eligibleForCertificates'));
             } else {
                 return view('dashboard.generic', compact('stats', 'announcements'));
             }

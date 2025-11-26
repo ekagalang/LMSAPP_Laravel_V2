@@ -1,30 +1,42 @@
-<x-app-layout>
-    <x-slot name="header">
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+     <?php $__env->slot('header', null, []); ?> 
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Dashboard Peserta') }}
+                <?php echo e(__('Dashboard Peserta')); ?>
+
             </h2>
             <div class="flex items-center space-x-4">
                 <!-- ✅ PERBAIKAN: Komponen Notifikasi Fungsional -->
-                <a href="{{ route('announcements.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
+                <a href="<?php echo e(route('announcements.index')); ?>" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M15 17h5l-1.5-1.5A2 2 0 0118 14v-3a6 6 0 10-12 0v3a2 2 0 01-.5 1.5L4 17h5m6 0v1a3 3 0 11-6 0v-1" />
                     </svg>
-                    {{-- ✅ PERBAIKAN: Panggil sebagai properti, bukan metode --}}
-                    @if(Auth::user()->unread_announcements_count > 0)
+                    
+                    <?php if(Auth::user()->unread_announcements_count > 0): ?>
                         <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
-                            {{ Auth::user()->unread_announcements_count }}
+                            <?php echo e(Auth::user()->unread_announcements_count); ?>
+
                         </span>
-                    @endif
+                    <?php endif; ?>
                 </a>
 
                 <div class="text-sm text-gray-500">
-                    {{ now()->format('l, d F Y') }}
+                    <?php echo e(now()->format('l, d F Y')); ?>
+
                 </div>
             </div>
         </div>
-    </x-slot>
+     <?php $__env->endSlot(); ?>
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -33,24 +45,24 @@
                 <div class="p-6 text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h3 class="text-2xl font-bold mb-2">Selamat datang, {{ auth()->user()->name }}! 🎓</h3>
+                            <h3 class="text-2xl font-bold mb-2">Selamat datang, <?php echo e(auth()->user()->name); ?>! 🎓</h3>
                             <p class="text-green-100">Lanjutkan perjalanan pembelajaran Anda dan raih tujuan yang telah ditetapkan.</p>
                         </div>
-                        @if($stats['courses']['overall_progress'] > 0)
+                        <?php if($stats['courses']['overall_progress'] > 0): ?>
                         <div class="hidden md:block">
                             <div class="text-center">
                                 <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center mb-2">
-                                    <span class="text-2xl font-bold">{{ $stats['courses']['overall_progress'] }}%</span>
+                                    <span class="text-2xl font-bold"><?php echo e($stats['courses']['overall_progress']); ?>%</span>
                                 </div>
                                 <p class="text-xs text-green-100">Progress Total</p>
                             </div>
                         </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
 
-            @if (session('certificate_created'))
+            <?php if(session('certificate_created')): ?>
         <div class="mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl shadow-lg overflow-hidden" 
             x-data="{ show: true }" 
             x-show="show" 
@@ -78,10 +90,11 @@
                                     🎉 Sertifikat Berhasil Dibuat!
                                 </h3>
                                 <p class="text-green-800 mt-1">
-                                    {{ session('success') }}
+                                    <?php echo e(session('success')); ?>
+
                                 </p>
                                 <p class="text-sm text-green-600 mt-2">
-                                    Kursus: <span class="font-semibold">{{ session('course_title') }}</span>
+                                    Kursus: <span class="font-semibold"><?php echo e(session('course_title')); ?></span>
                                 </p>
                             </div>
                             
@@ -93,7 +106,7 @@
                         </div>
                         
                         <div class="mt-4 flex flex-wrap gap-3">
-                            <a href="{{ route('certificates.index') }}" 
+                            <a href="<?php echo e(route('certificates.index')); ?>" 
                             class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
@@ -101,27 +114,27 @@
                                 Lihat Semua Sertifikat
                             </a>
                             
-                            @if(session('certificate_id'))
-                                <a href="{{ route('certificates.download', session('certificate_id')) }}" 
+                            <?php if(session('certificate_id')): ?>
+                                <a href="<?php echo e(route('certificates.download', session('certificate_id'))); ?>" 
                                 class="inline-flex items-center px-4 py-2 bg-white border border-green-300 hover:bg-green-50 text-green-700 text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m-8 5h16l-5-6H9l-5 6z"></path>
                                     </svg>
                                     Download Sertifikat
                                 </a>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
             
-            {{-- Decorative bottom border --}}
+            
             <div class="h-2 bg-gradient-to-r from-green-400 to-emerald-500"></div>
         </div>
-    @endif
+    <?php endif; ?>
 
-    {{-- Standard Success/Error Messages --}}
-    @if (session('success') && !session('certificate_created'))
+    
+    <?php if(session('success') && !session('certificate_created')): ?>
         <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm" role="alert">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -130,13 +143,13 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                    <p class="text-sm font-medium text-green-800"><?php echo e(session('success')); ?></p>
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?>
 
-    @if (session('error'))
+    <?php if(session('error')): ?>
         <div class="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl shadow-sm" role="alert">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -145,13 +158,13 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                    <p class="text-sm font-medium text-red-800"><?php echo e(session('error')); ?></p>
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?>
 
-    @if (session('info'))
+    <?php if(session('info')): ?>
         <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm" role="alert">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -160,13 +173,13 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-blue-800">{{ session('info') }}</p>
+                    <p class="text-sm font-medium text-blue-800"><?php echo e(session('info')); ?></p>
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?>
 
-    @if (session('warning'))
+    <?php if(session('warning')): ?>
         <div class="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl shadow-sm" role="alert">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -175,13 +188,13 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-yellow-800">{{ session('warning') }}</p>
+                    <p class="text-sm font-medium text-yellow-800"><?php echo e(session('warning')); ?></p>
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?>
             <!-- Announcement Section -->
-            @if($announcements && $announcements->count() > 0)
+            <?php if($announcements && $announcements->count() > 0): ?>
             <div class="mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-blue-500">
                     <div class="px-6 py-4 border-b border-gray-200">
@@ -194,35 +207,35 @@
                     </div>
                     <div class="p-6">
                         <div class="space-y-4">
-                            @foreach($announcements->take(2) as $announcement)
-                            <div class="p-4 rounded-lg border border-{{ $announcement->level_color }}-200 bg-{{ $announcement->level_color }}-50">
+                            <?php $__currentLoopData = $announcements->take(2); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $announcement): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div class="p-4 rounded-lg border border-<?php echo e($announcement->level_color); ?>-200 bg-<?php echo e($announcement->level_color); ?>-50">
                                 <div class="flex">
                                     <div class="flex-shrink-0">
-                                        <svg class="w-5 h-5 text-{{ $announcement->level_color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            @if($announcement->level === 'info')
+                                        <svg class="w-5 h-5 text-<?php echo e($announcement->level_color); ?>-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <?php if($announcement->level === 'info'): ?>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            @elseif($announcement->level === 'success')
+                                            <?php elseif($announcement->level === 'success'): ?>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            @elseif($announcement->level === 'warning')
+                                            <?php elseif($announcement->level === 'warning'): ?>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                            @else
+                                            <?php else: ?>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            @endif
+                                            <?php endif; ?>
                                         </svg>
                                     </div>
                                     <div class="ml-3">
-                                        <h4 class="text-sm font-medium text-{{ $announcement->level_color }}-800">{{ $announcement->title }}</h4>
-                                        <p class="text-sm text-{{ $announcement->level_color }}-700 mt-1">{{ Str::limit($announcement->content, 120) }}</p>
-                                        <p class="text-xs text-{{ $announcement->level_color }}-600 mt-2">{{ $announcement->created_at->diffForHumans() }}</p>
+                                        <h4 class="text-sm font-medium text-<?php echo e($announcement->level_color); ?>-800"><?php echo e($announcement->title); ?></h4>
+                                        <p class="text-sm text-<?php echo e($announcement->level_color); ?>-700 mt-1"><?php echo e(Str::limit($announcement->content, 120)); ?></p>
+                                        <p class="text-xs text-<?php echo e($announcement->level_color); ?>-600 mt-2"><?php echo e($announcement->created_at->diffForHumans()); ?></p>
                                     </div>
                                 </div>
                             </div>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
                     </div>
                 </div>
             </div>
-            @endif
+            <?php endif; ?>
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -239,18 +252,18 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-medium text-gray-500">Kursus Diikuti</p>
-                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['courses']['total']) }}</p>
+                                <p class="text-2xl font-semibold text-gray-900 stat-number"><?php echo e(number_format($stats['courses']['total'])); ?></p>
                             </div>
                         </div>
                         <div class="mt-4">
                             <div class="flex text-xs text-gray-600">
                                 <span class="flex items-center">
                                     <span class="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
-                                    {{ $stats['courses']['completed'] }} Selesai
+                                    <?php echo e($stats['courses']['completed']); ?> Selesai
                                 </span>
                                 <span class="flex items-center ml-3">
                                     <span class="w-2 h-2 bg-blue-400 rounded-full mr-1"></span>
-                                    {{ $stats['courses']['in_progress'] }} Berlangsung
+                                    <?php echo e($stats['courses']['in_progress']); ?> Berlangsung
                                 </span>
                             </div>
                         </div>
@@ -270,12 +283,12 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-medium text-gray-500">Progress Keseluruhan</p>
-                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ $stats['courses']['overall_progress'] }}%</p>
+                                <p class="text-2xl font-semibold text-gray-900 stat-number"><?php echo e($stats['courses']['overall_progress']); ?>%</p>
                             </div>
                         </div>
                         <div class="mt-4">
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-gradient-to-r from-blue-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: {{ $stats['courses']['overall_progress'] }}%"></div>
+                                <div class="bg-gradient-to-r from-blue-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: <?php echo e($stats['courses']['overall_progress']); ?>%"></div>
                             </div>
                         </div>
                     </div>
@@ -294,12 +307,12 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-medium text-gray-500">Kuis Lulus</p>
-                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['quizzes']['passed']) }}</p>
+                                <p class="text-2xl font-semibold text-gray-900 stat-number"><?php echo e(number_format($stats['quizzes']['passed'])); ?></p>
                             </div>
                         </div>
                         <div class="mt-4">
                             <div class="text-xs text-gray-600">
-                                dari {{ $stats['quizzes']['completed'] }} kuis selesai
+                                dari <?php echo e($stats['quizzes']['completed']); ?> kuis selesai
                             </div>
                         </div>
                     </div>
@@ -318,12 +331,12 @@
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-medium text-gray-500">Konten Selesai</p>
-                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['content']['completed_contents']) }}</p>
+                                <p class="text-2xl font-semibold text-gray-900 stat-number"><?php echo e(number_format($stats['content']['completed_contents'])); ?></p>
                             </div>
                         </div>
                         <div class="mt-4">
                             <div class="text-xs text-gray-600">
-                                dari {{ $stats['content']['total_contents'] }} total konten
+                                dari <?php echo e($stats['content']['total_contents']); ?> total konten
                             </div>
                         </div>
                     </div>
@@ -340,57 +353,60 @@
                             <h3 class="text-lg font-medium text-gray-900">Kursus Saya</h3>
                         </div>
                         <div class="p-6">
-                            @forelse($stats['courses']['progress'] as $course)
+                            <?php $__empty_1 = true; $__currentLoopData = $stats['courses']['progress']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $course): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <div class="mb-6 last:mb-0 p-4 bg-gray-50 rounded-lg hover-lift">
                                 <div class="flex items-start space-x-4">
-                                    @if($course['thumbnail'])
-                                    <img src="{{ asset('storage/' . $course['thumbnail']) }}" alt="{{ $course['title'] }}" class="w-20 h-20 object-cover rounded-lg flex-shrink-0">
-                                    @else
+                                    <?php if($course['thumbnail']): ?>
+                                    <img src="<?php echo e(asset('storage/' . $course['thumbnail'])); ?>" alt="<?php echo e($course['title']); ?>" class="w-20 h-20 object-cover rounded-lg flex-shrink-0">
+                                    <?php else: ?>
                                     <div class="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
                                         <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                                         </svg>
                                     </div>
-                                    @endif
+                                    <?php endif; ?>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-start justify-between mb-2">
-                                            <h4 class="text-lg font-medium text-gray-900 truncate">{{ $course['title'] }}</h4>
+                                            <h4 class="text-lg font-medium text-gray-900 truncate"><?php echo e($course['title']); ?></h4>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2 flex-shrink-0
-                                                {{ $course['status'] === 'completed' ? 'bg-green-100 text-green-800' :
-                                                   ($course['status'] === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800') }}">
-                                                {{ $course['status'] === 'completed' ? 'Selesai' :
-                                                   ($course['status'] === 'in_progress' ? 'Berlangsung' : 'Belum Dimulai') }}
+                                                <?php echo e($course['status'] === 'completed' ? 'bg-green-100 text-green-800' :
+                                                   ($course['status'] === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')); ?>">
+                                                <?php echo e($course['status'] === 'completed' ? 'Selesai' :
+                                                   ($course['status'] === 'in_progress' ? 'Berlangsung' : 'Belum Dimulai')); ?>
+
                                             </span>
                                         </div>
-                                        <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ Str::limit($course['description'], 120) }}</p>
+                                        <p class="text-sm text-gray-600 mb-3 line-clamp-2"><?php echo e(Str::limit($course['description'], 120)); ?></p>
                                         <div class="flex items-center text-xs text-gray-500 mb-3">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                             </svg>
-                                            Instruktur: {{ $course['instructors']->pluck('name')->join(', ') }}
+                                            Instruktur: <?php echo e($course['instructors']->pluck('name')->join(', ')); ?>
+
                                         </div>
                                         <div class="mb-3">
                                             <div class="flex justify-between text-sm font-medium text-gray-700 mb-1">
-                                                <span>Progress: {{ $course['progress'] }}%</span>
-                                                <span>{{ $course['completed_lessons'] }}/{{ $course['total_lessons'] }} pelajaran • {{ $course['completed_contents'] }}/{{ $course['total_contents'] }} konten</span>
+                                                <span>Progress: <?php echo e($course['progress']); ?>%</span>
+                                                <span><?php echo e($course['completed_lessons']); ?>/<?php echo e($course['total_lessons']); ?> pelajaran • <?php echo e($course['completed_contents']); ?>/<?php echo e($course['total_contents']); ?> konten</span>
                                             </div>
                                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                                <div class="bg-gradient-to-r from-green-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: {{ $course['progress'] }}%"></div>
+                                                <div class="bg-gradient-to-r from-green-500 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: <?php echo e($course['progress']); ?>%"></div>
                                             </div>
                                         </div>
                                         <div class="flex justify-between items-center mt-4">
                                             <div class="flex items-center gap-4">
-                                                <a href="{{ route('courses.show', $course['id']) }}" 
+                                                <a href="<?php echo e(route('courses.show', $course['id'])); ?>" 
                                                 class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium text-sm rounded-lg transition-colors duration-200">
-                                                    {{ $course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan Belajar' }}
+                                                    <?php echo e($course['status'] === 'not_started' ? 'Mulai Belajar' : 'Lanjutkan Belajar'); ?>
+
                                                 </a>
-                                                <a href="{{ route('courses.my-scores', $course['id']) }}" 
+                                                <a href="<?php echo e(route('courses.my-scores', $course['id'])); ?>" 
                                                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-colors duration-200">
                                                     Nilai & Hasil
                                                 </a>
                                             </div>
                                             
-                                            @php
+                                            <?php
                                                 // Improved logic dengan error handling
                                                 $courseModel = \App\Models\Course::find($course['id']);
                                                 $showCertificateButton = false;
@@ -419,44 +435,44 @@
                                                         $showCertificateButton = false;
                                                     }
                                                 }
-                                            @endphp
+                                            ?>
 
-                                            {{-- Enhanced Certificate Buttons --}}
-                                            @if($showCertificateButton)
-                                                @if($certificateButtonType === 'download')
-                                                    {{-- Sudah punya sertifikat - tombol download + view --}}
+                                            
+                                            <?php if($showCertificateButton): ?>
+                                                <?php if($certificateButtonType === 'download'): ?>
+                                                    
                                                     <div class="flex gap-1">
-                                                        <a href="{{ route('certificates.download', $certificate) }}" 
+                                                        <a href="<?php echo e(route('certificates.download', $certificate)); ?>" 
                                                         class="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs font-semibold transition-colors duration-200"
                                                         title="Download certificate">
                                                             📥 Unduh
                                                         </a>
-                                                        <a href="{{ route('certificates.verify', $certificate->certificate_code) }}" target="_blank"
+                                                        <a href="<?php echo e(route('certificates.verify', $certificate->certificate_code)); ?>" target="_blank"
                                                         class="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-semibold transition-colors duration-200"
                                                         title="View certificate">
                                                             👁️ Lihat
                                                         </a>
                                                     </div>
-                                                @elseif($certificateButtonType === 'generate')
-                                                    {{-- Eligible tapi belum generate --}}
-                                                    <a href="{{ route('my-certificates.generate', $courseModel) }}"
+                                                <?php elseif($certificateButtonType === 'generate'): ?>
+                                                    
+                                                    <a href="<?php echo e(route('my-certificates.generate', $courseModel)); ?>"
                                                     class="px-3 py-1.5 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-xs font-semibold transition-colors duration-200"
                                                     title="Generate your certificate">
                                                         🎓 Cetak Sertifikat
                                                     </a>
-                                                @elseif($certificateButtonType === 'waiting')
-                                                    {{-- Progress 100% tapi belum eligible --}}
+                                                <?php elseif($certificateButtonType === 'waiting'): ?>
+                                                    
                                                     <span class="px-3 py-1.5 bg-gray-400 text-white rounded-md text-xs font-semibold cursor-not-allowed" 
                                                         title="Menunggu penilaian dari instruktur">
                                                         ⏳ Menunggu Penilaian
                                                     </span>
-                                                @endif
-                                            @endif
+                                                <?php endif; ?>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            @empty
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <div class="text-center py-12 text-gray-500">
                                 <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
@@ -464,7 +480,7 @@
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Kursus</h3>
                                 <p class="text-gray-600 mb-4">Anda belum terdaftar di kursus manapun.</p>
                             </div>
-                            @endforelse
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -475,7 +491,7 @@
                         </div>
                         <div class="p-6">
                             <div class="space-y-4">
-                                @forelse($stats['recent_activities']['completions'] as $completion)
+                                <?php $__empty_1 = true; $__currentLoopData = $stats['recent_activities']['completions']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $completion): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                 <div class="flex items-center p-3 bg-green-50 rounded-lg">
                                     <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
                                         <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,25 +499,25 @@
                                         </svg>
                                     </div>
                                     <div class="flex-1">
-                                        <p class="text-sm font-medium text-gray-900">{{ $completion->content_title }}</p>
-                                        <p class="text-xs text-gray-600">{{ $completion->lesson_title }} • {{ $completion->course_title }}</p>
-                                        <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($completion->created_at)->diffForHumans() }}</p>
+                                        <p class="text-sm font-medium text-gray-900"><?php echo e($completion->content_title); ?></p>
+                                        <p class="text-xs text-gray-600"><?php echo e($completion->lesson_title); ?> • <?php echo e($completion->course_title); ?></p>
+                                        <p class="text-xs text-gray-500"><?php echo e(\Carbon\Carbon::parse($completion->created_at)->diffForHumans()); ?></p>
                                     </div>
                                 </div>
-                                @empty
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                 <div class="text-center py-8 text-gray-500">
                                     <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <p>Belum ada aktivitas minggu ini</p>
                                 </div>
-                                @endforelse
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
 
                     <div class="mt-8">
-                        @include('dashboard.partials.my-certificates', ['completedCertificates' => $completedCertificates])
+                        <?php echo $__env->make('dashboard.partials.my-certificates', ['completedCertificates' => $completedCertificates], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                     </div>
                 </div>
 
@@ -516,23 +532,23 @@
                             <div class="space-y-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Pelajaran Selesai</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $stats['content']['completed_lessons'] }}/{{ $stats['content']['total_lessons'] }}</span>
+                                    <span class="text-sm font-medium text-gray-900"><?php echo e($stats['content']['completed_lessons']); ?>/<?php echo e($stats['content']['total_lessons']); ?></span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Konten Selesai</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $stats['content']['completed_contents'] }}/{{ $stats['content']['total_contents'] }}</span>
+                                    <span class="text-sm font-medium text-gray-900"><?php echo e($stats['content']['completed_contents']); ?>/<?php echo e($stats['content']['total_contents']); ?></span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Kuis Selesai</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $stats['quizzes']['completed'] }}</span>
+                                    <span class="text-sm font-medium text-gray-900"><?php echo e($stats['quizzes']['completed']); ?></span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Esai Terkirim</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $stats['essays']['submissions'] }}</span>
+                                    <span class="text-sm font-medium text-gray-900"><?php echo e($stats['essays']['submissions']); ?></span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Diskusi Dimulai</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $stats['discussions']['started'] }}</span>
+                                    <span class="text-sm font-medium text-gray-900"><?php echo e($stats['discussions']['started']); ?></span>
                                 </div>
                             </div>
                         </div>
@@ -544,7 +560,7 @@
                         </div>
                         <div class="p-6">
                             <div class="space-y-4">
-                                <a href="{{ route('chat.index') }}" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors hover-lift">
+                                <a href="<?php echo e(route('chat.index')); ?>" class="flex items-center w-full px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors hover-lift">
                                     <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                     </svg>
@@ -565,8 +581,8 @@
 
                             <div class="px-4 pb-3">
                                 <!-- Unified Token Form -->
-                                <form action="{{ route('enroll') }}" method="POST" class="w-full">
-                                    @csrf
+                                <form action="<?php echo e(route('enroll')); ?>" method="POST" class="w-full">
+                                    <?php echo csrf_field(); ?>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
                                         <svg class="w-4 h-4 inline mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -593,11 +609,11 @@
                                         </button>
                                     </div>
 
-                                    @if($errors->has('token'))
+                                    <?php if($errors->has('token')): ?>
                                         <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                                            <p class="text-sm text-red-600">{{ $errors->first('token') }}</p>
+                                            <p class="text-sm text-red-600"><?php echo e($errors->first('token')); ?></p>
                                         </div>
-                                    @endif
+                                    <?php endif; ?>
 
                                     <p class="mt-2 text-xs text-gray-500">
                                         Masukkan token yang diberikan admin untuk memasuki kelas
@@ -614,27 +630,28 @@
                         </div>
                         <div class="p-6">
                             <div class="space-y-3">
-                                @forelse($stats['recent_activities']['next_contents'] as $content)
+                                <?php $__empty_1 = true; $__currentLoopData = $stats['recent_activities']['next_contents']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $content): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                 <div class="p-3 bg-blue-50 rounded-lg hover-lift">
-                                    <h4 class="text-sm font-medium text-blue-900">{{ $content->title }}</h4>
-                                    <p class="text-xs text-blue-600">{{ $content->lesson->title }} • {{ $content->lesson->course->title }}</p>
+                                    <h4 class="text-sm font-medium text-blue-900"><?php echo e($content->title); ?></h4>
+                                    <p class="text-xs text-blue-600"><?php echo e($content->lesson->title); ?> • <?php echo e($content->lesson->course->title); ?></p>
                                     <div class="flex items-center justify-between mt-2">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                            {{ ucfirst($content->type) }}
+                                            <?php echo e(ucfirst($content->type)); ?>
+
                                         </span>
-                                        <a href="{{ route('courses.show', $content->lesson->course->id) }}" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                        <a href="<?php echo e(route('courses.show', $content->lesson->course->id)); ?>" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
                                             Mulai →
                                         </a>
                                     </div>
                                 </div>
-                                @empty
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                 <div class="text-center py-4 text-gray-500">
                                     <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <p class="text-sm">Semua konten telah selesai!</p>
                                 </div>
-                                @endforelse
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -645,29 +662,29 @@
                             <h3 class="text-lg font-medium text-gray-900">Aksi Cepat</h3>
                         </div>
                         <div class="p-6 space-y-3">
-                            @if($stats['courses']['total'] > 0)
+                            <?php if($stats['courses']['total'] > 0): ?>
                             <div class="flex items-center w-full px-4 py-3 text-left text-sm font-medium bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
                                 <svg class="w-5 h-5 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                                 </svg>
                                 <div class="flex-1">
                                     <p class="text-green-800 font-medium">Progress Keseluruhan</p>
-                                    <p class="text-xs text-green-600">{{ $stats['courses']['overall_progress'] }}% dari semua kursus</p>
+                                    <p class="text-xs text-green-600"><?php echo e($stats['courses']['overall_progress']); ?>% dari semua kursus</p>
                                 </div>
                             </div>
-                            @endif
+                            <?php endif; ?>
 
-                            @if($stats['essays']['submissions'] > $stats['essays']['graded'])
+                            <?php if($stats['essays']['submissions'] > $stats['essays']['graded']): ?>
                             <div class="flex items-center w-full px-4 py-3 text-left text-sm font-medium bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg border border-orange-200">
                                 <svg class="w-5 h-5 mr-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 <div class="flex-1">
                                     <p class="text-orange-800 font-medium">Esai Menunggu Penilaian</p>
-                                    <p class="text-xs text-orange-600">{{ $stats['essays']['submissions'] - $stats['essays']['graded'] }} esai belum dinilai</p>
+                                    <p class="text-xs text-orange-600"><?php echo e($stats['essays']['submissions'] - $stats['essays']['graded']); ?> esai belum dinilai</p>
                                 </div>
                             </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -678,7 +695,7 @@
     <!-- Notification Toast Container -->
     <div id="notificationToasts" class="fixed top-4 right-4 z-50 space-y-2 w-full max-w-sm"></div>
 
-    @push('styles')
+    <?php $__env->startPush('styles'); ?>
     <style>
         .dashboard-card {
             transition: all 0.3s ease;
@@ -807,9 +824,9 @@
             transition: all 0.5s ease-in-out;
         }
     </style>
-    @endpush
+    <?php $__env->stopPush(); ?>
 
-    @push('scripts')
+    <?php $__env->startPush('scripts'); ?>
     <script>
         // Notification System JavaScript
         let notificationDropdownVisible = false;
@@ -973,5 +990,15 @@
             });
         });
     </script>
-    @endpush
-</x-app-layout>
+    <?php $__env->stopPush(); ?>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php /**PATH C:\Users\PC2\Videos\IT\Code\LMSCOK\ABC\Cok\LMSAPP_Laravel_V2\resources\views/dashboard/participant.blade.php ENDPATH**/ ?>
