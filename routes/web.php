@@ -447,6 +447,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/courses', [EventOrganizerController::class, 'index'])->name('courses.index');
     });
 
+    // Self-service certificate generation for participants (no permission check, logic handled in controller)
+    Route::get('/my-certificates/generate/{course}', [CertificateController::class, 'create'])->name('my-certificates.generate');
+
+    // Admin/Instructor certificate management routes (requires permission)
     Route::get('/certificates/create/{course}', [CertificateController::class, 'create'])->name('certificates.create')->middleware('permission:issue certificates');
     Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate')->middleware('permission:issue certificates');
     Route::post('/certificates/store', [CertificateController::class, 'store'])->name('certificates.store')->middleware('permission:issue certificates');
