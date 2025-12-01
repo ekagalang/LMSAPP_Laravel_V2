@@ -1,0 +1,734 @@
+================================================================================
+                    DAFTAR LENGKAP FITUR APLIKASI LMS
+                           (Learning Management System)
+================================================================================
+
+================================================================================
+1. PERAN PENGGUNA DAN HAK AKSES
+================================================================================
+
+1.1 SUPER ADMIN
+   - Akses penuh ke seluruh sistem
+   - Manajemen pengguna (tambah, edit, hapus, reset password)
+   - Manajemen role dan permission
+   - Manajemen semua kursus tanpa batasan
+   - Melihat activity logs dan analytics
+   - Akses ke admin tools dan utilities
+   - Import pengguna bulk dari Excel/CSV
+   - Manajemen pengumuman sistem
+   - Manajemen template sertifikat
+   - Force complete/auto-grade utilities
+
+1.2 INSTRUCTOR (INSTRUKTUR)
+   - Membuat dan mengelola kursus sendiri
+   - Manajemen lesson dan content
+   - Membuat dan mengelola kuis:
+     * Soal pilihan ganda
+     * Soal benar/salah
+     * Import kuis dari Excel
+     * Kuis dengan batas waktu
+     * Setting persentase kelulusan
+     * Tampilkan/sembunyikan jawaban benar
+     * Fitur leaderboard
+   - Manajemen soal essay:
+     * Multiple pertanyaan per essay
+     * Mode penilaian individual atau keseluruhan
+     * Scoring enabled/disabled
+     * Review required/practice mode
+   - Scheduling Zoom meeting dengan tanggal/waktu
+   - Manajemen absensi:
+     * Tandai kehadiran (hadir, tidak hadir, terlambat, izin)
+     * Bulk mark attendance
+     * Persyaratan durasi minimum
+     * Export laporan absensi
+   - Moderasi diskusi
+   - Akses gradebook dan penilaian essay
+   - Tracking progress dan reports
+   - Duplikasi kursus
+   - Duplikasi lesson dan content
+   - Manajemen token kursus/kelas (kode pendaftaran)
+   - Upload dan manajemen file
+   - Penerbitan sertifikat untuk peserta
+   - Dashboard analytics instruktur
+   - Manajemen class/period (kelas/batch)
+   - Assign instruktur ke kelas
+   - Tambah/hapus peserta kelas
+
+1.3 EVENT ORGANIZER (PENYELENGGARA ACARA)
+   - Melihat laporan progress untuk kursus yang dikelola
+   - Melihat manajemen sertifikat dan analytics
+   - Akses laporan absensi
+   - Bantuan diskusi
+   - Melihat instructor analytics
+   - Akses ke kursus yang mereka organisir
+   - Manajemen peserta kursus (view-only)
+   - Generate laporan progress
+
+1.4 PARTICIPANT (PESERTA/SISWA)
+   - Pendaftaran kursus (via token atau manual)
+   - Melihat kursus yang diikuti
+   - Akses konten kursus:
+     * Konten teks
+     * Galeri gambar
+     * Dokumen (PDF, mode view/download)
+     * Video (YouTube embeds)
+     * Link Zoom meeting
+     * Rich text dengan inline images
+   - Menyelesaikan lesson dan content
+   - Mengerjakan kuis:
+     * Melihat hasil dan nilai kuis
+     * Lihat jawaban benar (jika diaktifkan)
+     * Auto-save progress selama kuis
+     * Retry kuis yang gagal
+     * Melihat leaderboard (jika diaktifkan)
+   - Submit essay:
+     * Auto-save draft
+     * Multiple pertanyaan essay
+     * Melihat hasil nilai dengan feedback
+   - Membuat dan membalas diskusi
+   - Melihat tracking progress
+   - Generate sertifikat (self-service)
+   - Download sertifikat
+   - Melihat nilai per kursus
+   - Berpartisipasi dalam chat
+   - Melihat pengumuman
+   - Manajemen profil
+
+================================================================================
+2. MANAJEMEN KURSUS
+================================================================================
+
+2.1 OPERASI KURSUS
+   - Membuat kursus dengan deskripsi rich text
+   - Upload thumbnail kursus
+   - Set status kursus (draft/published)
+   - Assign template sertifikat ke kursus
+   - Duplikasi kursus dengan semua konten
+   - Enroll peserta (individual atau bulk)
+   - Tambah/hapus instruktur
+   - Tambah/hapus event organizer
+   - Melihat daftar peserta
+   - Track progress kursus
+   - Generate token pendaftaran kursus:
+     * Token random atau custom
+     * Enable/disable token
+     * Tanggal kadaluarsa token
+   - Export progress kursus ke PDF
+   - Sistem feedback per kursus
+
+2.2 MANAJEMEN LESSON
+   - Membuat lesson dalam kursus
+   - Pengurutan dan reordering lesson
+   - Deskripsi lesson
+   - Optional lesson
+   - Prerequisite lesson
+   - Duplikasi lesson
+   - Track penyelesaian lesson
+
+2.3 MANAJEMEN CONTENT
+   - Multiple tipe content:
+     * TEXT: Rich text editor dengan formatting
+     * IMAGE: Multiple image gallery dengan ordering
+     * DOCUMENT: Upload PDF dan dokumen
+       - Mode view (inline viewing)
+       - Mode download
+     * VIDEO: Integrasi YouTube
+     * ZOOM: Link meeting dengan scheduling
+     * QUIZ: Linked quiz assessment
+     * ESSAY: Submission essay dengan multiple pertanyaan
+   - Pengurutan dan reordering content
+   - Duplikasi content
+   - Marking optional content
+   - Scheduling content (untuk Zoom):
+     * Start dan end time
+     * Dukungan timezone
+     * Pembatasan akses berdasarkan jadwal
+   - Rich text editor dengan upload gambar
+   - File attachment
+   - Persyaratan absensi untuk content:
+     * Durasi absensi minimum
+     * Status tracking (hadir/tidak hadir/terlambat/izin)
+
+2.4 MANAJEMEN CLASS/PERIOD (KELAS/BATCH)
+   - Membuat class kursus (batch/periode)
+   - Tanggal mulai dan akhir kelas
+   - Auto update status (upcoming/active/completed)
+   - Batas maksimum peserta
+   - Pendaftaran khusus kelas
+   - Assign instruktur ke kelas tertentu
+   - Tambah/hapus peserta kelas
+   - Generate token pendaftaran per kelas
+   - Duplikasi kelas
+   - Track status dan ketersediaan kelas
+
+================================================================================
+3. FITUR PEMBELAJARAN
+================================================================================
+
+3.1 SISTEM KUIS
+   - Pembuatan kuis dengan metadata:
+     * Judul dan deskripsi
+     * Persentase kelulusan
+     * Batas waktu (dengan countdown timer)
+     * Toggle tampilkan jawaban setelah attempt
+     * Enable/disable leaderboard
+     * Status draft/published
+   - Tipe pertanyaan:
+     * Multiple choice (dengan multiple opsi)
+     * True/False
+   - Konfigurasi pertanyaan:
+     * Teks pertanyaan
+     * Nilai poin (marks)
+     * Menandai jawaban benar
+   - Attempt kuis:
+     * Mulai kuis
+     * Auto-save progress selama kuis
+     * Submit kuis
+     * Cek sisa waktu (API)
+     * Auto-submit ketika waktu habis
+   - Hasil kuis:
+     * Tampilan skor
+     * Perhitungan persentase
+     * Status lulus/gagal
+     * Lihat jawaban benar (jika diaktifkan)
+     * Riwayat attempt
+   - Leaderboard:
+     * Ranking berdasarkan skor dan waktu penyelesaian
+     * Attempt terbaik per user
+     * Public leaderboard view
+   - Import kuis dari Excel template
+   - Duplikasi kuis
+   - Pembatasan satu attempt setelah lulus
+
+3.2 SISTEM ESSAY
+   - Pembuatan content essay
+   - Support multiple pertanyaan per essay
+   - Manajemen pertanyaan essay:
+     * Tambah/hapus pertanyaan
+     * Pengurutan pertanyaan
+     * Skor maksimum per pertanyaan
+     * Pertanyaan aktif/non-aktif
+   - Mode penilaian:
+     * Individual grading (per pertanyaan)
+     * Overall grading (keseluruhan essay)
+   - Opsi scoring:
+     * Scoring enabled/disabled
+     * Sistem feedback fleksibel
+   - Fitur submission:
+     * Submit essay
+     * Auto-save draft
+     * Lihat riwayat draft
+   - Practice mode (tidak perlu review)
+   - Interface penilaian:
+     * Lihat semua submission
+     * Nilai pertanyaan individual
+     * Berikan feedback per pertanyaan atau keseluruhan
+     * Track completion penilaian
+     * Interface multi-question grading
+
+3.3 PENGIRIMAN KONTEN
+   - Akses content sequential
+   - Optional content (tidak memblokir progress)
+   - Sistem prerequisite
+   - Tracking penyelesaian content
+   - Persentase progress per kursus
+   - Indikator status content:
+     * Belum dimulai
+     * Sedang berjalan
+     * Selesai
+     * Menunggu nilai
+     * Gagal
+
+================================================================================
+4. PENILAIAN DAN GRADING
+================================================================================
+
+4.1 GRADEBOOK
+   - Gradebook terpusat per kursus
+   - Filter peserta dengan pencarian
+   - Lihat semua submission essay
+   - Nilai essay dengan skor dan feedback
+   - Lihat progress peserta
+   - Simpan feedback umum per peserta
+   - Track item yang dinilai vs pending
+   - Export data gradebook
+
+4.2 FITUR AUTO-GRADING
+   - Auto-grade quiz attempts
+   - Auto-calculate quiz scores
+   - Auto-complete essay tanpa penilaian
+   - Bulk auto-grade functionality
+   - Force complete contents (admin tool)
+   - Bulk generate certificates
+
+4.3 TRACKING PROGRESS
+   - Persentase penyelesaian kursus
+   - Tracking penyelesaian content
+   - Tracking penyelesaian lesson
+   - Tracking attempt kuis
+   - Tracking submission essay
+   - Pengecekan eligibilitas sertifikat
+   - Laporan progress (export PDF)
+   - View progress peserta per kursus
+
+================================================================================
+5. FITUR KOMUNIKASI
+================================================================================
+
+5.1 FORUM DISKUSI
+   - Membuat diskusi per content
+   - Judul dan body diskusi
+   - Balas diskusi
+   - Lihat riwayat diskusi
+   - Moderasi diskusi
+   - Tracking diskusi terbaru
+
+5.2 SISTEM CHAT
+   - Direct messaging (one-on-one)
+   - Group chat
+   - Chat berbasis kursus
+   - Chat berbasis class/period
+   - Real-time messaging
+   - Typing indicators
+   - Riwayat pesan
+   - Manajemen peserta chat:
+     * Tambah peserta
+     * Hapus peserta
+   - Jumlah pesan belum dibaca
+   - Mark as read functionality
+   - Pencarian chat
+   - Daftar pengguna tersedia
+   - Daftar kelas kursus tersedia
+   - Dukungan WebSocket (Laravel Reverb)
+
+5.3 PENGUMUMAN
+   - Membuat pengumuman
+   - Konten pengumuman rich text
+   - Target role tertentu
+   - Set level pengumuman (info/success/warning/danger)
+   - Schedule pengumuman (published_at)
+   - Set tanggal kadaluarsa
+   - Status aktif/non-aktif
+   - Tandai pengumuman sebagai dibaca
+   - Jumlah pengumuman belum dibaca
+   - Riwayat pengumuman
+   - Pengumuman terbaru
+
+================================================================================
+6. MANAJEMEN SERTIFIKAT
+================================================================================
+
+6.1 TEMPLATE SERTIFIKAT
+   - Membuat template sertifikat
+   - Enhanced template editor
+   - Advanced template editor
+   - Preview template dengan data sample
+   - Duplikasi template
+   - Variable/placeholder template
+   - Assign template ke kursus
+
+6.2 GENERATE SERTIFIKAT
+   - Self-service certificate generation (peserta)
+   - Penerbitan sertifikat admin/instruktur
+   - Bulk certificate generation
+   - Regenerate sertifikat
+   - Data sertifikat:
+     * Nama peserta
+     * Judul kursus
+     * Tanggal penyelesaian
+     * Kode sertifikat (unik)
+     * Tanggal lahir
+     * Nama institusi
+     * Jenis kelamin
+     * Email
+     * Pekerjaan
+   - Generate PDF dengan custom template
+   - Penyimpanan sertifikat
+
+6.3 VERIFIKASI SERTIFIKAT
+   - Halaman verifikasi sertifikat publik
+   - Verifikasi dengan kode sertifikat
+   - Link download publik
+   - Lihat detail sertifikat
+
+6.4 DASHBOARD MANAJEMEN SERTIFIKAT
+   - Lihat semua sertifikat yang diterbitkan
+   - Analytics sertifikat
+   - Filter berdasarkan kursus
+   - Bulk actions:
+     * Bulk download sertifikat (ZIP)
+     * Update template sertifikat
+   - Statistik sertifikat
+   - Track status generate sertifikat
+
+================================================================================
+7. SISTEM ABSENSI
+================================================================================
+
+7.1 TRACKING ABSENSI
+   - Tandai absensi per content
+   - Status absensi:
+     * Hadir
+     * Tidak hadir
+     * Terlambat
+     * Izin
+   - Track waktu join dan leave
+   - Hitung durasi (menit)
+   - Persyaratan durasi minimum
+   - Catatan absensi
+   - Track siapa yang menandai absensi
+
+7.2 MANAJEMEN ABSENSI
+   - Bulk mark attendance
+   - Update record absensi
+   - Hapus record absensi
+   - Export absensi ke Excel
+   - Laporan absensi per content
+   - Laporan absensi per kursus
+   - Statistik absensi:
+     * Total hadir
+     * Total tidak hadir
+     * Total terlambat
+     * Total izin
+
+7.3 PERSYARATAN ABSENSI
+   - Persyaratan absensi level content
+   - Menit absensi minimum
+   - Field catatan absensi
+   - Logic completion absensi
+   - Blokir completion content jika absensi tidak terpenuhi
+
+================================================================================
+8. LAPORAN DAN ANALYTICS
+================================================================================
+
+8.1 ANALYTICS ADMIN
+   - Total pengguna berdasarkan role
+   - Total kursus (published/draft)
+   - Pendaftaran terbaru (30 hari terakhir)
+   - Statistik diskusi
+   - Statistik kuis
+   - Statistik submission essay
+   - Statistik pengumuman
+   - Tren pendaftaran bulanan
+   - Dashboard aktivitas terbaru
+
+8.2 ANALYTICS INSTRUKTUR
+   - Kursus yang diajar
+   - Jumlah siswa per kursus
+   - Metrik performa kursus
+   - Pendaftaran terbaru
+   - Attempt dan completion kuis
+   - Jumlah essay pending
+   - Aktivitas diskusi
+   - Daftar siswa terbaru
+   - Sesi Zoom mendatang
+   - Jumlah content dan lesson
+   - Analytics perbandingan instruktur
+
+8.3 ANALYTICS EVENT ORGANIZER
+   - Kursus yang dikelola
+   - Total peserta
+   - Pendaftaran terbaru
+   - Total diskusi
+   - Summary kursus (published/draft)
+   - Feed aktivitas terbaru
+   - Sesi Zoom mendatang
+
+8.4 ANALYTICS PESERTA
+   - Kursus yang diikuti
+   - Persentase progress kursus
+   - Jumlah kursus selesai
+   - Kursus sedang berjalan
+   - Kursus belum dimulai
+   - Attempt kuis dan tingkat kelulusan
+   - Submission essay
+   - Partisipasi diskusi
+   - Completion terbaru
+   - Konten yang direkomendasikan selanjutnya
+   - Status eligibilitas sertifikat
+
+8.5 LAPORAN PROGRESS
+   - Laporan progress per peserta
+   - Laporan progress level kursus
+   - Export progress ke PDF
+   - Lihat progress untuk semua peserta
+   - Perhitungan persentase progress
+   - Tracking status completion
+   - Halaman My Scores per kursus
+
+================================================================================
+9. ADMIN TOOLS
+================================================================================
+
+9.1 MANAJEMEN PENGGUNA
+   - Membuat pengguna dengan role
+   - Edit detail pengguna
+   - Reset password pengguna
+   - Hapus pengguna
+   - Assign multiple role
+   - Pencarian dan filter pengguna
+   - Bulk import pengguna dari Excel
+   - Download template import
+   - Lihat aktivitas pengguna
+   - Analytics pengguna
+
+9.2 MANAJEMEN ROLE DAN PERMISSION
+   - Membuat custom role
+   - Edit permission role
+   - Hapus role
+   - Assign permission ke role
+   - Kategori permission:
+     * Users & Roles
+     * Courses
+     * Classes/Periods
+     * Lessons
+     * Contents
+     * Attendance
+     * Quizzes & Essays
+     * Discussions
+     * Chats
+     * Certificates
+     * Certificate Templates
+     * Reports/Analytics
+     * Announcements
+     * Activity Logs
+     * File Control
+   - Export role permission matrix
+   - Refresh permission cache
+
+9.3 ACTIVITY LOGGING
+   - Log semua aksi utama:
+     * Pembuatan/update/penghapusan user
+     * Pembuatan/update/penghapusan kursus
+     * Modifikasi content
+     * Attempt kuis
+     * Submission essay
+     * Generate sertifikat
+     * Login/logout
+   - Lihat activity logs
+   - Filter log berdasarkan user/aksi/tanggal
+   - Export activity logs
+   - Clear activity logs
+   - Metadata detail per log entry
+
+9.4 MANAJEMEN FILE
+   - Interface upload file
+   - Lihat file yang diupload
+   - Hapus file
+   - Organisasi file
+   - Manajemen storage
+   - Upload gambar untuk text editor
+   - Upload dokumen untuk content
+
+9.5 UTILITIES ADMIN
+   - Force complete contents (bulk)
+   - Auto-grade quizzes (bulk)
+   - Bulk certificate generation
+   - Permission cache refresh
+   - Export role matrix
+   - Dashboard system tools
+
+================================================================================
+10. FITUR API
+================================================================================
+
+10.1 RESTFUL API ENDPOINTS
+   - Chat API (Sanctum authenticated):
+     * List chat
+     * Membuat chat
+     * Lihat pesan chat
+     * Kirim pesan
+     * Typing indicators
+     * Pencarian chat
+   - Message API:
+     * Kirim pesan
+     * Status typing
+     * Riwayat pesan
+   - User API:
+     * Pengguna tersedia untuk chat
+   - Course Class API:
+     * Kelas tersedia untuk chat
+
+10.2 FITUR REAL-TIME
+   - Dukungan WebSocket (Laravel Reverb)
+   - Live chat messaging
+   - Typing indicators
+   - Notifikasi real-time
+   - Broadcasting events
+
+================================================================================
+11. FITUR PENDAFTARAN
+================================================================================
+
+11.1 METODE PENDAFTARAN
+   - Pendaftaran manual oleh admin/instruktur
+   - Pendaftaran berbasis token:
+     * Token level kursus
+     * Token level kelas
+     * Generate token random
+     * Pembuatan token custom
+     * Enable/disable token
+     * Kadaluarsa token
+     * Validasi token
+   - Bulk participant enrollment
+   - Self-enrollment via token
+   - Unenroll peserta (single/bulk)
+
+11.2 MANAJEMEN PENDAFTARAN
+   - Lihat peserta yang terdaftar
+   - Lihat riwayat pendaftaran
+   - Tracking pendaftaran terbaru
+   - Manajemen token pendaftaran
+   - Regenerate token
+   - Toggle token (enable/disable)
+
+================================================================================
+12. FITUR TAMBAHAN
+================================================================================
+
+12.1 FITUR DASHBOARD
+   - Dashboard khusus per role:
+     * Dashboard admin
+     * Dashboard instruktur
+     * Dashboard event organizer
+     * Dashboard peserta
+   - Feed aktivitas terbaru
+   - Overview statistik cepat
+   - Upcoming events/deadline
+   - Notifikasi eligibilitas sertifikat
+   - Notifikasi pengumuman
+
+12.2 MANAJEMEN PROFIL
+   - Edit informasi profil
+   - Update password
+   - Field profil:
+     * Nama
+     * Email
+     * Tanggal lahir
+     * Nama institusi
+     * Jenis kelamin
+     * Pekerjaan
+     * Telepon
+     * Pendapatan bulanan
+   - Verifikasi email
+   - Konfirmasi password
+
+12.3 AUTENTIKASI & KEAMANAN
+   - Registrasi pengguna
+   - Verifikasi email
+   - Login/logout
+   - Reset password
+   - Remember me functionality
+   - Sanctum API authentication
+   - Permission-based access control
+   - Policy-based authorization
+   - CSRF protection
+
+12.4 SISTEM DUPLIKASI CONTENT
+   - Duplikasi kursus (dengan semua content)
+   - Duplikasi lesson (dengan content)
+   - Duplikasi content
+   - Duplikasi kuis (dengan pertanyaan)
+   - Duplikasi template sertifikat
+   - Duplikasi class/period
+   - Duplikasi file untuk thumbnail dan attachment
+
+12.5 INTEGRASI ZOOM
+   - Schedule Zoom meeting
+   - Set start/end time
+   - Manajemen link meeting
+   - Pembatasan akses berdasarkan jadwal
+   - List upcoming Zoom session
+   - Dukungan timezone
+   - Status meeting (upcoming/active/ended)
+
+12.6 SISTEM NOTIFIKASI
+   - Notifikasi pengumuman
+   - Badge jumlah belum dibaca
+   - Mark as read functionality
+   - Notifikasi in-app
+   - Email notifications (password reset)
+
+12.7 PENCARIAN DAN FILTER
+   - Pencarian user berdasarkan nama/email
+   - Pencarian kursus
+   - Filter berdasarkan role
+   - Filter berdasarkan status
+   - Pencarian diskusi
+   - Pencarian chat
+
+12.8 FITUR IMPORT/EXPORT
+   - Import kuis dari Excel
+   - Bulk import user dari Excel
+   - Download template import
+   - Export absensi ke Excel
+   - Export activity logs
+   - Export progress ke PDF
+   - Export role permission matrix
+   - Download sertifikat (bulk ZIP)
+
+12.9 FITUR LAIN-LAIN
+   - Rich text editor (TinyMCE/similar)
+   - Upload dan manajemen gambar
+   - Viewing dan downloading dokumen
+   - Embedding video YouTube
+   - Manajemen thumbnail
+   - Sistem feedback (level kursus, spesifik peserta)
+   - Sistem leaderboard untuk kuis
+   - Marking optional content
+   - Pengecekan prerequisite
+   - Kuis dengan batas waktu dan countdown
+   - Auto-save untuk kuis dan essay
+   - Sistem draft untuk essay
+   - Pengurutan content (drag-and-drop)
+   - Activity logging middleware
+   - Force JSON response middleware
+   - Dukungan multi-bahasa potensial (blade templates)
+   - Responsive design (Tailwind CSS)
+   - Daftar dengan pagination
+   - Optimasi cache
+   - Error handling dan logging
+
+================================================================================
+13. FITUR TEKNIS
+================================================================================
+
+13.1 ARSITEKTUR DATABASE
+   - Spatie Laravel Permission (roles & permissions)
+   - Tabel pivot untuk relasi
+   - Dukungan soft deletes
+   - Timestamps pada semua model
+   - Relasi kompleks (belongsTo, hasMany, belongsToMany, hasManyThrough)
+
+13.2 KUALITAS KODE
+   - Policies untuk authorization
+   - Form requests untuk validation
+   - Service classes (CourseService, TokenGenerator)
+   - Traits (Duplicateable)
+   - Scopes untuk query
+   - Accessors dan mutators
+   - Model observers
+   - Custom middleware
+
+13.3 STORAGE & FILE
+   - Public disk storage
+   - Penyimpanan sertifikat di /certificates
+   - Penyimpanan thumbnail di /thumbnails
+   - Penyimpanan dokumen
+   - Penyimpanan gambar
+   - Handling file temporary
+
+================================================================================
+                              AKHIR DOKUMEN
+================================================================================
+
+Total Kategori Fitur: 13 Kategori Utama
+Total Sub-Kategori: 80+ Sub-Kategori
+Total Fitur Detail: 500+ Fitur Individual
+
+Aplikasi ini adalah sistem Learning Management System (LMS) yang lengkap
+dengan fitur-fitur modern untuk pembelajaran online, manajemen kursus,
+penilaian, komunikasi, dan pelaporan yang komprehensif.
+
+Teknologi: Laravel Framework dengan Role-Based Access Control (RBAC)

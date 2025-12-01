@@ -280,31 +280,7 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Quiz Performance -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-purple-500 dashboard-card hover-lift">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 2h.01M9 8h.01M9 16h.01M12 16h.01M16 16h.01M16 8h.01"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">Kuis Lulus</p>
-                                <p class="text-2xl font-semibold text-gray-900 stat-number">{{ number_format($stats['quizzes']['passed']) }}</p>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="text-xs text-gray-600">
-                                dari {{ $stats['quizzes']['completed'] }} kuis selesai
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                
                 <!-- Content Completed -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-orange-500 dashboard-card hover-lift">
                     <div class="p-6">
@@ -328,6 +304,36 @@
                         </div>
                     </div>
                 </div>
+
+                <a href="https://www.canva.com/design/DAG5HIUQIaU/VAbTGdpZDQvnnIVmqBGgjA/edit?utm_content=DAG5HIUQIaU&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton" target="_blank" class="block">
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-purple-500 dashboard-card hover-lift cursor-pointer">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <!-- ICON USER GUIDE (Book) -->
+                                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-lg font-semibold text-gray-900">User Guide</p>
+                                        <p class="text-sm text-gray-600">Panduan penggunaan aplikasi</p>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <!-- ICON ARROW -->
+                                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
 
             <!-- Main Content Grid -->
